@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# next.js build & cache
+.next/
+out/
+
+# environment variables (chứa DATABASE_URL / mật khẩu)
+.env
+.env.local
+.env.*.local
+
+# debug & os files
+npm-debug.log*
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
