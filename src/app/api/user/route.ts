@@ -15,7 +15,7 @@ const updateUserSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/)
     .nullable()
     .optional(),
-  fontStyle: z.enum(["sans", "serif", "mono"]).optional(),
+  fontStyle: z.enum(["editorial", "studio", "soft", "sans", "serif", "mono"]).optional(),
   wallpaper: z.string().trim().max(500).optional(),
   useStreakFreezeForDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
@@ -38,7 +38,7 @@ export async function PATCH(req: Request) {
     }
 
     const { useStreakFreezeForDate, ...rest } = parsed.data;
-    const updatePayload: Record<string, unknown> = { ...rest };
+    const updatePayload: Partial<typeof users.$inferInsert> = { ...rest };
 
     if (useStreakFreezeForDate) {
       let existingDates: string[] = [];

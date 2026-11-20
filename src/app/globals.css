@@ -12,19 +12,28 @@
   --text-muted: #78716c;
   --accent: #2563eb;
   --accent-soft: #eff6ff;
-  --active-font: var(--font-sans);
+  --active-heading-font: var(--font-newsreader);
+  --active-body-font: var(--font-lexend);
 }
 
 body {
   background-color: var(--bg-canvas);
   color: var(--text-primary);
-  font-family: var(--active-font), system-ui, sans-serif;
+  font-family: var(--active-body-font), system-ui, sans-serif;
   font-weight: 400;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   transition: background-color 220ms ease, color 220ms ease;
 }
 
-/* Hiệu ứng bấm cơ học (Tactile Spring) cho mọi nút bấm */
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--active-heading-font), Georgia, serif;
+  letter-spacing: -0.015em;
+}
+
 button,
 a[role="button"] {
   transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
@@ -43,13 +52,12 @@ button:not(:disabled):active {
   transform: translateY(0px) scale(0.96);
 }
 
-/* Nút chính có hiệu ứng ánh sáng lướt (Shimmer) & đổ bóng theo màu Accent */
 .btn-primary {
   position: relative;
   overflow: hidden;
   background-color: var(--accent);
   color: #ffffff;
-  box-shadow: 0 4px 14px -3px color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 4px 14px -3px color-mix(in srgb, var(--accent) 42%, transparent);
 }
 
 .btn-primary::after {
@@ -59,50 +67,40 @@ button:not(:disabled):active {
   background: linear-gradient(
     115deg,
     transparent 20%,
-    rgba(255, 255, 255, 0.24) 50%,
+    rgba(255, 255, 255, 0.22) 50%,
     transparent 80%
   );
   transform: translateX(-120%);
-  transition: transform 550ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .btn-primary:hover::after {
   transform: translateX(120%);
 }
 
-.btn-primary:hover {
-  box-shadow: 0 8px 20px -4px color-mix(in srgb, var(--accent) 55%, transparent);
-}
-
-/* Thẻ card có chiều sâu & hover mượt */
 .glass-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
     box-shadow 220ms ease,
     border-color 220ms ease;
 }
 
 .dark .glass-card {
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.26);
 }
 
 .card-lift:hover {
   transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--accent) 38%, var(--border-subtle));
-  box-shadow: 0 10px 26px -8px rgba(15, 23, 42, 0.12);
-}
-
-.dark .card-lift:hover {
-  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.5);
+  border-color: color-mix(in srgb, var(--accent) 36%, var(--border-subtle));
+  box-shadow: 0 10px 24px -10px rgba(15, 23, 42, 0.1);
 }
 
 .accent-gradient {
   background-color: var(--accent);
 }
 
-/* Hiệu ứng chuyển tab & pop */
 @keyframes tabFadeIn {
   from {
     opacity: 0;
@@ -120,10 +118,10 @@ button:not(:disabled):active {
 
 @keyframes popIn {
   0% {
-    transform: scale(0.85);
+    transform: scale(0.86);
   }
   60% {
-    transform: scale(1.08);
+    transform: scale(1.06);
   }
   100% {
     transform: scale(1);
@@ -134,7 +132,6 @@ button:not(:disabled):active {
   animation: popIn 240ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* 3D Flashcard Flip */
 .perspective-1000 {
   perspective: 1000px;
 }

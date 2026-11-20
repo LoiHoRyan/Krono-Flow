@@ -10,6 +10,7 @@ import {
   BarChart3,
   BookMarked,
   Sparkles,
+  Target,
   Sliders,
   Database,
   Command,
@@ -48,6 +49,11 @@ import {
   ReflectionRecord,
 } from "@/components/HabitsVaultPanel";
 import {
+  GoalsTimeblockPanel,
+  GoalRecord,
+  TimeBlockRecord,
+} from "@/components/GoalsTimeblockPanel";
+import {
   ExtendedUserProfile,
   StudioSettingsPanel,
 } from "@/components/StudioSettingsPanel";
@@ -57,6 +63,7 @@ type TabId =
   | "focus"
   | "schedule"
   | "planner"
+  | "goals"
   | "habits"
   | "roadmaps"
   | "knowledge"
@@ -68,6 +75,7 @@ const NAV_DEF: { id: TabId; icon: typeof Timer }[] = [
   { id: "focus", icon: Timer },
   { id: "schedule", icon: CalendarDays },
   { id: "planner", icon: CheckSquare },
+  { id: "goals", icon: Target },
   { id: "habits", icon: Sparkles },
   { id: "roadmaps", icon: MapIcon },
   { id: "knowledge", icon: BookMarked },
@@ -116,6 +124,8 @@ function KronoFlowWorkspace({
   exams,
   slots,
   grades,
+  goals,
+  timeBlocks,
   habits,
   resources,
   reflections,
@@ -138,6 +148,8 @@ function KronoFlowWorkspace({
   exams: ExamRecord[];
   slots: ScheduleSlotRecord[];
   grades: GradeRecord[];
+  goals: GoalRecord[];
+  timeBlocks: TimeBlockRecord[];
   habits: HabitRecord[];
   resources: ResourceRecord[];
   reflections: ReflectionRecord[];
@@ -234,7 +246,7 @@ function KronoFlowWorkspace({
               {!sidebarCollapsed && (
                 <div className="truncate">
                   <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-                  <p className="text-[11px] text-[var(--text-muted)]">Studio v8</p>
+                  <p className="text-[11px] text-[var(--text-muted)]">Studio v10</p>
                 </div>
               )}
             </div>
@@ -381,10 +393,20 @@ function KronoFlowWorkspace({
               onRefresh={onRefresh}
             />
           )}
+          {tab === "goals" && (
+            <GoalsTimeblockPanel
+              goals={goals}
+              timeBlocks={timeBlocks}
+              onNotify={notify}
+              onRefresh={onRefresh}
+            />
+          )}
           {tab === "habits" && (
             <HabitsVaultPanel
               subjects={subjects}
-              habits={habits}
+              goals={goals}
+        timeBlocks={timeBlocks}
+        habits={habits}
               resources={resources}
               reflections={reflections}
               onNotify={notify}
@@ -500,7 +522,7 @@ function AppShell() {
   const [user, setUser] = useState<ExtendedUserProfile | null>(null);
   const [themeId, setThemeId] = useState("ivory");
   const [customAccent, setCustomAccent] = useState<string | null>(null);
-  const [fontStyle, setFontStyle] = useState("sans");
+  const [fontStyle, setFontStyle] = useState("editorial");
   const [wallpaper, setWallpaper] = useState("none");
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [todos, setTodos] = useState<TodoItem[]>([]);
@@ -511,6 +533,8 @@ function AppShell() {
   const [exams, setExams] = useState<ExamRecord[]>([]);
   const [slots, setSlots] = useState<ScheduleSlotRecord[]>([]);
   const [grades, setGrades] = useState<GradeRecord[]>([]);
+  const [goals, setGoals] = useState<GoalRecord[]>([]);
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlockRecord[]>([]);
   const [habits, setHabits] = useState<HabitRecord[]>([]);
   const [resources, setResources] = useState<ResourceRecord[]>([]);
   const [reflections, setReflections] = useState<ReflectionRecord[]>([]);
@@ -536,7 +560,7 @@ function AppShell() {
         setAuthState("authed");
       }
 
-      const [sRes, tRes, rRes, seRes, nRes, cRes, eRes, scRes, gRes, hbRes, resRes, refRes] =
+      const [sRes, tRes, rRes, seRes, nRes, cRes, eRes, scRes, gRes, hbRes, resRes, refRes, glRes, tbRes] =
         await Promise.all([
           fetch("/api/subjects"),
           fetch("/api/todos"),
@@ -550,6 +574,8 @@ function AppShell() {
           fetch("/api/habits"),
           fetch("/api/resources"),
           fetch("/api/reflections"),
+          fetch("/api/goals"),
+          fetch("/api/timeblocks"),
         ]);
 
       if (sRes.ok) setSubjects((await sRes.json()).data ?? []);
@@ -564,6 +590,8 @@ function AppShell() {
       if (hbRes.ok) setHabits((await hbRes.json()).data ?? []);
       if (resRes.ok) setResources((await resRes.json()).data ?? []);
       if (refRes.ok) setReflections((await refRes.json()).data ?? []);
+      if (glRes.ok) setGoals((await glRes.json()).data ?? []);
+      if (tbRes.ok) setTimeBlocks((await tbRes.json()).data ?? []);
     } catch {
       setDbStatus("disconnected");
       setAuthState("guest");
@@ -605,6 +633,8 @@ function AppShell() {
         exams={exams}
         slots={slots}
         grades={grades}
+        goals={goals}
+        timeBlocks={timeBlocks}
         habits={habits}
         resources={resources}
         reflections={reflections}

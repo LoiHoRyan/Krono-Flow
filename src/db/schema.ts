@@ -55,7 +55,7 @@ export const users = pgTable("users", {
   frozenDates: text("frozen_dates").notNull().default("[]"),
   theme: text("theme").notNull().default("ivory"),
   customAccent: text("custom_accent"),
-  fontStyle: text("font_style").notNull().default("sans"),
+  fontStyle: text("font_style").notNull().default("editorial"),
   wallpaper: text("wallpaper").notNull().default("none"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -276,7 +276,7 @@ export const habitLogs = pgTable(
     habitId: uuid("habit_id")
       .notNull()
       .references(() => habits.id, { onDelete: "cascade" }),
-    logDate: text("log_date").notNull(), // YYYY-MM-DD
+    logDate: text("log_date").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [uniqueIndex("habit_log_unique_idx").on(table.habitId, table.logDate)]
@@ -307,8 +307,8 @@ export const reflections = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    entryDate: text("entry_date").notNull(), // YYYY-MM-DD
-    mood: integer("mood").notNull().default(4), // 1..5
+    entryDate: text("entry_date").notNull(),
+    mood: integer("mood").notNull().default(4),
     highlight: text("highlight").notNull(),
     improvement: text("improvement"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -317,4 +317,44 @@ export const reflections = pgTable(
     uniqueIndex("reflection_user_date_idx").on(table.userId, table.entryDate),
     check("reflection_mood_range", sql`${table.mood} >= 1 AND ${table.mood} <= 5`),
   ]
+);
+
+export const goals = pgTable(
+  "goals",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    category: text("category").notNull().default("Học kỳ"),
+    currentValue: integer("current_value").notNull().default(0),
+    targetValue: integer("target_value").notNull().default(100),
+    unit: text("unit").notNull().default("%"),
+    deadline: text("deadline"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("goals_user_idx").on(table.userId),
+    check("goals_target_positive", sql`${table.targetValue} > 0`),
+    check("goals_current_non_neg", sql`${table.currentValue} >= 0`),
+  ]
+);
+
+export const timeBlocks = pgTable(
+  "time_blocks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blockDate: text("block_date").notNull(), // YYYY-MM-DD
+    startTime: text("start_time").notNull(), // HH:mm
+    endTime: text("end_time").notNull(), // HH:mm
+    title: text("title").notNull(),
+    isDone: boolean("is_done").notNull().default(false),
+    color: text("color").notNull().default("#0f766e"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("time_blocks_user_date_idx").on(table.userId, table.blockDate)]
 );

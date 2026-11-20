@@ -149,12 +149,31 @@ export const WALLPAPERS: { id: string; label: string; style: string }[] = [
 ];
 
 export const FONT_STYLES = [
-  { id: "sans", label: "Hiện đại (Be Vietnam Pro)", cssVar: "var(--font-sans)" },
-  { id: "serif", label: "Học thuật (Lora Serif)", cssVar: "var(--font-serif)" },
-  { id: "mono", label: "Kỹ thuật (JetBrains Mono)", cssVar: "var(--font-mono)" },
+  {
+    id: "editorial",
+    label: "Tạp chí & Sổ tay (Newsreader + Lexend)",
+    headingVar: "var(--font-newsreader)",
+    bodyVar: "var(--font-lexend)",
+  },
+  {
+    id: "studio",
+    label: "Hiện đại cá tính (Bricolage + Manrope)",
+    headingVar: "var(--font-bricolage)",
+    bodyVar: "var(--font-manrope)",
+  },
+  {
+    id: "soft",
+    label: "Mềm mại thân thiện (Quicksand)",
+    headingVar: "var(--font-quicksand)",
+    bodyVar: "var(--font-quicksand)",
+  },
 ];
 
-export function applyThemeToDocument(themeId: string, customAccent?: string | null, fontStyle?: string | null) {
+export function applyThemeToDocument(
+  themeId: string,
+  customAccent?: string | null,
+  fontStyle?: string | null
+) {
   const t = THEMES.find((x) => x.id === themeId) ?? THEMES[0]!;
   const root = document.documentElement;
   root.classList.toggle("dark", t.mode === "dark");
@@ -166,15 +185,21 @@ export function applyThemeToDocument(themeId: string, customAccent?: string | nu
   root.style.setProperty("--text-secondary", t.textSecondary);
   root.style.setProperty("--text-muted", t.textMuted);
 
-  const activeAccent = customAccent && /^#[0-9a-fA-F]{6}$/.test(customAccent) ? customAccent : t.accent;
+  const activeAccent =
+    customAccent && /^#[0-9a-fA-F]{6}$/.test(customAccent) ? customAccent : t.accent;
   root.style.setProperty("--accent", activeAccent);
   root.style.setProperty("--accent-soft", customAccent ? `${activeAccent}22` : t.accentSoft);
 
   const font = FONT_STYLES.find((f) => f.id === fontStyle) ?? FONT_STYLES[0]!;
-  root.style.setProperty("--active-font", font.cssVar);
+  root.style.setProperty("--active-heading-font", font.headingVar);
+  root.style.setProperty("--active-body-font", font.bodyVar);
 }
 
-export function computeLevelInfo(totalMinutes: number, completedTodos: number, masteredCards: number) {
+export function computeLevelInfo(
+  totalMinutes: number,
+  completedTodos: number,
+  masteredCards: number
+) {
   const xp = totalMinutes * 2 + completedTodos * 15 + masteredCards * 20;
   const level = Math.floor(xp / 250) + 1;
   const currentLevelXp = xp % 250;

@@ -46,7 +46,10 @@ export function NotesFlashcardsPanel({
   flashcards: FlashcardRecord[];
   onRefresh: () => void;
 }) {
-  const [subTab, setSubTab] = useState<"notes" | "flashcards">("notes");
+  const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz">("notes");
+  const [quizIdx, setQuizIdx] = useState(0);
+  const [quizScore, setQuizScore] = useState(0);
+  const [quizPicked, setQuizPicked] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [onlyDue, setOnlyDue] = useState(false);
 
@@ -177,6 +180,23 @@ export function NotesFlashcardsPanel({
             <Layers className="h-3.5 w-3.5" />
             Flashcards 3D ({flashcards.length})
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSubTab("quiz");
+              setQuizIdx(0);
+              setQuizScore(0);
+              setQuizPicked(null);
+            }}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold",
+              subTab === "quiz"
+                ? "btn-primary"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            )}
+          >
+            Trắc nghiệm Quiz
+          </button>
         </div>
 
         {subTab === "notes" ? (
@@ -296,6 +316,80 @@ export function NotesFlashcardsPanel({
               );
             })}
           </div>
+        </div>
+      ) : subTab === "quiz" ? (
+        <div className="glass-card mx-auto max-w-2xl rounded-2xl p-6">
+          {flashcards.length < 2 ? (
+            <p className="py-8 text-center text-xs text-[var(--text-muted)]">
+              Cần tạo ít nhất 2 thẻ Flashcard để hệ thống tự sinh đề trắc nghiệm.
+            </p>
+          ) : (() => {
+            const qCard = flashcards[quizIdx % flashcards.length]!;
+            const distractors = flashcards
+              .filter((c) => c.id !== qCard.id)
+              .slice(0, 3)
+              .map((c) => c.back);
+            const options = [qCard.back, ...distractors].sort((a, b) => a.localeCompare(b));
+            return (
+              <div>
+                <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
+                  <span>Câu {(quizIdx % flashcards.length) + 1} / {flashcards.length}</span>
+                  <span className="font-mono font-semibold text-[var(--accent)]">
+                    Điểm: {quizScore}
+                  </span>
+                </div>
+                <h4 className="mt-4 text-lg font-medium text-[var(--text-primary)]">
+                  {qCard.front}
+                </h4>
+                <div className="mt-5 grid gap-2.5">
+                  {options.map((opt, idx) => {
+                    const isCorrect = opt === qCard.back;
+                    const picked = quizPicked === opt;
+                    return (
+                      <button
+                        key={opt + idx}
+                        type="button"
+                        disabled={quizPicked !== null}
+                        onClick={() => {
+                          setQuizPicked(opt);
+                          if (isCorrect) setQuizScore((s) => s + 1);
+                        }}
+                        className={cn(
+                          "rounded-xl border px-4 py-3 text-left text-xs font-medium",
+                          quizPicked === null
+                            ? "border-[var(--border-subtle)] bg-[var(--bg-canvas)] hover:border-[var(--accent)]"
+                            : isCorrect
+                            ? "border-emerald-500 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                            : picked
+                            ? "border-rose-500 bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                            : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] opacity-60"
+                        )}
+                      >
+                        <span className="mr-2 font-mono font-bold">
+                          {String.fromCharCode(65 + idx)}.
+                        </span>
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+                {quizPicked !== null && (
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuizPicked(null);
+                        setQuizIdx((i) => i + 1);
+                      }}
+                      className="btn-primary rounded-xl px-4 py-2 text-xs font-medium"
+                    >
+                      Câu tiếp theo →
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-12">

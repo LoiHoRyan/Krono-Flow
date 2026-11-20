@@ -53,6 +53,20 @@ export function AnalyticsPanel({
     else if (i < days.length - 1) break;
   }
 
+  const peakBuckets = [
+    { label: lang === "vi" ? "Sáng (5h–11h)" : "Morning (5–11)", mins: 0 },
+    { label: lang === "vi" ? "Chiều (12h–17h)" : "Afternoon (12–17)", mins: 0 },
+    { label: lang === "vi" ? "Tối (18h–22h)" : "Evening (18–22)", mins: 0 },
+    { label: lang === "vi" ? "Đêm (23h–4h)" : "Late Night (23–4)", mins: 0 },
+  ];
+  for (const s of completed) {
+    const h = new Date(s.startedAt).getHours();
+    const idx = h >= 5 && h <= 11 ? 0 : h >= 12 && h <= 17 ? 1 : h >= 18 && h <= 22 ? 2 : 3;
+    peakBuckets[idx]!.mins += s.actualMinutes;
+  }
+  const peakMax = Math.max(1, ...peakBuckets.map((b) => b.mins));
+  const bestSlot = peakBuckets.reduce((a, b) => (b.mins > a.mins ? b : a), peakBuckets[0]!);
+
   const bySubject = subjects
     .map((sub) => {
       const mins = completed
@@ -286,6 +300,43 @@ export function AnalyticsPanel({
           </ul>
         </section>
       </div>
+
+      {/* GIỜ VÀNG TẬP TRUNG */}
+      <section className="glass-card rounded-2xl p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+              {lang === "vi" ? "Phân tích Giờ vàng tập trung" : "Peak Focus Hours"}
+            </h3>
+            <p className="text-xs text-[var(--text-muted)]">
+              {bestSlot.mins > 0
+                ? `${lang === "vi" ? "Khung giờ hiệu quả nhất của bạn:" : "Your peak window:"} ${bestSlot.label} (${bestSlot.mins}p)`
+                : lang === "vi"
+                ? "Hoàn thành vài phiên Pomodoro để hệ thống nhận diện khung giờ vàng của bạn"
+                : "Complete sessions to discover your peak focus window"}
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-4">
+          {peakBuckets.map((b) => {
+            const pct = Math.round((b.mins / peakMax) * 100);
+            return (
+              <div
+                key={b.label}
+                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3.5"
+              >
+                <div className="text-xs font-medium text-[var(--text-secondary)]">{b.label}</div>
+                <div className="mt-1 font-mono text-lg font-semibold text-[var(--text-primary)]">
+                  {b.mins}p
+                </div>
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                  <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {/* BẢNG HUY HIỆU THÀNH TỰU */}
       <section className="glass-card rounded-2xl p-6">
