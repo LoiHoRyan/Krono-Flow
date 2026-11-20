@@ -17,10 +17,13 @@ import {
   Play,
   Pause,
   CheckCircle2,
+  PanelLeftClose,
+  PanelLeftOpen,
   X,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { applyThemeToDocument, WALLPAPERS } from "@/lib/themes";
+import { LanguageProvider, LanguageToggle, useLang } from "@/lib/i18n";
 import { AuthScreen } from "@/components/AuthScreen";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
@@ -60,16 +63,16 @@ type TabId =
   | "analytics"
   | "settings";
 
-const NAV_ITEMS: { id: TabId; label: string; desc: string; icon: typeof Timer }[] = [
-  { id: "dashboard", label: "Tổng quan", desc: "Lịch tháng, KPI & Kỳ thi", icon: LayoutDashboard },
-  { id: "focus", label: "Phòng Tập Trung", desc: "Pomodoro chạy nền & Âm thanh", icon: Timer },
-  { id: "schedule", label: "Lịch & Sổ điểm", desc: "Thời khóa biểu & Tính GPA", icon: CalendarDays },
-  { id: "planner", label: "Môn học & Việc", desc: "Kanban & Tiến độ môn", icon: CheckSquare },
-  { id: "habits", label: "Thói quen & Kho", desc: "Habit Tracker, Tài liệu & Nhật ký", icon: Sparkles },
-  { id: "roadmaps", label: "Kho Lộ Trình", desc: "8 lộ trình mẫu & tự tạo", icon: MapIcon },
-  { id: "knowledge", label: "Ghi chú & Thẻ", desc: "Notes & Flashcards 3D SM-2", icon: BookMarked },
-  { id: "analytics", label: "Thống kê", desc: "Heatmap & Biểu đồ tuần", icon: BarChart3 },
-  { id: "settings", label: "Giao diện & Hồ sơ", desc: "8 Bảng màu, Font & Sao lưu", icon: Sliders },
+const NAV_DEF: { id: TabId; icon: typeof Timer }[] = [
+  { id: "dashboard", icon: LayoutDashboard },
+  { id: "focus", icon: Timer },
+  { id: "schedule", icon: CalendarDays },
+  { id: "planner", icon: CheckSquare },
+  { id: "habits", icon: Sparkles },
+  { id: "roadmaps", icon: MapIcon },
+  { id: "knowledge", icon: BookMarked },
+  { id: "analytics", icon: BarChart3 },
+  { id: "settings", icon: Sliders },
 ];
 
 function MiniTimerBadge({ onOpenFocus }: { onOpenFocus: () => void }) {
@@ -83,7 +86,12 @@ function MiniTimerBadge({ onOpenFocus }: { onOpenFocus: () => void }) {
         onClick={onOpenFocus}
         className="flex items-center gap-1.5 font-mono font-semibold tabular-nums text-[var(--accent)]"
       >
-        <span className={cn("h-2 w-2 rounded-full bg-[var(--accent)]", timer.isRunning && "animate-pulse")} />
+        <span
+          className={cn(
+            "h-2 w-2 rounded-full bg-[var(--accent)]",
+            timer.isRunning && "animate-pulse"
+          )}
+        />
         {formatDuration(timer.secondsLeft)}
       </button>
       <button
@@ -142,7 +150,9 @@ function KronoFlowWorkspace({
   onLogout: () => void;
   onRefresh: () => void;
 }) {
+  const { t } = useLang();
   const [tab, setTab] = useState<TabId>("dashboard");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [focusedTaskTitle, setFocusedTaskTitle] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -189,7 +199,7 @@ function KronoFlowWorkspace({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-v7-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-v8-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     notify("Đã tải xuống tệp sao lưu JSON!");
@@ -207,48 +217,61 @@ function KronoFlowWorkspace({
     ? { backgroundImage: wpPreset?.style, backgroundSize: "22px 22px" }
     : { backgroundImage: wpPreset?.style ?? "none" };
 
-  const currentNav = NAV_ITEMS.find((n) => n.id === tab) ?? NAV_ITEMS[0]!;
-
   return (
     <div className="min-h-screen lg:flex" style={bgStyle}>
-      <aside className="hidden w-64 shrink-0 flex-col justify-between border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 lg:flex">
+      <aside
+        className={cn(
+          "hidden shrink-0 flex-col justify-between border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 transition-all duration-200 lg:flex",
+          sidebarCollapsed ? "w-[74px]" : "w-64"
+        )}
+      >
         <div>
           <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2.5">
-              <span className="btn-primary inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold">
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <span className="btn-primary inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
                 KF
               </span>
-              <div>
-                <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-                <p className="text-[11px] text-[var(--text-muted)]">Study Studio v7</p>
-              </div>
+              {!sidebarCollapsed && (
+                <div className="truncate">
+                  <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
+                  <p className="text-[11px] text-[var(--text-muted)]">Studio v8</p>
+                </div>
+              )}
             </div>
             <button
               type="button"
-              onClick={() => setCmdOpen(true)}
-              className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-1 font-mono text-[10px] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              onClick={() => setSidebarCollapsed((v) => !v)}
+              title={sidebarCollapsed ? t("expandSidebar") : t("collapseSidebar")}
+              className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
             >
-              ⌘K
+              {sidebarCollapsed ? (
+                <PanelLeftOpen className="h-3.5 w-3.5" />
+              ) : (
+                <PanelLeftClose className="h-3.5 w-3.5" />
+              )}
             </button>
           </div>
 
           <nav className="mt-6 space-y-1">
-            {NAV_ITEMS.map((item) => {
+            {NAV_DEF.map((item) => {
               const Icon = item.icon;
+              const label = t(`nav_${item.id}`);
               return (
                 <button
                   key={item.id}
                   type="button"
+                  title={label}
                   onClick={() => setTab(item.id)}
                   className={cn(
                     "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-medium",
+                    sidebarCollapsed && "justify-center px-0",
                     tab === item.id
                       ? "bg-[var(--accent-soft)] text-[var(--accent)] shadow-sm"
                       : "text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
+                  {!sidebarCollapsed && <span className="truncate">{label}</span>}
                 </button>
               );
             })}
@@ -256,46 +279,53 @@ function KronoFlowWorkspace({
         </div>
 
         <div className="border-t border-[var(--border-subtle)] pt-4">
-          <div className="flex items-center justify-between px-2 text-xs text-[var(--text-muted)]">
-            <span className="flex items-center gap-1.5">
+          <div
+            className={cn(
+              "flex items-center text-xs text-[var(--text-muted)]",
+              sidebarCollapsed ? "flex-col gap-2" : "justify-between px-1"
+            )}
+          >
+            <span className="flex items-center gap-1.5" title="PostgreSQL">
               <Database
                 className={cn(
                   "h-3.5 w-3.5",
                   dbStatus === "connected" ? "text-emerald-500" : "text-rose-500"
                 )}
               />
-              {dbStatus === "connected" ? "PostgreSQL" : "Offline"}
+              {!sidebarCollapsed && (dbStatus === "connected" ? "PostgreSQL" : "Offline")}
             </span>
             <button
               type="button"
               onClick={onLogout}
+              title={t("logout")}
               className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-rose-500"
             >
               <LogOut className="h-3.5 w-3.5" />
-              Đăng xuất
+              {!sidebarCollapsed && t("logout")}
             </button>
           </div>
         </div>
       </aside>
 
       <div className="flex-1 pb-24 lg:pb-10">
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/90 px-4 py-3 backdrop-blur-md sm:px-8">
+        <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/90 px-4 py-3 backdrop-blur-md sm:px-8">
           <div>
             <h2 className="text-sm font-semibold text-[var(--text-primary)]">
-              {currentNav.label}
+              {t(`nav_${tab}`)}
             </h2>
-            <p className="text-xs text-[var(--text-muted)]">{currentNav.desc}</p>
+            <p className="text-xs text-[var(--text-muted)]">{t(`nav_${tab}_desc`)}</p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             {tab !== "focus" && <MiniTimerBadge onOpenFocus={() => setTab("focus")} />}
+            <LanguageToggle />
             <button
               type="button"
               onClick={() => setCmdOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)]"
+              className="hidden items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] sm:inline-flex"
             >
               <Command className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Chuyển nhanh</span>
+              <span>{t("quickJump")}</span>
               <kbd className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 font-mono text-[10px]">
                 Ctrl+K
               </kbd>
@@ -304,7 +334,7 @@ function KronoFlowWorkspace({
               type="button"
               onClick={onLogout}
               className="rounded-xl border border-[var(--border-subtle)] p-2 text-[var(--text-secondary)] hover:text-rose-500 lg:hidden"
-              title="Đăng xuất"
+              title={t("logout")}
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -370,7 +400,14 @@ function KronoFlowWorkspace({
               onRefresh={onRefresh}
             />
           )}
-          {tab === "analytics" && <AnalyticsPanel sessions={sessions} subjects={subjects} />}
+          {tab === "analytics" && (
+            <AnalyticsPanel
+              sessions={sessions}
+              subjects={subjects}
+              totalHabits={habits.length}
+              totalCards={flashcards.length}
+            />
+          )}
           {tab === "settings" && (
             <StudioSettingsPanel
               user={user}
@@ -382,7 +419,6 @@ function KronoFlowWorkspace({
         </main>
       </div>
 
-      {/* TOAST FEEDBACK */}
       {toast && (
         <div className="animate-pop fixed bottom-20 right-5 z-50 flex items-center gap-2 rounded-xl border border-[var(--accent)]/40 bg-[var(--bg-surface)] px-4 py-2.5 text-xs font-medium text-[var(--text-primary)] shadow-xl lg:bottom-6">
           <CheckCircle2 className="h-4 w-4 text-emerald-500" />
@@ -401,14 +437,14 @@ function KronoFlowWorkspace({
           >
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
               <span className="text-xs font-medium text-[var(--text-secondary)]">
-                Điều hướng nhanh
+                {t("quickJump")}
               </span>
               <button type="button" onClick={() => setCmdOpen(false)}>
                 <X className="h-4 w-4 text-[var(--text-muted)]" />
               </button>
             </div>
             <div className="mt-2 max-h-80 space-y-1 overflow-y-auto">
-              {NAV_ITEMS.map((item) => {
+              {NAV_DEF.map((item) => {
                 const Icon = item.icon;
                 return (
                   <button
@@ -422,9 +458,11 @@ function KronoFlowWorkspace({
                   >
                     <span className="flex items-center gap-2.5">
                       <Icon className="h-4 w-4 text-[var(--accent)]" />
-                      {item.label}
+                      {t(`nav_${item.id}`)}
                     </span>
-                    <span className="text-xs text-[var(--text-muted)]">{item.desc}</span>
+                    <span className="text-xs text-[var(--text-muted)]">
+                      {t(`nav_${item.id}_desc`)}
+                    </span>
                   </button>
                 );
               })}
@@ -434,7 +472,7 @@ function KronoFlowWorkspace({
       )}
 
       <nav className="fixed bottom-0 left-0 right-0 z-30 flex overflow-x-auto border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] lg:hidden">
-        {NAV_ITEMS.map((item) => {
+        {NAV_DEF.map((item) => {
           const Icon = item.icon;
           return (
             <button
@@ -447,7 +485,7 @@ function KronoFlowWorkspace({
               )}
             >
               <Icon className="h-4 w-4" />
-              {item.label}
+              {t(`nav_${item.id}`)}
             </button>
           );
         })}
@@ -456,7 +494,8 @@ function KronoFlowWorkspace({
   );
 }
 
-export default function HomePage() {
+function AppShell() {
+  const { t } = useLang();
   const [authState, setAuthState] = useState<"loading" | "guest" | "authed">("loading");
   const [user, setUser] = useState<ExtendedUserProfile | null>(null);
   const [themeId, setThemeId] = useState("ivory");
@@ -544,7 +583,7 @@ export default function HomePage() {
   if (authState === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg-canvas)] text-sm text-[var(--text-muted)]">
-        Đang tải không gian KronoFlow...
+        {t("loadingSpace")}
       </div>
     );
   }
@@ -574,9 +613,9 @@ export default function HomePage() {
         customAccent={customAccent}
         fontStyle={fontStyle}
         wallpaper={wallpaper}
-        onApplyLocalTheme={(t, w, acc, f) => {
-          setThemeId(t);
-          setWallpaper(w);
+        onApplyLocalTheme={(tId, wp, acc, f) => {
+          setThemeId(tId);
+          setWallpaper(wp);
           setCustomAccent(acc);
           setFontStyle(f);
         }}
@@ -584,5 +623,13 @@ export default function HomePage() {
         onRefresh={loadAll}
       />
     </TimerProvider>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <LanguageProvider>
+      <AppShell />
+    </LanguageProvider>
   );
 }

@@ -9,6 +9,7 @@ const patchTodoSchema = z.object({
   title: z.string().trim().min(1).max(160).optional(),
   priority: z.enum(["low", "medium", "high"]).optional(),
   status: z.enum(["todo", "in_progress", "done"]).optional(),
+  isUrgent: z.boolean().optional(),
   isCompleted: z.boolean().optional(),
   dueDate: z.string().nullable().optional(),
 });
@@ -26,10 +27,15 @@ export async function PATCH(
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    const updateObj: Record<string, unknown> = { ...parsed.data };
-    if (parsed.data.status) {
+    const updateObj: Partial<typeof todos.$inferInsert> = {};
+    if (parsed.data.title !== undefined) updateObj.title = parsed.data.title;
+    if (parsed.data.priority !== undefined) updateObj.priority = parsed.data.priority;
+    if (parsed.data.isUrgent !== undefined) updateObj.isUrgent = parsed.data.isUrgent;
+    if (parsed.data.status !== undefined) {
+      updateObj.status = parsed.data.status;
       updateObj.isCompleted = parsed.data.status === "done";
     } else if (typeof parsed.data.isCompleted === "boolean") {
+      updateObj.isCompleted = parsed.data.isCompleted;
       updateObj.status = parsed.data.isCompleted ? "done" : "todo";
     }
     if (parsed.data.dueDate !== undefined) {

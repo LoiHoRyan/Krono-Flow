@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, GraduationCap, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, Calculator, GraduationCap, Plus, Trash2 } from "lucide-react";
 
 export interface ScheduleSlotRecord {
   id: string;
@@ -62,6 +62,17 @@ export function ScheduleGpaPanel({
   const [credits, setCredits] = useState(3);
   const [score10, setScore10] = useState(8.5);
   const [semester, setSemester] = useState("HK1");
+
+  // Máy tính điểm cần đạt cuối kỳ
+  const [processScore, setProcessScore] = useState(8.0);
+  const [processWeight, setProcessWeight] = useState(40);
+  const [targetFinal, setTargetFinal] = useState(8.5);
+
+  const finalWeight = Math.max(10, 100 - processWeight);
+  const neededFinalScore = +(
+    (targetFinal - (processScore * processWeight) / 100) /
+    (finalWeight / 100)
+  ).toFixed(2);
 
   const handleAddSlot = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,7 +139,7 @@ export function ScheduleGpaPanel({
   return (
     <div className="space-y-6">
       {/* THỜI KHÓA BIỂU TUẦN */}
-      <section className="glass-card rounded-2xl p-6">
+      <section className="glass-card card-lift rounded-2xl p-6">
         <div className="flex items-center gap-2">
           <CalendarDays className="h-4 w-4 text-[var(--accent)]" />
           <h3 className="text-sm font-semibold text-[var(--text-primary)]">
@@ -176,7 +187,7 @@ export function ScheduleGpaPanel({
           />
           <button
             type="submit"
-            className="inline-flex items-center gap-1 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-xs font-medium text-white"
+            className="btn-primary inline-flex items-center gap-1 rounded-xl px-3.5 py-2 text-xs font-medium"
           >
             <Plus className="h-3.5 w-3.5" />
             Thêm lịch
@@ -229,112 +240,190 @@ export function ScheduleGpaPanel({
         </div>
       </section>
 
-      {/* SỔ ĐIỂM & TÍNH GPA */}
-      <section className="glass-card rounded-2xl p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* SỔ ĐIỂM & TÍNH GPA */}
+        <section className="glass-card card-lift rounded-2xl p-6 lg:col-span-8">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <GraduationCap className="h-4 w-4 text-[var(--accent)]" />
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                Sổ điểm & Tính GPA tích lũy
+              </h3>
+            </div>
+
+            <div className="flex flex-wrap gap-2 text-xs">
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5">
+                Tín chỉ: <strong className="font-mono">{totalCredits}</strong>
+              </div>
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5">
+                Hệ 10: <strong className="font-mono text-[var(--accent)]">{avg10}</strong>
+              </div>
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5">
+                GPA 4.0: <strong className="font-mono text-emerald-600 dark:text-emerald-400">{avg4}</strong>
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleAddGrade} className="mt-4 flex flex-wrap gap-2">
+            <input
+              type="text"
+              value={courseName}
+              onChange={(e) => setCourseName(e.target.value)}
+              placeholder="Tên học phần..."
+              className="min-w-[160px] flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+            />
+            <input
+              type="text"
+              value={semester}
+              onChange={(e) => setSemester(e.target.value)}
+              placeholder="Học kỳ"
+              className="w-20 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-2 text-xs text-[var(--text-primary)]"
+            />
+            <input
+              type="number"
+              min={1}
+              max={15}
+              value={credits}
+              onChange={(e) => setCredits(Number(e.target.value))}
+              className="w-16 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-2 text-xs text-[var(--text-primary)]"
+              title="Số tín chỉ"
+            />
+            <input
+              type="number"
+              step="0.1"
+              min={0}
+              max={10}
+              value={score10}
+              onChange={(e) => setScore10(Number(e.target.value))}
+              className="w-16 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-2 text-xs text-[var(--text-primary)]"
+              title="Điểm hệ 10"
+            />
+            <button
+              type="submit"
+              className="btn-primary inline-flex items-center gap-1 rounded-xl px-3.5 py-2 text-xs font-medium"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Lưu
+            </button>
+          </form>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)]">
+                  <th className="py-2 font-medium">Học phần</th>
+                  <th className="py-2 font-medium">HK</th>
+                  <th className="py-2 font-medium">TC</th>
+                  <th className="py-2 font-medium">Hệ 10</th>
+                  <th className="py-2 font-medium">Chữ</th>
+                  <th className="py-2 font-medium">Hệ 4</th>
+                  <th className="py-2 text-right font-medium">Xóa</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-subtle)]">
+                {grades.map((g) => {
+                  const conv = toGpa4(g.score10);
+                  return (
+                    <tr key={g.id}>
+                      <td className="py-2.5 font-medium text-[var(--text-primary)]">{g.courseName}</td>
+                      <td className="py-2.5 text-[var(--text-muted)]">{g.semester}</td>
+                      <td className="py-2.5 font-mono">{g.credits}</td>
+                      <td className="py-2.5 font-mono">{g.score10.toFixed(1)}</td>
+                      <td className="py-2.5 font-mono font-semibold text-[var(--accent)]">{conv.letter}</td>
+                      <td className="py-2.5 font-mono">{conv.gpa4.toFixed(1)}</td>
+                      <td className="py-2.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteGrade(g.id)}
+                          className="text-[var(--text-muted)] hover:text-rose-500"
+                        >
+                          <Trash2 className="inline h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* MÁY TÍNH ĐIỂM CẦN ĐẠT CUỐI KỲ */}
+        <section className="glass-card card-lift rounded-2xl p-6 lg:col-span-4">
           <div className="flex items-center gap-2">
-            <GraduationCap className="h-4 w-4 text-[var(--accent)]" />
+            <Calculator className="h-4 w-4 text-[var(--accent)]" />
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-              Sổ điểm & Tính GPA tích lũy
+              Tính điểm cần đạt Cuối kỳ
             </h3>
           </div>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
+            Ước lượng điểm thi cuối kỳ cần đạt để đạt mục tiêu môn học
+          </p>
 
-          <div className="flex flex-wrap gap-3 text-xs">
-            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5">
-              Tín chỉ: <strong className="font-mono">{totalCredits}</strong>
+          <div className="mt-4 space-y-3 text-xs">
+            <div>
+              <div className="flex justify-between text-[var(--text-secondary)]">
+                <span>Điểm quá trình hiện tại</span>
+                <strong className="font-mono">{processScore}</strong>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={10}
+                step={0.5}
+                value={processScore}
+                onChange={(e) => setProcessScore(Number(e.target.value))}
+                className="mt-1 w-full accent-[var(--accent)]"
+              />
             </div>
-            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5">
-              TB Hệ 10: <strong className="font-mono text-[var(--accent)]">{avg10}</strong>
+
+            <div>
+              <div className="flex justify-between text-[var(--text-secondary)]">
+                <span>Trọng số quá trình / cuối kỳ</span>
+                <strong className="font-mono">
+                  {processWeight}% / {finalWeight}%
+                </strong>
+              </div>
+              <input
+                type="range"
+                min={10}
+                max={70}
+                step={10}
+                value={processWeight}
+                onChange={(e) => setProcessWeight(Number(e.target.value))}
+                className="mt-1 w-full accent-[var(--accent)]"
+              />
             </div>
-            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5">
-              GPA Hệ 4.0: <strong className="font-mono text-emerald-600 dark:text-emerald-400">{avg4}</strong>
+
+            <div>
+              <label className="text-[var(--text-secondary)]">Mục tiêu tổng kết</label>
+              <select
+                value={targetFinal}
+                onChange={(e) => setTargetFinal(Number(e.target.value))}
+                className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)]"
+              >
+                <option value={9.0}>Xuất sắc A+ (9.0)</option>
+                <option value={8.5}>Giỏi A (8.5)</option>
+                <option value={8.0}>Khá giỏi B+ (8.0)</option>
+                <option value={7.0}>Khá B (7.0)</option>
+                <option value={5.5}>Trung bình C (5.5)</option>
+                <option value={4.0}>Qua môn D (4.0)</option>
+              </select>
+            </div>
+
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-4 text-center">
+              <div className="text-[11px] text-[var(--text-muted)]">Điểm cuối kỳ tối thiểu cần đạt</div>
+              <div className="mt-1 font-mono text-3xl font-bold text-[var(--accent)]">
+                {neededFinalScore <= 0
+                  ? "Đã đủ!"
+                  : neededFinalScore > 10
+                  ? `${neededFinalScore} (Vượt 10)`
+                  : neededFinalScore}
+              </div>
             </div>
           </div>
-        </div>
-
-        <form onSubmit={handleAddGrade} className="mt-4 flex flex-wrap gap-2">
-          <input
-            type="text"
-            value={courseName}
-            onChange={(e) => setCourseName(e.target.value)}
-            placeholder="Tên học phần..."
-            className="min-w-[180px] flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
-          />
-          <input
-            type="text"
-            value={semester}
-            onChange={(e) => setSemester(e.target.value)}
-            placeholder="Học kỳ"
-            className="w-24 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)]"
-          />
-          <input
-            type="number"
-            min={1}
-            max={15}
-            value={credits}
-            onChange={(e) => setCredits(Number(e.target.value))}
-            className="w-20 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)]"
-            title="Số tín chỉ"
-          />
-          <input
-            type="number"
-            step="0.1"
-            min={0}
-            max={10}
-            value={score10}
-            onChange={(e) => setScore10(Number(e.target.value))}
-            className="w-20 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)]"
-            title="Điểm hệ 10"
-          />
-          <button
-            type="submit"
-            className="inline-flex items-center gap-1 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-xs font-medium text-white"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Lưu điểm
-          </button>
-        </form>
-
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-[var(--border-subtle)] text-[var(--text-muted)]">
-                <th className="py-2 font-medium">Học phần</th>
-                <th className="py-2 font-medium">Học kỳ</th>
-                <th className="py-2 font-medium">Tín chỉ</th>
-                <th className="py-2 font-medium">Hệ 10</th>
-                <th className="py-2 font-medium">Điểm chữ</th>
-                <th className="py-2 font-medium">Hệ 4.0</th>
-                <th className="py-2 text-right font-medium">Xóa</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border-subtle)]">
-              {grades.map((g) => {
-                const conv = toGpa4(g.score10);
-                return (
-                  <tr key={g.id}>
-                    <td className="py-2.5 font-medium text-[var(--text-primary)]">{g.courseName}</td>
-                    <td className="py-2.5 text-[var(--text-muted)]">{g.semester}</td>
-                    <td className="py-2.5 font-mono">{g.credits}</td>
-                    <td className="py-2.5 font-mono">{g.score10.toFixed(1)}</td>
-                    <td className="py-2.5 font-mono font-semibold text-[var(--accent)]">{conv.letter}</td>
-                    <td className="py-2.5 font-mono">{conv.gpa4.toFixed(1)}</td>
-                    <td className="py-2.5 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteGrade(g.id)}
-                        className="text-[var(--text-muted)] hover:text-rose-500"
-                      >
-                        <Trash2 className="inline h-3.5 w-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }

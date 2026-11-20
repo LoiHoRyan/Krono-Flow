@@ -6,22 +6,51 @@ import { getAuthenticatedUser } from "@/lib/auth";
 
 const restoreSchema = z.object({
   subjects: z
-    .array(z.object({ name: z.string().min(1), color: z.string().optional(), targetHours: z.number().int().positive().optional() }))
+    .array(
+      z.object({
+        name: z.string().min(1),
+        color: z.string().optional(),
+        targetHours: z.number().int().positive().optional(),
+      })
+    )
     .optional(),
   todos: z
-    .array(z.object({ title: z.string().min(1), priority: z.enum(["low", "medium", "high"]).optional(), isCompleted: z.boolean().optional() }))
+    .array(
+      z.object({
+        title: z.string().min(1),
+        priority: z.enum(["low", "medium", "high"]).optional(),
+        isCompleted: z.boolean().optional(),
+      })
+    )
     .optional(),
   notes: z
-    .array(z.object({ title: z.string().min(1), content: z.string().min(1), pinned: z.boolean().optional() }))
+    .array(
+      z.object({
+        title: z.string().min(1),
+        content: z.string().min(1),
+        pinned: z.boolean().optional(),
+      })
+    )
     .optional(),
   flashcards: z
-    .array(z.object({ front: z.string().min(1), back: z.string().min(1), mastery: z.number().int().min(0).max(5).optional() }))
+    .array(
+      z.object({
+        front: z.string().min(1),
+        back: z.string().min(1),
+        mastery: z.number().int().min(0).max(5).optional(),
+      })
+    )
     .optional(),
-  exams: z
-    .array(z.object({ title: z.string().min(1), examDate: z.string() }))
-    .optional(),
+  exams: z.array(z.object({ title: z.string().min(1), examDate: z.string() })).optional(),
   grades: z
-    .array(z.object({ courseName: z.string().min(1), credits: z.number().int().positive(), score10: z.number().min(0).max(10), semester: z.string().optional() }))
+    .array(
+      z.object({
+        courseName: z.string().min(1),
+        credits: z.number().int().positive(),
+        score10: z.number().min(0).max(10),
+        semester: z.string().optional(),
+      })
+    )
     .optional(),
 });
 
@@ -32,7 +61,10 @@ export async function POST(req: Request) {
 
     const parsed = restoreSchema.safeParse(await req.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: "Tệp JSON sao lưu không đúng định dạng" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Tệp JSON sao lưu không đúng định dạng" },
+        { status: 400 }
+      );
     }
 
     const d = parsed.data;
@@ -55,8 +87,8 @@ export async function POST(req: Request) {
           d.todos.map((t) => ({
             userId: user.id,
             title: t.title,
-            priority: t.priority ?? "medium",
-            status: t.isCompleted ? "done" : "todo",
+            priority: t.priority ?? ("medium" as const),
+            status: (t.isCompleted ? "done" : "todo") as "todo" | "in_progress" | "done",
             isCompleted: t.isCompleted ?? false,
           }))
         );

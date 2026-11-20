@@ -1,15 +1,22 @@
 "use client";
 
-import { Download, Flame, TrendingUp, Award, Clock, Layers } from "lucide-react";
+import { Download, Flame, TrendingUp, Award, Clock, Layers, Trophy, Lock } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useLang } from "@/lib/i18n";
 import type { SessionLogItem, SubjectOption } from "./PomodoroTimer";
 
 export function AnalyticsPanel({
   sessions,
   subjects,
+  totalHabits = 0,
+  totalCards = 0,
 }: {
   sessions: SessionLogItem[];
   subjects: SubjectOption[];
+  totalHabits?: number;
+  totalCards?: number;
 }) {
+  const { lang, t } = useLang();
   const completed = sessions.filter((s) => s.status === "completed");
   const totalMinutes = completed.reduce((acc, s) => acc + s.actualMinutes, 0);
   const avgSession = completed.length > 0 ? Math.round(totalMinutes / completed.length) : 0;
@@ -20,7 +27,6 @@ export function AnalyticsPanel({
     dayMinutes.set(key, (dayMinutes.get(key) ?? 0) + s.actualMinutes);
   }
 
-  // 20 tuần (140 ngày) xếp gọn dạng ma trận GitHub chuẩn (gap 3px, ô 13px)
   const today = new Date();
   const totalWeeks = 20;
   const totalDays = totalWeeks * 7;
@@ -32,7 +38,6 @@ export function AnalyticsPanel({
     days.push({ date: key, minutes: dayMinutes.get(key) ?? 0 });
   }
 
-  // Nhóm theo tuần (mỗi tuần 7 ô dọc) để không bao giờ bị giãn ngang
   const weeks: { date: string; minutes: number }[][] = [];
   for (let w = 0; w < totalWeeks; w++) {
     weeks.push(days.slice(w * 7, w * 7 + 7));
@@ -48,7 +53,6 @@ export function AnalyticsPanel({
     else if (i < days.length - 1) break;
   }
 
-  // Phân bổ theo môn học
   const bySubject = subjects
     .map((sub) => {
       const mins = completed
@@ -59,6 +63,49 @@ export function AnalyticsPanel({
     .filter((s) => s.mins > 0)
     .sort((a, b) => b.mins - a.mins);
 
+  const achievements = [
+    {
+      title: lang === "vi" ? "Bước chân đầu tiên" : "First Step",
+      desc: lang === "vi" ? "Hoàn thành 1 phiên tập trung" : "Complete 1 focus session",
+      done: completed.length >= 1,
+    },
+    {
+      title: lang === "vi" ? "Giữ nhịp 3 ngày" : "3-Day Rhythm",
+      desc: lang === "vi" ? "Đạt chuỗi 3 ngày liên tục" : "Reach a 3-day streak",
+      done: streak >= 3,
+    },
+    {
+      title: lang === "vi" ? "Tuần lễ Kỷ luật" : "Discipline Week",
+      desc: lang === "vi" ? "Đạt chuỗi 7 ngày liên tục" : "Reach a 7-day streak",
+      done: streak >= 7,
+    },
+    {
+      title: lang === "vi" ? "Chiến binh 10 giờ" : "10-Hour Scholar",
+      desc: lang === "vi" ? "Tích lũy tổng 600 phút học" : "Log 600 total study minutes",
+      done: totalMinutes >= 600,
+    },
+    {
+      title: lang === "vi" ? "Người kiến tạo" : "Organizer",
+      desc: lang === "vi" ? "Tạo ít nhất 3 môn học" : "Create at least 3 subjects",
+      done: subjects.length >= 3,
+    },
+    {
+      title: lang === "vi" ? "Bậc thầy Trí nhớ" : "Memory Master",
+      desc: lang === "vi" ? "Tạo ít nhất 10 thẻ Flashcards" : "Create 10+ Flashcards",
+      done: totalCards >= 10,
+    },
+    {
+      title: lang === "vi" ? "Kỷ luật Thói quen" : "Habit Builder",
+      desc: lang === "vi" ? "Theo dõi ít nhất 3 thói quen" : "Track at least 3 habits",
+      done: totalHabits >= 3,
+    },
+    {
+      title: lang === "vi" ? "Bền bỉ Deep Work" : "Deep Work Pro",
+      desc: lang === "vi" ? "Hoàn thành 20 phiên học" : "Complete 20 focus sessions",
+      done: completed.length >= 20,
+    },
+  ];
+
   const handleExportJson = () => {
     const blob = new Blob(
       [JSON.stringify({ exportedAt: new Date().toISOString(), subjects, sessions }, null, 2)],
@@ -67,86 +114,90 @@ export function AnalyticsPanel({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-analytics-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const getHeatColor = (mins: number) => {
     if (mins === 0) return "bg-[var(--bg-elevated)] border border-[var(--border-subtle)]/50";
-    if (mins < 30) return "bg-indigo-950/70 dark:bg-indigo-900/80 border border-indigo-700/40";
-    if (mins < 60) return "bg-indigo-600/80 border border-indigo-500/40";
-    if (mins < 120) return "bg-indigo-500 border border-indigo-400/50";
-    return "bg-emerald-400 border border-emerald-300/60";
+    if (mins < 30) return "bg-emerald-200 dark:bg-emerald-950";
+    if (mins < 60) return "bg-emerald-400 dark:bg-emerald-800";
+    if (mins < 120) return "bg-emerald-500 dark:bg-emerald-600";
+    return "bg-emerald-600 dark:bg-emerald-400";
   };
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5">
+        <div className="glass-card card-lift rounded-2xl p-5">
           <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
             <Flame className="h-4 w-4 text-amber-500" />
-            Chuỗi ngày liên tục
+            {lang === "vi" ? "Chuỗi ngày liên tục" : "Current Streak"}
           </div>
           <div className="mt-2 font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">
-            {streak} ngày
+            {streak} {lang === "vi" ? "ngày" : "days"}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5">
+        <div className="glass-card card-lift rounded-2xl p-5">
           <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
             <Clock className="h-4 w-4 text-[var(--accent)]" />
-            Tổng thời gian học
+            {lang === "vi" ? "Tổng thời gian học" : "Total Study Time"}
           </div>
           <div className="mt-2 font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">
-            {(totalMinutes / 60).toFixed(1)} giờ
+            {(totalMinutes / 60).toFixed(1)} {lang === "vi" ? "giờ" : "hrs"}
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5">
+        <div className="glass-card card-lift rounded-2xl p-5">
           <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
             <Award className="h-4 w-4 text-emerald-500" />
-            Trung bình mỗi phiên
+            {lang === "vi" ? "Trung bình mỗi phiên" : "Avg. Session"}
           </div>
           <div className="mt-2 font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">
-            {avgSession} phút
+            {avgSession} {lang === "vi" ? "phút" : "min"}
           </div>
         </div>
 
-        <div className="flex flex-col justify-between rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5">
+        <div className="glass-card card-lift flex flex-col justify-between rounded-2xl p-5">
           <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
             <Layers className="h-4 w-4 text-sky-500" />
-            Sao lưu dữ liệu
+            {lang === "vi" ? "Báo cáo nhanh" : "Quick Export"}
           </div>
           <button
             type="button"
             onClick={handleExportJson}
-            className="mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--accent)] px-3 py-2 text-xs font-semibold text-white hover:opacity-90"
+            className="btn-primary mt-2 inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-medium"
           >
             <Download className="h-3.5 w-3.5" />
-            Xuất file JSON
+            {lang === "vi" ? "Xuất JSON" : "Export JSON"}
           </button>
         </div>
       </div>
 
-      <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
+      <section className="glass-card rounded-2xl p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-              Heatmap kỷ luật học tập (20 tuần gần nhất)
+              {lang === "vi"
+                ? "Heatmap kỷ luật học tập (20 tuần gần nhất)"
+                : "Study Consistency Heatmap (Last 20 Weeks)"}
             </h3>
             <p className="text-xs text-[var(--text-muted)]">
-              Di chuột vào từng ô để xem tổng số phút tập trung trong ngày
+              {lang === "vi"
+                ? "Di chuột vào từng ô để xem tổng số phút tập trung trong ngày"
+                : "Hover over any cell to inspect daily focus minutes"}
             </p>
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
-            <span>Ít</span>
-            <span className="h-3 w-3 rounded-[3px] bg-[var(--bg-elevated)] border border-[var(--border-subtle)]" />
-            <span className="h-3 w-3 rounded-[3px] bg-indigo-900/80" />
-            <span className="h-3 w-3 rounded-[3px] bg-indigo-600/80" />
-            <span className="h-3 w-3 rounded-[3px] bg-indigo-500" />
-            <span className="h-3 w-3 rounded-[3px] bg-emerald-400" />
-            <span>Nhiều</span>
+            <span>{lang === "vi" ? "Ít" : "Less"}</span>
+            <span className="h-3 w-3 rounded-[3px] border border-[var(--border-subtle)] bg-[var(--bg-elevated)]" />
+            <span className="h-3 w-3 rounded-[3px] bg-emerald-200 dark:bg-emerald-950" />
+            <span className="h-3 w-3 rounded-[3px] bg-emerald-400 dark:bg-emerald-800" />
+            <span className="h-3 w-3 rounded-[3px] bg-emerald-500 dark:bg-emerald-600" />
+            <span className="h-3 w-3 rounded-[3px] bg-emerald-600 dark:bg-emerald-400" />
+            <span>{lang === "vi" ? "Nhiều" : "More"}</span>
           </div>
         </div>
 
@@ -157,7 +208,7 @@ export function AnalyticsPanel({
                 {week.map((d) => (
                   <div
                     key={d.date}
-                    title={`${d.date}: ${d.minutes} phút`}
+                    title={`${d.date}: ${d.minutes}m`}
                     className={`h-[13px] w-[13px] rounded-[3px] transition-transform hover:scale-125 ${getHeatColor(
                       d.minutes
                     )}`}
@@ -170,11 +221,11 @@ export function AnalyticsPanel({
       </section>
 
       <div className="grid gap-6 lg:grid-cols-12">
-        <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 lg:col-span-7">
+        <section className="glass-card rounded-2xl p-6 lg:col-span-7">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-[var(--accent)]" />
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-              Nhịp học 7 ngày gần nhất (phút)
+              {lang === "vi" ? "Nhịp học 7 ngày gần nhất (phút)" : "Last 7 Days Focus (min)"}
             </h3>
           </div>
           <div className="mt-6 flex h-44 items-end gap-3">
@@ -200,14 +251,16 @@ export function AnalyticsPanel({
           </div>
         </section>
 
-        <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 lg:col-span-5">
+        <section className="glass-card rounded-2xl p-6 lg:col-span-5">
           <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-            Phân bổ thời gian theo môn học
+            {lang === "vi" ? "Phân bổ theo môn học" : "Time by Subject"}
           </h3>
           <ul className="mt-5 space-y-3.5">
             {bySubject.length === 0 ? (
               <li className="text-xs text-[var(--text-muted)]">
-                Hoàn thành phiên Pomodoro có gắn môn học để xem phân bổ tại đây.
+                {lang === "vi"
+                  ? "Hoàn thành phiên Pomodoro có gắn môn học để xem phân bổ."
+                  : "Complete a tagged Pomodoro session to see breakdown."}
               </li>
             ) : (
               bySubject.map((sub) => {
@@ -233,6 +286,51 @@ export function AnalyticsPanel({
           </ul>
         </section>
       </div>
+
+      {/* BẢNG HUY HIỆU THÀNH TỰU */}
+      <section className="glass-card rounded-2xl p-6">
+        <div className="flex items-center gap-2">
+          <Trophy className="h-4 w-4 text-amber-500" />
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+            {t("achievementsTitle")}
+          </h3>
+        </div>
+        <p className="mt-0.5 text-xs text-[var(--text-muted)]">{t("achievementsSub")}</p>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {achievements.map((a) => (
+            <div
+              key={a.title}
+              className={cn(
+                "card-lift rounded-xl border p-3.5",
+                a.done
+                  ? "border-amber-500/40 bg-amber-500/10"
+                  : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] opacity-75"
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[var(--text-primary)]">{a.title}</span>
+                {a.done ? (
+                  <Trophy className="h-4 w-4 text-amber-500" />
+                ) : (
+                  <Lock className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+                )}
+              </div>
+              <p className="mt-1 text-[11px] text-[var(--text-secondary)]">{a.desc}</p>
+              <span
+                className={cn(
+                  "mt-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium",
+                  a.done
+                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                    : "bg-[var(--bg-elevated)] text-[var(--text-muted)]"
+                )}
+              >
+                {a.done ? t("unlocked") : t("locked")}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
