@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SubjectOption } from "./PomodoroTimer";
@@ -30,6 +31,7 @@ export interface FlashcardRecord {
   front: string;
   back: string;
   mastery: number;
+  nextReviewAt?: string;
   subjectId: string | null;
 }
 
@@ -46,13 +48,12 @@ export function NotesFlashcardsPanel({
 }) {
   const [subTab, setSubTab] = useState<"notes" | "flashcards">("notes");
   const [search, setSearch] = useState("");
+  const [onlyDue, setOnlyDue] = useState(false);
 
-  // Note form
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
   const [noteSubject, setNoteSubject] = useState("");
 
-  // Flashcard form & study state
   const [cardFront, setCardFront] = useState("");
   const [cardBack, setCardBack] = useState("");
   const [cardSubject, setCardSubject] = useState("");
@@ -113,6 +114,12 @@ export function NotesFlashcardsPanel({
     }
   };
 
+  const nowMs = Date.now();
+  const dueCards = flashcards.filter(
+    (c) => !c.nextReviewAt || new Date(c.nextReviewAt).getTime() <= nowMs
+  );
+  const deck = onlyDue ? dueCards : flashcards;
+
   const updateMastery = async (card: FlashcardRecord, delta: number) => {
     const next = Math.max(0, Math.min(5, card.mastery + delta));
     await fetch(`/api/flashcards/${card.id}`, {
@@ -121,9 +128,7 @@ export function NotesFlashcardsPanel({
       body: JSON.stringify({ mastery: next }),
     });
     setFlipped(false);
-    if (flashcards.length > 1) {
-      setCardIdx((i) => (i + 1) % flashcards.length);
-    }
+    if (deck.length > 1) setCardIdx((i) => (i + 1) % deck.length);
     onRefresh();
   };
 
@@ -140,7 +145,7 @@ export function NotesFlashcardsPanel({
       n.content.toLowerCase().includes(search.toLowerCase())
   );
 
-  const activeCard = flashcards[cardIdx % Math.max(1, flashcards.length)];
+  const activeCard = deck[cardIdx % Math.max(1, deck.length)];
 
   return (
     <div className="space-y-6">
@@ -150,31 +155,31 @@ export function NotesFlashcardsPanel({
             type="button"
             onClick={() => setSubTab("notes")}
             className={cn(
-              "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition",
+              "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold",
               subTab === "notes"
-                ? "bg-[var(--accent)] text-white"
+                ? "btn-primary"
                 : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             )}
           >
             <FileText className="h-3.5 w-3.5" />
-            Ghi chú học tập ({notes.length})
+            Ghi chú ({notes.length})
           </button>
           <button
             type="button"
             onClick={() => setSubTab("flashcards")}
             className={cn(
-              "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition",
+              "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold",
               subTab === "flashcards"
-                ? "bg-[var(--accent)] text-white"
+                ? "btn-primary"
                 : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             )}
           >
             <Layers className="h-3.5 w-3.5" />
-            Thẻ Flashcards ({flashcards.length})
+            Flashcards 3D ({flashcards.length})
           </button>
         </div>
 
-        {subTab === "notes" && (
+        {subTab === "notes" ? (
           <div className="relative w-full sm:w-64">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--text-muted)]" />
             <input
@@ -182,9 +187,27 @@ export function NotesFlashcardsPanel({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm kiếm ghi chú..."
-              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] py-2 pl-9 pr-3 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent)]"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] py-2 pl-9 pr-3 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
             />
           </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setOnlyDue((v) => !v);
+              setCardIdx(0);
+              setFlipped(false);
+            }}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium",
+              onlyDue
+                ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)]"
+            )}
+          >
+            <Clock className="h-3.5 w-3.5" />
+            Cần ôn hôm nay ({dueCards.length} thẻ)
+          </button>
         )}
       </div>
 
@@ -192,22 +215,22 @@ export function NotesFlashcardsPanel({
         <div className="grid gap-6 lg:grid-cols-12">
           <form
             onSubmit={handleCreateNote}
-            className="space-y-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 lg:col-span-5"
+            className="glass-card space-y-3 rounded-2xl p-5 lg:col-span-5"
           >
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">Tạo ghi chú mới</h3>
             <input
               type="text"
               value={noteTitle}
               onChange={(e) => setNoteTitle(e.target.value)}
-              placeholder="Tiêu đề (VD: Tóm tắt thuật toán Dijkstra)..."
-              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent)]"
+              placeholder="Tiêu đề..."
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
             />
             <select
               value={noteSubject}
               onChange={(e) => setNoteSubject(e.target.value)}
-              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-xs text-[var(--text-secondary)] outline-none"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-xs text-[var(--text-secondary)]"
             >
-              <option value="">-- Gắn môn học (tùy chọn) --</option>
+              <option value="">-- Gắn môn học --</option>
               {subjects.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -218,89 +241,77 @@ export function NotesFlashcardsPanel({
               rows={6}
               value={noteContent}
               onChange={(e) => setNoteContent(e.target.value)}
-              placeholder="Nội dung kiến thức, công thức, ý chính..."
-              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent)]"
+              placeholder="Nội dung kiến thức, công thức..."
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
             />
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
+              className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-medium"
             >
               <Plus className="h-3.5 w-3.5" />
-              Lưu ghi chú vào PostgreSQL
+              Lưu ghi chú
             </button>
           </form>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:col-span-7">
-            {filteredNotes.length === 0 ? (
-              <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border-subtle)] p-10 text-center text-xs text-[var(--text-muted)]">
-                Chưa có ghi chú nào. Hãy tạo ghi chú đầu tiên ở cột bên trái.
-              </div>
-            ) : (
-              filteredNotes.map((n) => {
-                const sub = n.subjectId ? subjectMap.get(n.subjectId) : undefined;
-                return (
-                  <article
-                    key={n.id}
-                    className="flex flex-col justify-between rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 transition hover:border-[var(--accent)]/50"
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="font-semibold text-[var(--text-primary)]">{n.title}</h4>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => togglePin(n)}
-                            className={cn(
-                              "rounded-lg p-1 transition",
-                              n.pinned
-                                ? "bg-amber-500/15 text-amber-500"
-                                : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                            )}
-                            title="Ghim ghi chú"
-                          >
-                            <Pin className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteNote(n.id)}
-                            className="rounded-lg p-1 text-[var(--text-muted)] hover:text-rose-500"
-                            title="Xóa"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
+            {filteredNotes.map((n) => {
+              const sub = n.subjectId ? subjectMap.get(n.subjectId) : undefined;
+              return (
+                <article
+                  key={n.id}
+                  className="glass-card card-lift flex flex-col justify-between rounded-2xl p-4"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-semibold text-[var(--text-primary)]">{n.title}</h4>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => togglePin(n)}
+                          className={cn(
+                            "rounded-lg p-1",
+                            n.pinned ? "bg-amber-500/15 text-amber-500" : "text-[var(--text-muted)]"
+                          )}
+                        >
+                          <Pin className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteNote(n.id)}
+                          className="rounded-lg p-1 text-[var(--text-muted)] hover:text-rose-500"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                      <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-[var(--text-secondary)]">
-                        {n.content}
-                      </p>
                     </div>
-                    <div className="mt-4 flex items-center justify-between border-t border-[var(--border-subtle)] pt-2.5 text-[11px] text-[var(--text-muted)]">
-                      <span>{sub ? sub.name : "Chung"}</span>
-                      <span>
-                        {new Date(n.updatedAt).toLocaleDateString("vi-VN")}
-                      </span>
-                    </div>
-                  </article>
-                );
-              })
-            )}
+                    <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-[var(--text-secondary)]">
+                      {n.content}
+                    </p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between border-t border-[var(--border-subtle)] pt-2.5 text-[11px] text-[var(--text-muted)]">
+                    <span>{sub ? sub.name : "Chung"}</span>
+                    <span>{new Date(n.updatedAt).toLocaleDateString("vi-VN")}</span>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-7">
             {activeCard ? (
-              <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6">
+              <div className="glass-card rounded-2xl p-6">
                 <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
                   <span>
-                    Thẻ {(cardIdx % flashcards.length) + 1} / {flashcards.length}
+                    Thẻ {(cardIdx % deck.length) + 1} / {deck.length}
                   </span>
                   <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((lv) => (
                       <span
                         key={lv}
                         className={cn(
-                          "h-1.5 w-4 rounded-full",
+                          "h-1.5 w-4 rounded-full transition-colors",
                           lv <= activeCard.mastery ? "bg-emerald-500" : "bg-[var(--bg-elevated)]"
                         )}
                       />
@@ -315,22 +326,40 @@ export function NotesFlashcardsPanel({
                   </div>
                 </div>
 
-                <button
-                  type="button"
+                {/* 3D FLIP CARD */}
+                <div
                   onClick={() => setFlipped((f) => !f)}
-                  className="mt-4 flex min-h-[210px] w-full flex-col items-center justify-center rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-6 text-center transition hover:border-[var(--accent)]"
+                  className="perspective-1000 mt-4 h-[220px] w-full cursor-pointer"
                 >
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--accent)]">
-                    {flipped ? "Đáp án / Giải thích" : "Câu hỏi / Khái niệm"}
-                  </span>
-                  <p className="mt-3 text-lg font-medium text-[var(--text-primary)]">
-                    {flipped ? activeCard.back : activeCard.front}
-                  </p>
-                  <span className="mt-5 inline-flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
-                    <RotateCw className="h-3 w-3" />
-                    Bấm vào thẻ để lật
-                  </span>
-                </button>
+                  <div
+                    className={cn(
+                      "flip-inner relative h-full w-full",
+                      flipped && "is-flipped"
+                    )}
+                  >
+                    <div className="flip-face absolute inset-0 flex flex-col items-center justify-center rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-6 text-center">
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--accent)]">
+                        Câu hỏi / Khái niệm
+                      </span>
+                      <p className="mt-3 text-lg font-medium text-[var(--text-primary)]">
+                        {activeCard.front}
+                      </p>
+                      <span className="mt-5 inline-flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+                        <RotateCw className="h-3 w-3" />
+                        Chạm để lật 3D
+                      </span>
+                    </div>
+
+                    <div className="flip-face flip-back absolute inset-0 flex flex-col items-center justify-center rounded-2xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] p-6 text-center">
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--accent)]">
+                        Đáp án / Giải thích
+                      </span>
+                      <p className="mt-3 text-base font-medium text-[var(--text-primary)]">
+                        {activeCard.back}
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-1.5">
@@ -338,9 +367,9 @@ export function NotesFlashcardsPanel({
                       type="button"
                       onClick={() => {
                         setFlipped(false);
-                        setCardIdx((i) => (i - 1 + flashcards.length) % flashcards.length);
+                        setCardIdx((i) => (i - 1 + deck.length) % deck.length);
                       }}
-                      className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                      className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2 text-[var(--text-secondary)]"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
@@ -348,9 +377,9 @@ export function NotesFlashcardsPanel({
                       type="button"
                       onClick={() => {
                         setFlipped(false);
-                        setCardIdx((i) => (i + 1) % flashcards.length);
+                        setCardIdx((i) => (i + 1) % deck.length);
                       }}
-                      className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                      className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2 text-[var(--text-secondary)]"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -360,39 +389,41 @@ export function NotesFlashcardsPanel({
                     <button
                       type="button"
                       onClick={() => updateMastery(activeCard, -1)}
-                      className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2 text-xs font-semibold text-rose-500 hover:bg-rose-500/20"
+                      className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400"
                     >
-                      Cần ôn lại
+                      Ôn lại hôm nay
                     </button>
                     <button
                       type="button"
                       onClick={() => updateMastery(activeCard, 1)}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white hover:bg-emerald-500"
+                      className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold"
                     >
                       <Check className="h-3.5 w-3.5" />
-                      Đã thuộc (+1)
+                      Đã thuộc (SM-2)
                     </button>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="flex min-h-[260px] flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-surface)] p-8 text-center text-xs text-[var(--text-muted)]">
-                Chưa có thẻ Flashcard nào. Tạo thẻ ở cột bên phải để bắt đầu ôn tập Active Recall.
+              <div className="glass-card flex min-h-[260px] items-center justify-center rounded-2xl p-8 text-center text-xs text-[var(--text-muted)]">
+                {onlyDue
+                  ? "Bạn đã ôn xong toàn bộ thẻ đến hạn hôm nay!"
+                  : "Chưa có thẻ Flashcard nào. Tạo thẻ mới ở cột bên phải nhé."}
               </div>
             )}
           </div>
 
           <form
             onSubmit={handleCreateCard}
-            className="space-y-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 lg:col-span-5"
+            className="glass-card space-y-3 rounded-2xl p-5 lg:col-span-5"
           >
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">Thêm thẻ Flashcard</h3>
             <select
               value={cardSubject}
               onChange={(e) => setCardSubject(e.target.value)}
-              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-xs text-[var(--text-secondary)] outline-none"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-xs text-[var(--text-secondary)]"
             >
-              <option value="">-- Môn học (tùy chọn) --</option>
+              <option value="">-- Môn học --</option>
               {subjects.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -404,18 +435,18 @@ export function NotesFlashcardsPanel({
               value={cardFront}
               onChange={(e) => setCardFront(e.target.value)}
               placeholder="Mặt trước (Câu hỏi / Thuật ngữ)..."
-              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent)]"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
             />
             <textarea
               rows={3}
               value={cardBack}
               onChange={(e) => setCardBack(e.target.value)}
               placeholder="Mặt sau (Đáp án / Giải thích)..."
-              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent)]"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
             />
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-white hover:opacity-90"
+              className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-medium"
             >
               <Plus className="h-3.5 w-3.5" />
               Tạo thẻ ôn tập

@@ -9,6 +9,7 @@ import {
   doublePrecision,
   check,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -250,5 +251,70 @@ export const grades = pgTable(
     index("grades_user_idx").on(table.userId),
     check("grades_credits_pos", sql`${table.credits} > 0`),
     check("grades_score_range", sql`${table.score10} >= 0 AND ${table.score10} <= 10`),
+  ]
+);
+
+export const habits = pgTable(
+  "habits",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    icon: text("icon").notNull().default("target"),
+    color: text("color").notNull().default("#10b981"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("habits_user_idx").on(table.userId)]
+);
+
+export const habitLogs = pgTable(
+  "habit_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    habitId: uuid("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    logDate: text("log_date").notNull(), // YYYY-MM-DD
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex("habit_log_unique_idx").on(table.habitId, table.logDate)]
+);
+
+export const resources = pgTable(
+  "resources",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subjectId: uuid("subject_id").references(() => subjects.id, {
+      onDelete: "set null",
+    }),
+    title: text("title").notNull(),
+    url: text("url").notNull(),
+    category: text("category").notNull().default("Tài liệu"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("resources_user_idx").on(table.userId)]
+);
+
+export const reflections = pgTable(
+  "reflections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    entryDate: text("entry_date").notNull(), // YYYY-MM-DD
+    mood: integer("mood").notNull().default(4), // 1..5
+    highlight: text("highlight").notNull(),
+    improvement: text("improvement"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("reflection_user_date_idx").on(table.userId, table.entryDate),
+    check("reflection_mood_range", sql`${table.mood} >= 1 AND ${table.mood} <= 5`),
   ]
 );

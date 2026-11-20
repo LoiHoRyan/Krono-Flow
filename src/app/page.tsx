@@ -9,12 +9,14 @@ import {
   Map as MapIcon,
   BarChart3,
   BookMarked,
+  Sparkles,
   Sliders,
   Database,
   Command,
   LogOut,
   Play,
   Pause,
+  CheckCircle2,
   X,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
@@ -37,6 +39,12 @@ import {
   GradeRecord,
 } from "@/components/ScheduleGpaPanel";
 import {
+  HabitsVaultPanel,
+  HabitRecord,
+  ResourceRecord,
+  ReflectionRecord,
+} from "@/components/HabitsVaultPanel";
+import {
   ExtendedUserProfile,
   StudioSettingsPanel,
 } from "@/components/StudioSettingsPanel";
@@ -46,6 +54,7 @@ type TabId =
   | "focus"
   | "schedule"
   | "planner"
+  | "habits"
   | "roadmaps"
   | "knowledge"
   | "analytics"
@@ -56,8 +65,9 @@ const NAV_ITEMS: { id: TabId; label: string; desc: string; icon: typeof Timer }[
   { id: "focus", label: "Phòng Tập Trung", desc: "Pomodoro chạy nền & Âm thanh", icon: Timer },
   { id: "schedule", label: "Lịch & Sổ điểm", desc: "Thời khóa biểu & Tính GPA", icon: CalendarDays },
   { id: "planner", label: "Môn học & Việc", desc: "Kanban & Tiến độ môn", icon: CheckSquare },
+  { id: "habits", label: "Thói quen & Kho", desc: "Habit Tracker, Tài liệu & Nhật ký", icon: Sparkles },
   { id: "roadmaps", label: "Kho Lộ Trình", desc: "8 lộ trình mẫu & tự tạo", icon: MapIcon },
-  { id: "knowledge", label: "Ghi chú & Thẻ", desc: "Study Notes & Flashcards", icon: BookMarked },
+  { id: "knowledge", label: "Ghi chú & Thẻ", desc: "Notes & Flashcards 3D SM-2", icon: BookMarked },
   { id: "analytics", label: "Thống kê", desc: "Heatmap & Biểu đồ tuần", icon: BarChart3 },
   { id: "settings", label: "Giao diện & Hồ sơ", desc: "8 Bảng màu, Font & Sao lưu", icon: Sliders },
 ];
@@ -67,7 +77,7 @@ function MiniTimerBadge({ onOpenFocus }: { onOpenFocus: () => void }) {
   if (!timer.isRunning && !timer.activeSessionId) return null;
 
   return (
-    <div className="inline-flex items-center gap-2 rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2.5 py-1 text-xs">
+    <div className="animate-pop inline-flex items-center gap-2 rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2.5 py-1 text-xs">
       <button
         type="button"
         onClick={onOpenFocus}
@@ -80,7 +90,6 @@ function MiniTimerBadge({ onOpenFocus }: { onOpenFocus: () => void }) {
         type="button"
         onClick={() => (timer.isRunning ? timer.pause() : timer.start())}
         className="rounded-md p-0.5 text-[var(--accent)] hover:bg-[var(--bg-surface)]"
-        title={timer.isRunning ? "Tạm dừng" : "Tiếp tục"}
       >
         {timer.isRunning ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
       </button>
@@ -99,6 +108,9 @@ function KronoFlowWorkspace({
   exams,
   slots,
   grades,
+  habits,
+  resources,
+  reflections,
   dbStatus,
   themeId,
   customAccent,
@@ -118,6 +130,9 @@ function KronoFlowWorkspace({
   exams: ExamRecord[];
   slots: ScheduleSlotRecord[];
   grades: GradeRecord[];
+  habits: HabitRecord[];
+  resources: ResourceRecord[];
+  reflections: ReflectionRecord[];
   dbStatus: "checking" | "connected" | "disconnected";
   themeId: string;
   customAccent: string | null;
@@ -130,6 +145,12 @@ function KronoFlowWorkspace({
   const [tab, setTab] = useState<TabId>("dashboard");
   const [cmdOpen, setCmdOpen] = useState(false);
   const [focusedTaskTitle, setFocusedTaskTitle] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const notify = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2800);
+  }, []);
 
   useEffect(() => {
     applyThemeToDocument(themeId, customAccent, fontStyle);
@@ -160,14 +181,18 @@ function KronoFlowWorkspace({
       exams,
       slots,
       grades,
+      habits,
+      resources,
+      reflections,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-v7-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    notify("Đã tải xuống tệp sao lưu JSON!");
   };
 
   const wpPreset = WALLPAPERS.find((w) => w.id === wallpaper);
@@ -190,12 +215,12 @@ function KronoFlowWorkspace({
         <div>
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2.5">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-xs font-semibold text-white">
+              <span className="btn-primary inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold">
                 KF
               </span>
               <div>
                 <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-                <p className="text-[11px] text-[var(--text-muted)]">Study Studio v6</p>
+                <p className="text-[11px] text-[var(--text-muted)]">Study Studio v7</p>
               </div>
             </div>
             <button
@@ -216,9 +241,9 @@ function KronoFlowWorkspace({
                   type="button"
                   onClick={() => setTab(item.id)}
                   className={cn(
-                    "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-medium transition",
+                    "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-medium",
                     tab === item.id
-                      ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                      ? "bg-[var(--accent-soft)] text-[var(--accent)] shadow-sm"
                       : "text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
                   )}
                 >
@@ -286,7 +311,7 @@ function KronoFlowWorkspace({
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-8">
+        <main key={tab} className="animate-tab-in mx-auto max-w-6xl px-4 py-6 sm:px-8">
           {tab === "dashboard" && (
             <DashboardBento
               user={user}
@@ -326,6 +351,16 @@ function KronoFlowWorkspace({
               onRefresh={onRefresh}
             />
           )}
+          {tab === "habits" && (
+            <HabitsVaultPanel
+              subjects={subjects}
+              habits={habits}
+              resources={resources}
+              reflections={reflections}
+              onNotify={notify}
+              onRefresh={onRefresh}
+            />
+          )}
           {tab === "roadmaps" && <RoadmapPanel roadmaps={roadmaps} onRefresh={onRefresh} />}
           {tab === "knowledge" && (
             <NotesFlashcardsPanel
@@ -347,13 +382,21 @@ function KronoFlowWorkspace({
         </main>
       </div>
 
+      {/* TOAST FEEDBACK */}
+      {toast && (
+        <div className="animate-pop fixed bottom-20 right-5 z-50 flex items-center gap-2 rounded-xl border border-[var(--accent)]/40 bg-[var(--bg-surface)] px-4 py-2.5 text-xs font-medium text-[var(--text-primary)] shadow-xl lg:bottom-6">
+          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          {toast}
+        </div>
+      )}
+
       {cmdOpen && (
         <div
           className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-24 backdrop-blur-sm"
           onClick={() => setCmdOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-xl"
+            className="animate-pop w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
@@ -364,7 +407,7 @@ function KronoFlowWorkspace({
                 <X className="h-4 w-4 text-[var(--text-muted)]" />
               </button>
             </div>
-            <div className="mt-2 space-y-1">
+            <div className="mt-2 max-h-80 space-y-1 overflow-y-auto">
               {NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -399,7 +442,7 @@ function KronoFlowWorkspace({
               type="button"
               onClick={() => setTab(item.id)}
               className={cn(
-                "flex min-w-[68px] flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium",
+                "flex min-w-[66px] flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium",
                 tab === item.id ? "text-[var(--accent)]" : "text-[var(--text-muted)]"
               )}
             >
@@ -429,6 +472,9 @@ export default function HomePage() {
   const [exams, setExams] = useState<ExamRecord[]>([]);
   const [slots, setSlots] = useState<ScheduleSlotRecord[]>([]);
   const [grades, setGrades] = useState<GradeRecord[]>([]);
+  const [habits, setHabits] = useState<HabitRecord[]>([]);
+  const [resources, setResources] = useState<ResourceRecord[]>([]);
+  const [reflections, setReflections] = useState<ReflectionRecord[]>([]);
   const [dbStatus, setDbStatus] = useState<"checking" | "connected" | "disconnected">("checking");
 
   const loadAll = useCallback(async () => {
@@ -451,17 +497,21 @@ export default function HomePage() {
         setAuthState("authed");
       }
 
-      const [sRes, tRes, rRes, seRes, nRes, cRes, eRes, scRes, gRes] = await Promise.all([
-        fetch("/api/subjects"),
-        fetch("/api/todos"),
-        fetch("/api/roadmaps"),
-        fetch("/api/sessions"),
-        fetch("/api/notes"),
-        fetch("/api/flashcards"),
-        fetch("/api/exams"),
-        fetch("/api/schedule"),
-        fetch("/api/grades"),
-      ]);
+      const [sRes, tRes, rRes, seRes, nRes, cRes, eRes, scRes, gRes, hbRes, resRes, refRes] =
+        await Promise.all([
+          fetch("/api/subjects"),
+          fetch("/api/todos"),
+          fetch("/api/roadmaps"),
+          fetch("/api/sessions"),
+          fetch("/api/notes"),
+          fetch("/api/flashcards"),
+          fetch("/api/exams"),
+          fetch("/api/schedule"),
+          fetch("/api/grades"),
+          fetch("/api/habits"),
+          fetch("/api/resources"),
+          fetch("/api/reflections"),
+        ]);
 
       if (sRes.ok) setSubjects((await sRes.json()).data ?? []);
       if (tRes.ok) setTodos((await tRes.json()).data ?? []);
@@ -472,6 +522,9 @@ export default function HomePage() {
       if (eRes.ok) setExams((await eRes.json()).data ?? []);
       if (scRes.ok) setSlots((await scRes.json()).data ?? []);
       if (gRes.ok) setGrades((await gRes.json()).data ?? []);
+      if (hbRes.ok) setHabits((await hbRes.json()).data ?? []);
+      if (resRes.ok) setResources((await resRes.json()).data ?? []);
+      if (refRes.ok) setReflections((await refRes.json()).data ?? []);
     } catch {
       setDbStatus("disconnected");
       setAuthState("guest");
@@ -513,6 +566,9 @@ export default function HomePage() {
         exams={exams}
         slots={slots}
         grades={grades}
+        habits={habits}
+        resources={resources}
+        reflections={reflections}
         dbStatus={dbStatus}
         themeId={themeId}
         customAccent={customAccent}
