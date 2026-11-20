@@ -5,7 +5,7 @@ node_modules/
 .next/
 out/
 
-# environment variables (chứa DATABASE_URL / mật khẩu)
+# environment variables
 .env
 .env.local
 .env.*.local

@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Download, Palette, Save, Sparkles, User } from "lucide-react";
+import { Bell, Download, Palette, RotateCcw, Save, Sparkles, Type, Upload, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { THEMES, WALLPAPERS } from "@/lib/themes";
+import { FONT_STYLES, THEMES, WALLPAPERS } from "@/lib/themes";
 import type { UserProfile } from "./DashboardBento";
+
+export interface ExtendedUserProfile extends UserProfile {
+  customAccent?: string | null;
+  fontStyle?: string | null;
+}
 
 export function StudioSettingsPanel({
   user,
@@ -12,23 +17,29 @@ export function StudioSettingsPanel({
   onExportBackup,
   onRefresh,
 }: {
-  user: UserProfile | null;
-  onApplyLocalTheme: (themeId: string, wallpaper: string) => void;
+  user: ExtendedUserProfile | null;
+  onApplyLocalTheme: (themeId: string, wallpaper: string, customAccent: string | null, fontStyle: string) => void;
   onExportBackup: () => void;
   onRefresh: () => void;
 }) {
-  const [name, setName] = useState(user?.name ?? "KronoFlow Learner");
+  const [name, setName] = useState(user?.name ?? "");
   const [bio, setBio] = useState(user?.bio ?? "");
   const [dailyGoal, setDailyGoal] = useState(user?.dailyGoalMinutes ?? 120);
+  const [customAccent, setCustomAccent] = useState(user?.customAccent ?? "");
+  const [fontStyle, setFontStyle] = useState(user?.fontStyle ?? "sans");
   const [customUrl, setCustomUrl] = useState(
     user?.wallpaper?.startsWith("http") ? user.wallpaper : ""
   );
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
   const [notifStatus, setNotifStatus] = useState<string>(
     typeof window !== "undefined" && "Notification" in window
       ? Notification.permission
       : "unsupported"
   );
+
+  const curTheme = user?.theme ?? "ivory";
+  const curWp = user?.wallpaper ?? "none";
 
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,23 +56,70 @@ export function StudioSettingsPanel({
   };
 
   const selectTheme = async (themeId: string) => {
-    onApplyLocalTheme(themeId, user?.wallpaper ?? "mesh-aurora");
+    setCustomAccent("");
+    onApplyLocalTheme(themeId, curWp, null, fontStyle);
     await fetch("/api/user", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ theme: themeId }),
+      body: JSON.stringify({ theme: themeId, customAccent: null }),
+    });
+    onRefresh();
+  };
+
+  const selectAccent = async (hex: string | null) => {
+    setCustomAccent(hex ?? "");
+    onApplyLocalTheme(curTheme, curWp, hex, fontStyle);
+    await fetch("/api/user", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customAccent: hex }),
+    });
+    onRefresh();
+  };
+
+  const selectFont = async (nextFont: string) => {
+    setFontStyle(nextFont);
+    onApplyLocalTheme(curTheme, curWp, customAccent || null, nextFont);
+    await fetch("/api/user", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fontStyle: nextFont }),
     });
     onRefresh();
   };
 
   const selectWallpaper = async (wp: string) => {
-    onApplyLocalTheme(user?.theme ?? "aurora", wp);
+    onApplyLocalTheme(curTheme, wp, customAccent || null, fontStyle);
     await fetch("/api/user", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ wallpaper: wp }),
     });
     onRefresh();
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setRestoreMsg("Đang khôi phục...");
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const res = await fetch("/api/backup/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(json),
+      });
+      const out = await res.json();
+      if (res.ok) {
+        setRestoreMsg(`Đã khôi phục ${out.restored} mục vào PostgreSQL!`);
+        onRefresh();
+      } else {
+        setRestoreMsg(out.error ?? "Tệp JSON không hợp lệ");
+      }
+    } catch {
+      setRestoreMsg("Lỗi đọc tệp JSON");
+    }
   };
 
   const requestNotif = async () => {
@@ -78,52 +136,98 @@ export function StudioSettingsPanel({
           <div className="flex items-center gap-2">
             <Palette className="h-4 w-4 text-[var(--accent)]" />
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-              6 Bộ Giao Diện (Multi-Theme Studio)
+              8 Bảng Màu Toàn Diện (Sáng & Tối)
             </h3>
           </div>
           <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-            Tự động lưu vĩnh viễn vào PostgreSQL theo tài khoản của bạn
+            Đổi đồng bộ nền chính, nền thẻ, viền, chữ và màu điểm nhấn — lưu vĩnh viễn trong PostgreSQL
           </p>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
             {THEMES.map((t) => {
-              const active = (user?.theme ?? "aurora") === t.id;
+              const active = curTheme === t.id;
               return (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => selectTheme(t.id)}
                   className={cn(
-                    "overflow-hidden rounded-2xl border p-2 text-left transition",
+                    "overflow-hidden rounded-xl border p-2 text-left transition",
                     active
-                      ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/40"
+                      ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/35"
                       : "border-[var(--border-subtle)] hover:border-[var(--accent)]/60"
                   )}
                 >
                   <div
-                    className="h-14 w-full rounded-xl"
-                    style={{ background: t.preview }}
-                  />
-                  <div className="mt-2 flex items-center justify-between px-1">
-                    <span className="text-xs font-semibold text-[var(--text-primary)]">
-                      {t.name}
-                    </span>
-                    <span className="text-[10px] uppercase text-[var(--text-muted)]">
-                      {t.mode}
-                    </span>
+                    className="flex h-12 items-end justify-between rounded-lg border p-2"
+                    style={{ backgroundColor: t.canvas, borderColor: t.border }}
+                  >
+                    <span
+                      className="h-5 w-8 rounded border"
+                      style={{ backgroundColor: t.surface, borderColor: t.border }}
+                    />
+                    <span
+                      className="h-4 w-4 rounded-full"
+                      style={{ backgroundColor: t.accent }}
+                    />
                   </div>
+                  <div className="mt-2 truncate text-xs font-medium text-[var(--text-primary)]">
+                    {t.name}
+                  </div>
+                  <div className="text-[10px] uppercase text-[var(--text-muted)]">{t.mode}</div>
                 </button>
               );
             })}
           </div>
         </div>
 
+        {/* Custom Accent & Font */}
+        <div className="grid gap-4 border-t border-[var(--border-subtle)] pt-5 sm:grid-cols-2">
+          <div>
+            <label className="text-xs font-semibold text-[var(--text-primary)]">
+              Tự chọn màu điểm nhấn (Custom Accent)
+            </label>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="color"
+                value={customAccent || "#2563eb"}
+                onChange={(e) => selectAccent(e.target.value)}
+                className="h-9 w-12 cursor-pointer rounded-lg border border-[var(--border-subtle)] bg-transparent p-0.5"
+              />
+              <button
+                type="button"
+                onClick={() => selectAccent(null)}
+                className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Mặc định theme
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]">
+              <Type className="h-3.5 w-3.5 text-[var(--accent)]" />
+              Phông chữ hiển thị
+            </label>
+            <select
+              value={fontStyle}
+              onChange={(e) => selectFont(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none"
+            >
+              {FONT_STYLES.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         <div className="border-t border-[var(--border-subtle)] pt-5">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-[var(--accent)]" />
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-              Hình nền Không gian (Wallpaper)
-            </h3>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Họa tiết & Hình nền</h3>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {WALLPAPERS.map((wp) => (
@@ -132,8 +236,8 @@ export function StudioSettingsPanel({
                 type="button"
                 onClick={() => selectWallpaper(wp.id)}
                 className={cn(
-                  "rounded-xl border px-3 py-2 text-xs font-medium transition",
-                  (user?.wallpaper ?? "mesh-aurora") === wp.id
+                  "rounded-xl border px-3 py-1.5 text-xs font-medium transition",
+                  curWp === wp.id
                     ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
                     : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
                 )}
@@ -142,7 +246,6 @@ export function StudioSettingsPanel({
               </button>
             ))}
           </div>
-
           <div className="mt-3 flex gap-2">
             <input
               type="url"
@@ -154,7 +257,7 @@ export function StudioSettingsPanel({
             <button
               type="button"
               onClick={() => customUrl.trim() && selectWallpaper(customUrl.trim())}
-              className="rounded-xl bg-[var(--bg-elevated)] px-3.5 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--accent)] hover:text-white"
+              className="rounded-xl bg-[var(--bg-elevated)] px-3.5 py-2 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--accent)] hover:text-white"
             >
               Áp dụng
             </button>
@@ -166,11 +269,8 @@ export function StudioSettingsPanel({
         <form onSubmit={saveProfile} className="glass-card space-y-3 rounded-2xl p-6">
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-[var(--accent)]" />
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-              Hồ sơ & Mục tiêu cá nhân
-            </h3>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Hồ sơ & Mục tiêu</h3>
           </div>
-
           <div>
             <label className="text-xs text-[var(--text-muted)]">Tên hiển thị</label>
             <input
@@ -180,9 +280,8 @@ export function StudioSettingsPanel({
               className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
             />
           </div>
-
           <div>
-            <label className="text-xs text-[var(--text-muted)]">Khẩu hiệu động lực</label>
+            <label className="text-xs text-[var(--text-muted)]">Khẩu hiệu</label>
             <input
               type="text"
               value={bio}
@@ -190,7 +289,6 @@ export function StudioSettingsPanel({
               className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
             />
           </div>
-
           <div>
             <label className="text-xs text-[var(--text-muted)]">Mục tiêu mỗi ngày (phút)</label>
             <input
@@ -202,39 +300,44 @@ export function StudioSettingsPanel({
               className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
             />
           </div>
-
           <button
             type="submit"
-            className="accent-gradient inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-white"
+            className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-2 text-xs font-medium text-white"
           >
             <Save className="h-3.5 w-3.5" />
             Lưu thay đổi
           </button>
-          {savedMsg && <p className="text-xs text-emerald-400">{savedMsg}</p>}
+          {savedMsg && <p className="text-xs text-emerald-600 dark:text-emerald-400">{savedMsg}</p>}
         </form>
 
         <section className="glass-card space-y-3 rounded-2xl p-6">
           <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-            Thông báo & Sao lưu
+            Thông báo & Sao lưu / Khôi phục
           </h3>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={requestNotif}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs font-semibold text-[var(--text-primary)]"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs font-medium text-[var(--text-primary)]"
             >
-              <Bell className="h-3.5 w-3.5 text-amber-400" />
-              Thông báo trình duyệt: {notifStatus}
+              <Bell className="h-3.5 w-3.5 text-amber-500" />
+              Thông báo: {notifStatus}
             </button>
             <button
               type="button"
               onClick={onExportBackup}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2 text-xs font-semibold text-[var(--text-primary)]"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs font-medium text-[var(--text-primary)]"
             >
-              <Download className="h-3.5 w-3.5 text-emerald-400" />
-              Xuất bản sao lưu JSON
+              <Download className="h-3.5 w-3.5 text-emerald-500" />
+              Xuất JSON
             </button>
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]">
+              <Upload className="h-3.5 w-3.5 text-[var(--accent)]" />
+              Khôi phục JSON
+              <input type="file" accept=".json" onChange={handleImportFile} className="hidden" />
+            </label>
           </div>
+          {restoreMsg && <p className="text-xs text-[var(--accent)]">{restoreMsg}</p>}
         </section>
       </div>
     </div>

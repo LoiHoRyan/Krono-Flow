@@ -8,6 +8,9 @@ import {
   Square,
   PlayCircle,
   BookOpen,
+  Columns3,
+  List,
+  ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionLogItem } from "./PomodoroTimer";
@@ -16,7 +19,9 @@ export interface TodoItem {
   id: string;
   title: string;
   priority: "low" | "medium" | "high";
+  status?: "todo" | "in_progress" | "done";
   isCompleted: boolean;
+  dueDate?: string | null;
   subjectId: string | null;
 }
 
@@ -27,12 +32,12 @@ export interface SubjectRecord {
   targetHours: number;
 }
 
-const SWATCHES = ["#1d4ed8", "#0f766e", "#b45309", "#be123c", "#6d28d9", "#374151"];
+const SWATCHES = ["#2563eb", "#0f766e", "#b45309", "#be123c", "#6d28d9", "#475569"];
 
 const PRIORITY_BADGE: Record<TodoItem["priority"], string> = {
   high: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
   medium: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
-  low: "bg-zinc-500/10 text-[var(--text-muted)] border-[var(--border-hairline)]",
+  low: "bg-zinc-500/10 text-[var(--text-muted)] border-[var(--border-subtle)]",
 };
 
 export function SubjectTodoPanel({
@@ -48,12 +53,14 @@ export function SubjectTodoPanel({
   onFocusTask: (taskTitle: string) => void;
   onRefresh: () => void;
 }) {
+  const [view, setView] = useState<"list" | "kanban">("list");
   const [subjectName, setSubjectName] = useState("");
-  const [subjectColor, setSubjectColor] = useState(SWATCHES[0] ?? "#1d4ed8");
+  const [subjectColor, setSubjectColor] = useState(SWATCHES[0] ?? "#2563eb");
   const [targetHours, setTargetHours] = useState(20);
 
   const [todoTitle, setTodoTitle] = useState("");
   const [todoSubjectId, setTodoSubjectId] = useState("");
+  const [todoDue, setTodoDue] = useState("");
   const [priority, setPriority] = useState<TodoItem["priority"]>("medium");
   const [filter, setFilter] = useState<"all" | "pending" | "done">("all");
 
@@ -90,19 +97,21 @@ export function SubjectTodoPanel({
         title: todoTitle.trim(),
         subjectId: todoSubjectId || null,
         priority,
+        dueDate: todoDue ? new Date(todoDue).toISOString() : null,
       }),
     });
     if (res.ok) {
       setTodoTitle("");
+      setTodoDue("");
       onRefresh();
     }
   };
 
-  const toggleTodo = async (todo: TodoItem) => {
+  const setTodoStatus = async (todo: TodoItem, nextStatus: "todo" | "in_progress" | "done") => {
     await fetch(`/api/todos/${todo.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isCompleted: !todo.isCompleted }),
+      body: JSON.stringify({ status: nextStatus, isCompleted: nextStatus === "done" }),
     });
     onRefresh();
   };
@@ -111,6 +120,9 @@ export function SubjectTodoPanel({
     await fetch(`/api/todos/${id}`, { method: "DELETE" });
     onRefresh();
   };
+
+  const normalizedStatus = (t: TodoItem): "todo" | "in_progress" | "done" =>
+    t.status ?? (t.isCompleted ? "done" : "todo");
 
   const filteredTodos = todos.filter((t) => {
     if (filter === "pending") return !t.isCompleted;
@@ -121,77 +133,73 @@ export function SubjectTodoPanel({
   const subjectMap = new Map(subjects.map((s) => [s.id, s]));
 
   return (
-    <div className="grid gap-6 lg:grid-cols-12">
-      <section className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-sm lg:col-span-5">
-        <div className="flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-[var(--accent)]" />
-          <h3 className="text-base font-semibold text-[var(--text-primary)]">
-            Môn học & Tiến độ
-          </h3>
-        </div>
-
-        <form onSubmit={handleAddSubject} className="mt-4 space-y-3">
-          <input
-            type="text"
-            value={subjectName}
-            onChange={(e) => setSubjectName(e.target.value)}
-            placeholder="Tên môn học (VD: Cấu trúc dữ liệu)..."
-            className="w-full rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3.5 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent)]"
-          />
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5">
-              {SWATCHES.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setSubjectColor(c)}
-                  className={cn(
-                    "h-5 w-5 rounded-full transition",
-                    subjectColor === c && "ring-2 ring-[var(--text-primary)] ring-offset-2 ring-offset-[var(--bg-surface)]"
-                  )}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={1}
-                max={500}
-                value={targetHours}
-                onChange={(e) => setTargetHours(Number(e.target.value))}
-                className="w-16 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2 py-1 text-xs text-[var(--text-primary)]"
-              />
-              <span className="text-xs text-[var(--text-muted)]">giờ</span>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-1 rounded-xl bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Thêm
-              </button>
-            </div>
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-12">
+        <section className="glass-card rounded-2xl p-6 lg:col-span-4">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-[var(--accent)]" />
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Môn học & Tiến độ</h3>
           </div>
-        </form>
 
-        <ul className="mt-5 space-y-3">
-          {subjects.length === 0 ? (
-            <li className="text-xs text-[var(--text-muted)]">Chưa có môn học nào.</li>
-          ) : (
-            subjects.map((sub) => {
+          <form onSubmit={handleAddSubject} className="mt-4 space-y-3">
+            <input
+              type="text"
+              value={subjectName}
+              onChange={(e) => setSubjectName(e.target.value)}
+              placeholder="Tên môn học..."
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                {SWATCHES.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setSubjectColor(c)}
+                    className={cn(
+                      "h-5 w-5 rounded-full transition",
+                      subjectColor === c &&
+                        "ring-2 ring-[var(--text-primary)] ring-offset-2 ring-offset-[var(--bg-surface)]"
+                    )}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={targetHours}
+                  onChange={(e) => setTargetHours(Number(e.target.value))}
+                  className="w-14 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-xs text-[var(--text-primary)]"
+                />
+                <span className="text-[11px] text-[var(--text-muted)]">giờ</span>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1 rounded-xl bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Thêm
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <ul className="mt-5 space-y-2.5">
+            {subjects.map((sub) => {
               const loggedMins = sessions
                 .filter((s) => s.status === "completed" && s.subjectId === sub.id)
                 .reduce((acc, s) => acc + s.actualMinutes, 0);
               const loggedHours = +(loggedMins / 60).toFixed(1);
               const pct = Math.min(100, Math.round((loggedHours / sub.targetHours) * 100));
-
               return (
                 <li
                   key={sub.id}
-                  className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3.5"
+                  className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="flex items-center gap-2 font-medium text-[var(--text-primary)]">
                       <span
                         className="h-2.5 w-2.5 rounded-full"
                         style={{ backgroundColor: sub.color }}
@@ -199,178 +207,270 @@ export function SubjectTodoPanel({
                       {sub.name}
                     </span>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs tabular-nums text-[var(--text-muted)]">
-                        {loggedHours}h / {sub.targetHours}h
+                      <span className="font-mono text-[11px] text-[var(--text-muted)]">
+                        {loggedHours}h/{sub.targetHours}h
                       </span>
                       <button
                         type="button"
                         onClick={() => handleDeleteSubject(sub.id)}
                         className="text-[var(--text-muted)] hover:text-rose-500"
-                        title="Xóa môn học"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
-                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
                     <div
-                      className="h-full rounded-full transition-all"
+                      className="h-full rounded-full"
                       style={{ width: `${pct}%`, backgroundColor: sub.color }}
                     />
                   </div>
                 </li>
               );
-            })
-          )}
-        </ul>
-      </section>
+            })}
+          </ul>
+        </section>
 
-      <section className="rounded-2xl border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-6 shadow-sm lg:col-span-7">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-base font-semibold text-[var(--text-primary)]">
-            Danh sách công việc
-          </h3>
-          <div className="flex gap-1 rounded-lg bg-[var(--bg-subtle)] p-1 text-xs">
-            {(
-              [
-                ["all", "Tất cả"],
-                ["pending", "Chưa xong"],
-                ["done", "Đã xong"],
-              ] as const
-            ).map(([k, label]) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setFilter(k)}
-                className={cn(
-                  "rounded-md px-2.5 py-1 font-medium transition",
-                  filter === k
-                    ? "bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm"
-                    : "text-[var(--text-muted)]"
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <section className="glass-card rounded-2xl p-6 lg:col-span-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+              Quản lý công việc ({todos.length})
+            </h3>
 
-        <form onSubmit={handleAddTodo} className="mt-4 flex flex-wrap gap-2">
-          <input
-            type="text"
-            value={todoTitle}
-            onChange={(e) => setTodoTitle(e.target.value)}
-            placeholder="Thêm đầu việc cụ thể..."
-            className="min-w-[200px] flex-1 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3.5 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent)]"
-          />
-          <select
-            value={todoSubjectId}
-            onChange={(e) => setTodoSubjectId(e.target.value)}
-            className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2.5 py-2 text-xs text-[var(--text-secondary)] outline-none"
-          >
-            <option value="">Không gắn môn</option>
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={priority}
-            onChange={(e) => setPriority(e.target.value as TodoItem["priority"])}
-            className="rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2.5 py-2 text-xs text-[var(--text-secondary)] outline-none"
-          >
-            <option value="high">Ưu tiên cao</option>
-            <option value="medium">Trung bình</option>
-            <option value="low">Thấp</option>
-          </select>
-          <button
-            type="submit"
-            className="inline-flex items-center gap-1 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-xs font-semibold text-white hover:opacity-90"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Thêm
-          </button>
-        </form>
-
-        <ul className="mt-5 space-y-2">
-          {filteredTodos.length === 0 ? (
-            <li className="rounded-xl border border-dashed border-[var(--border-hairline)] p-6 text-center text-xs text-[var(--text-muted)]">
-              Không có công việc nào trong mục này.
-            </li>
-          ) : (
-            filteredTodos.map((todo) => {
-              const sub = todo.subjectId ? subjectMap.get(todo.subjectId) : undefined;
-              return (
-                <li
-                  key={todo.id}
-                  className="group flex items-center justify-between gap-2 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-3.5 py-2.5"
+            <div className="flex items-center gap-2">
+              <div className="inline-flex rounded-lg bg-[var(--bg-elevated)] p-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setView("list")}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-medium",
+                    view === "list"
+                      ? "bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm"
+                      : "text-[var(--text-muted)]"
+                  )}
                 >
-                  <button
-                    type="button"
-                    onClick={() => toggleTodo(todo)}
-                    className="flex min-w-0 flex-1 items-center gap-2.5 text-left text-sm"
-                  >
-                    {todo.isCompleted ? (
-                      <CheckSquare className="h-4 w-4 shrink-0 text-[var(--accent)]" />
-                    ) : (
-                      <Square className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
-                    )}
-                    <span
-                      className={cn(
-                        "truncate",
-                        todo.isCompleted
-                          ? "text-[var(--text-muted)] line-through"
-                          : "text-[var(--text-primary)]"
-                      )}
-                    >
-                      {todo.title}
-                    </span>
-                    {sub && (
-                      <span
-                        className="hidden rounded-md px-2 py-0.5 text-[10px] font-medium text-white sm:inline-block"
-                        style={{ backgroundColor: sub.color }}
-                      >
-                        {sub.name}
-                      </span>
-                    )}
-                  </button>
+                  <List className="h-3.5 w-3.5" />
+                  Danh sách
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("kanban")}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-medium",
+                    view === "kanban"
+                      ? "bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-sm"
+                      : "text-[var(--text-muted)]"
+                  )}
+                >
+                  <Columns3 className="h-3.5 w-3.5" />
+                  Kanban
+                </button>
+              </div>
+            </div>
+          </div>
 
-                  <div className="flex shrink-0 items-center gap-2">
-                    {!todo.isCompleted && (
+          <form onSubmit={handleAddTodo} className="mt-4 flex flex-wrap gap-2">
+            <input
+              type="text"
+              value={todoTitle}
+              onChange={(e) => setTodoTitle(e.target.value)}
+              placeholder="Thêm đầu việc mới..."
+              className="min-w-[180px] flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+            />
+            <input
+              type="date"
+              value={todoDue}
+              onChange={(e) => setTodoDue(e.target.value)}
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-2 text-xs text-[var(--text-secondary)]"
+              title="Hạn chót"
+            />
+            <select
+              value={todoSubjectId}
+              onChange={(e) => setTodoSubjectId(e.target.value)}
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-2 text-xs text-[var(--text-secondary)]"
+            >
+              <option value="">Không gắn môn</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value as TodoItem["priority"])}
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-2 text-xs text-[var(--text-secondary)]"
+            >
+              <option value="high">Cao</option>
+              <option value="medium">Trung bình</option>
+              <option value="low">Thấp</option>
+            </select>
+            <button
+              type="submit"
+              className="inline-flex items-center gap-1 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-xs font-medium text-white"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Thêm
+            </button>
+          </form>
+
+          {view === "list" ? (
+            <>
+              <div className="mt-4 flex gap-1.5 text-xs">
+                {(
+                  [
+                    ["all", "Tất cả"],
+                    ["pending", "Chưa xong"],
+                    ["done", "Đã xong"],
+                  ] as const
+                ).map(([k, label]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setFilter(k)}
+                    className={cn(
+                      "rounded-lg px-2.5 py-1 font-medium",
+                      filter === k
+                        ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                        : "text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]"
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <ul className="mt-3 space-y-2">
+                {filteredTodos.map((todo) => {
+                  const sub = todo.subjectId ? subjectMap.get(todo.subjectId) : undefined;
+                  return (
+                    <li
+                      key={todo.id}
+                      className="flex items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2.5"
+                    >
                       <button
                         type="button"
-                        onClick={() => onFocusTask(todo.title)}
-                        title="Đưa vào bộ đếm Pomodoro"
-                        className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2 py-1 text-[11px] font-medium text-[var(--accent)] hover:bg-[var(--accent-soft)]"
+                        onClick={() => setTodoStatus(todo, todo.isCompleted ? "todo" : "done")}
+                        className="flex min-w-0 flex-1 items-center gap-2.5 text-left text-xs"
                       >
-                        <PlayCircle className="h-3 w-3" />
-                        Học ngay
+                        {todo.isCompleted ? (
+                          <CheckSquare className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+                        ) : (
+                          <Square className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+                        )}
+                        <span
+                          className={cn(
+                            "truncate font-medium",
+                            todo.isCompleted
+                              ? "text-[var(--text-muted)] line-through"
+                              : "text-[var(--text-primary)]"
+                          )}
+                        >
+                          {todo.title}
+                        </span>
+                        {sub && (
+                          <span
+                            className="hidden rounded px-1.5 py-0.5 text-[10px] text-white sm:inline-block"
+                            style={{ backgroundColor: sub.color }}
+                          >
+                            {sub.name}
+                          </span>
+                        )}
+                        {todo.dueDate && (
+                          <span className="font-mono text-[10px] text-[var(--text-muted)]">
+                            Hạn: {new Date(todo.dueDate).toLocaleDateString("vi-VN")}
+                          </span>
+                        )}
                       </button>
-                    )}
-                    <span
-                      className={cn(
-                        "rounded-md border px-2 py-0.5 text-[10px] font-medium",
-                        PRIORITY_BADGE[todo.priority]
-                      )}
-                    >
-                      {todo.priority}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => deleteTodo(todo.id)}
-                      className="text-[var(--text-muted)] hover:text-rose-500"
-                      aria-label="Xóa"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+
+                      <div className="flex shrink-0 items-center gap-2">
+                        {!todo.isCompleted && (
+                          <button
+                            type="button"
+                            onClick={() => onFocusTask(todo.title)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-[11px] font-medium text-[var(--accent)]"
+                          >
+                            <PlayCircle className="h-3 w-3" />
+                            Học
+                          </button>
+                        )}
+                        <span
+                          className={cn(
+                            "rounded border px-1.5 py-0.5 text-[10px] font-medium",
+                            PRIORITY_BADGE[todo.priority]
+                          )}
+                        >
+                          {todo.priority}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => deleteTodo(todo.id)}
+                          className="text-[var(--text-muted)] hover:text-rose-500"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          ) : (
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              {(
+                [
+                  { id: "todo", label: "Cần làm", next: "in_progress" },
+                  { id: "in_progress", label: "Đang làm", next: "done" },
+                  { id: "done", label: "Hoàn thành", next: "todo" },
+                ] as const
+              ).map((col) => {
+                const items = todos.filter((t) => normalizedStatus(t) === col.id);
+                return (
+                  <div
+                    key={col.id}
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3"
+                  >
+                    <div className="flex items-center justify-between text-xs font-semibold text-[var(--text-primary)]">
+                      <span>{col.label}</span>
+                      <span className="rounded-md bg-[var(--bg-elevated)] px-2 py-0.5 font-mono text-[10px]">
+                        {items.length}
+                      </span>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {items.map((item) => (
+                        <div
+                          key={item.id}
+                          className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-xs"
+                        >
+                          <div className="font-medium text-[var(--text-primary)]">{item.title}</div>
+                          <div className="mt-2.5 flex items-center justify-between">
+                            <span
+                              className={cn(
+                                "rounded border px-1.5 py-0.5 text-[10px]",
+                                PRIORITY_BADGE[item.priority]
+                              )}
+                            >
+                              {item.priority}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setTodoStatus(item, col.next)}
+                              className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent-soft)] px-2 py-1 text-[10px] font-medium text-[var(--accent)]"
+                            >
+                              Chuyển tiếp
+                              <ArrowRight className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </li>
-              );
-            })
+                );
+              })}
+            </div>
           )}
-        </ul>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }

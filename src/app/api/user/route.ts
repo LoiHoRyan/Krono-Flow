@@ -10,6 +10,12 @@ const updateUserSchema = z.object({
   bio: z.string().trim().max(200).optional(),
   dailyGoalMinutes: z.coerce.number().int().min(15).max(720).optional(),
   theme: z.string().trim().min(1).max(40).optional(),
+  customAccent: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .nullable()
+    .optional(),
+  fontStyle: z.enum(["sans", "serif", "mono"]).optional(),
   wallpaper: z.string().trim().max(500).optional(),
   useStreakFreezeForDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });

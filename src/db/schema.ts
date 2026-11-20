@@ -31,6 +31,12 @@ export const todoPriorityEnum = pgEnum("todo_priority", [
   "high",
 ]);
 
+export const todoStatusEnum = pgEnum("todo_status", [
+  "todo",
+  "in_progress",
+  "done",
+]);
+
 export const roadmapStatusEnum = pgEnum("roadmap_item_status", [
   "todo",
   "in_progress",
@@ -47,6 +53,8 @@ export const users = pgTable("users", {
   streakFreezes: integer("streak_freezes").notNull().default(3),
   frozenDates: text("frozen_dates").notNull().default("[]"),
   theme: text("theme").notNull().default("ivory"),
+  customAccent: text("custom_accent"),
+  fontStyle: text("font_style").notNull().default("sans"),
   wallpaper: text("wallpaper").notNull().default("none"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -106,6 +114,7 @@ export const todos = pgTable(
     }),
     title: text("title").notNull(),
     priority: todoPriorityEnum("priority").notNull().default("medium"),
+    status: todoStatusEnum("status").notNull().default("todo"),
     isUrgent: boolean("is_urgent").notNull().default(false),
     isCompleted: boolean("is_completed").notNull().default(false),
     dueDate: timestamp("due_date", { withTimezone: true }),
@@ -179,6 +188,7 @@ export const flashcards = pgTable(
     front: text("front").notNull(),
     back: text("back").notNull(),
     mastery: integer("mastery").notNull().default(0),
+    nextReviewAt: timestamp("next_review_at", { withTimezone: true }).defaultNow().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
@@ -209,9 +219,9 @@ export const scheduleSlots = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    dayOfWeek: integer("day_of_week").notNull(), // 1 (T2) -> 7 (CN)
-    startTime: text("start_time").notNull(), // "08:00"
-    endTime: text("end_time").notNull(), // "10:00"
+    dayOfWeek: integer("day_of_week").notNull(),
+    startTime: text("start_time").notNull(),
+    endTime: text("end_time").notNull(),
     title: text("title").notNull(),
     location: text("location"),
     color: text("color").notNull().default("#2563eb"),

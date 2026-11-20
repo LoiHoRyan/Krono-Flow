@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Play,
   Pause,
@@ -14,7 +14,8 @@ import {
   Keyboard,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
-import { ambientEngine, AmbientType } from "@/lib/ambient-audio";
+import type { AmbientType } from "@/lib/ambient-audio";
+import { MODE_CONFIG, TimerMode, useTimer } from "./TimerProvider";
 
 export interface SubjectOption {
   id: string;
@@ -33,189 +34,42 @@ export interface SessionLogItem {
   subjectId: string | null;
 }
 
-type TimerMode = "pomodoro" | "deep_work" | "short_break" | "long_break";
-
-const MODE_CONFIG: Record<TimerMode, { label: string; minutes: number }> = {
-  pomodoro: { label: "Pomodoro 25'", minutes: 25 },
-  deep_work: { label: "Deep Work 50'", minutes: 50 },
-  short_break: { label: "Nghỉ ngắn 5'", minutes: 5 },
-  long_break: { label: "Nghỉ dài 15'", minutes: 15 },
-};
-
 export function PomodoroTimer({
   subjects,
   sessions,
   focusedTaskTitle,
   onClearFocusedTask,
-  onSessionCompleted,
 }: {
   subjects: SubjectOption[];
   sessions: SessionLogItem[];
   focusedTaskTitle: string | null;
   onClearFocusedTask: () => void;
-  onSessionCompleted: () => void;
 }) {
-  const [mode, setMode] = useState<TimerMode>("pomodoro");
-  const [customMinutes, setCustomMinutes] = useState(25);
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
-  const [notes, setNotes] = useState("");
-  const [secondsLeft, setSecondsLeft] = useState(25 * 60);
-  const [isRunning, setIsRunning] = useState(false);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [ambient, setAmbient] = useState<AmbientType>("none");
-  const [volume, setVolume] = useState(0.25);
+  const timer = useTimer();
   const [zenMode, setZenMode] = useState(false);
-
-  const workerRef = useRef<Worker | null>(null);
-  const activeSessionRef = useRef<string | null>(null);
-  activeSessionRef.current = activeSessionId;
 
   useEffect(() => {
     if (focusedTaskTitle) {
-      setNotes(focusedTaskTitle);
+      timer.setNotes(focusedTaskTitle);
     }
   }, [focusedTaskTitle]);
 
-  useEffect(() => {
-    const worker = new Worker("/workers/timer-worker.js");
-    workerRef.current = worker;
-
-    worker.onmessage = async (event) => {
-      const { type, remainingSeconds } = event.data;
-      if (type === "TICK") {
-        setSecondsLeft(remainingSeconds);
-      }
-      if (type === "DONE") {
-        setIsRunning(false);
-        ambientEngine.stop();
-        ambientEngine.playBell();
-        setAmbient("none");
-        if (activeSessionRef.current) {
-          await fetch(`/api/sessions/${activeSessionRef.current}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              status: "completed",
-              actualMinutes: customMinutes,
-              notes: notes.trim() || undefined,
-            }),
-          });
-          setActiveSessionId(null);
-        }
-        setStatusMessage("Hoàn thành phiên tập trung — Đã phát chuông & ghi vào PostgreSQL.");
-        onSessionCompleted();
-      }
-    };
-
-    return () => {
-      worker.terminate();
-      ambientEngine.stop();
-    };
-  }, [customMinutes, notes, onSessionCompleted]);
-
-  const handleModeChange = (nextMode: TimerMode) => {
-    if (isRunning) return;
-    const mins = MODE_CONFIG[nextMode].minutes;
-    setMode(nextMode);
-    setCustomMinutes(mins);
-    setSecondsLeft(mins * 60);
-    setStatusMessage(null);
-  };
-
-  const handleDurationSlider = (mins: number) => {
-    if (isRunning) return;
-    setCustomMinutes(mins);
-    setSecondsLeft(mins * 60);
-  };
-
-  const handleAmbientChange = (next: AmbientType) => {
-    setAmbient(next);
-    if (next === "none") {
-      ambientEngine.stop();
-    } else {
-      ambientEngine.start(next, volume);
-    }
-  };
-
-  const handleVolumeChange = (val: number) => {
-    setVolume(val);
-    ambientEngine.setVolume(val);
-  };
-
-  const handleStart = async () => {
-    if (isRunning) return;
-    setStatusMessage(null);
-
-    if (!activeSessionId) {
-      const res = await fetch("/api/sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subjectId: selectedSubjectId || null,
-          mode,
-          plannedMinutes: customMinutes,
-          notes: notes.trim() || undefined,
-        }),
-      });
-      if (res.ok) {
-        const json = await res.json();
-        setActiveSessionId(json.data?.id ?? null);
-      }
-    }
-
-    setIsRunning(true);
-    workerRef.current?.postMessage({
-      type: "START",
-      durationSeconds: secondsLeft,
-    });
-  };
-
-  const handlePause = () => {
-    setIsRunning(false);
-    workerRef.current?.postMessage({ type: "PAUSE" });
-  };
-
-  const handleReset = async () => {
-    setIsRunning(false);
-    workerRef.current?.postMessage({ type: "RESET" });
-
-    if (activeSessionId) {
-      const elapsedMinutes = Math.max(
-        0,
-        Math.round((customMinutes * 60 - secondsLeft) / 60)
-      );
-      await fetch(`/api/sessions/${activeSessionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "aborted",
-          actualMinutes: elapsedMinutes,
-        }),
-      });
-      setActiveSessionId(null);
-      onSessionCompleted();
-    }
-    setSecondsLeft(customMinutes * 60);
-  };
-
-  // Phím tắt Space để Start/Pause nhanh (khi không gõ input)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (e.code === "Space") {
         e.preventDefault();
-        if (isRunning) handlePause();
-        else handleStart();
+        if (timer.isRunning) timer.pause();
+        else timer.start();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const totalSeconds = Math.max(1, customMinutes * 60);
-  const progress = (totalSeconds - secondsLeft) / totalSeconds;
+  const totalSeconds = Math.max(1, timer.customMinutes * 60);
+  const progress = (totalSeconds - timer.secondsLeft) / totalSeconds;
   const radius = 108;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - progress);
@@ -225,7 +79,7 @@ export function PomodoroTimer({
     <div className={cn("grid gap-6", zenMode ? "grid-cols-1" : "lg:grid-cols-12")}>
       <section
         className={cn(
-          "rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6",
+          "glass-card rounded-2xl p-6",
           zenMode ? "mx-auto w-full max-w-2xl" : "lg:col-span-7"
         )}
       >
@@ -235,11 +89,11 @@ export function PomodoroTimer({
               <button
                 key={key}
                 type="button"
-                disabled={isRunning}
-                onClick={() => handleModeChange(key)}
+                disabled={timer.isRunning}
+                onClick={() => timer.changeMode(key)}
                 className={cn(
                   "rounded-lg px-3 py-1.5 text-xs font-semibold transition",
-                  mode === key
+                  timer.mode === key
                     ? "bg-[var(--accent)] text-white shadow-sm"
                     : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50"
                 )}
@@ -301,11 +155,11 @@ export function PomodoroTimer({
             </svg>
             <div className="absolute flex flex-col items-center">
               <span className="font-mono text-5xl font-bold tracking-tight tabular-nums text-[var(--text-primary)]">
-                {formatDuration(secondsLeft)}
+                {formatDuration(timer.secondsLeft)}
               </span>
               <span className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-[var(--text-muted)]">
                 <Keyboard className="h-3 w-3" />
-                {isRunning ? "Space để tạm dừng" : "Space để bắt đầu"}
+                {timer.isRunning ? "Đang chạy nền — Chuyển tab thoải mái" : "Space để bắt đầu"}
               </span>
             </div>
           </div>
@@ -317,9 +171,9 @@ export function PomodoroTimer({
               min={5}
               max={90}
               step={5}
-              disabled={isRunning}
-              value={customMinutes}
-              onChange={(e) => handleDurationSlider(Number(e.target.value))}
+              disabled={timer.isRunning}
+              value={timer.customMinutes}
+              onChange={(e) => timer.changeDuration(Number(e.target.value))}
               className="h-1.5 flex-1 cursor-pointer accent-[var(--accent)]"
             />
             <span>90p</span>
@@ -328,9 +182,9 @@ export function PomodoroTimer({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <select
-            value={selectedSubjectId}
-            disabled={isRunning}
-            onChange={(e) => setSelectedSubjectId(e.target.value)}
+            value={timer.selectedSubjectId}
+            disabled={timer.isRunning}
+            onChange={(e) => timer.setSelectedSubjectId(e.target.value)}
             className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
           >
             <option value="">-- Môn học (tùy chọn) --</option>
@@ -343,8 +197,8 @@ export function PomodoroTimer({
 
           <input
             type="text"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            value={timer.notes}
+            onChange={(e) => timer.setNotes(e.target.value)}
             placeholder="Mục tiêu phiên này..."
             className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent)]"
           />
@@ -352,19 +206,19 @@ export function PomodoroTimer({
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--border-subtle)] pt-5">
           <div className="flex items-center gap-2">
-            {!isRunning ? (
+            {!timer.isRunning ? (
               <button
                 type="button"
-                onClick={handleStart}
+                onClick={timer.start}
                 className="inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
               >
                 <Play className="h-4 w-4" />
-                {activeSessionId ? "Tiếp tục" : "Bắt đầu"}
+                {timer.activeSessionId ? "Tiếp tục" : "Bắt đầu"}
               </button>
             ) : (
               <button
                 type="button"
-                onClick={handlePause}
+                onClick={timer.pause}
                 className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-500"
               >
                 <Pause className="h-4 w-4" />
@@ -374,7 +228,7 @@ export function PomodoroTimer({
 
             <button
               type="button"
-              onClick={handleReset}
+              onClick={timer.reset}
               className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3.5 py-2.5 text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             >
               <RotateCcw className="h-4 w-4" />
@@ -383,14 +237,14 @@ export function PomodoroTimer({
           </div>
 
           <div className="flex items-center gap-2">
-            {ambient === "none" ? (
+            {timer.ambient === "none" ? (
               <VolumeX className="h-4 w-4 text-[var(--text-muted)]" />
             ) : (
               <Volume2 className="h-4 w-4 text-[var(--accent)]" />
             )}
             <select
-              value={ambient}
-              onChange={(e) => handleAmbientChange(e.target.value as AmbientType)}
+              value={timer.ambient}
+              onChange={(e) => timer.changeAmbient(e.target.value as AmbientType)}
               className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] outline-none"
             >
               <option value="none">Âm thanh: Tắt</option>
@@ -399,30 +253,30 @@ export function PomodoroTimer({
               <option value="cafe">Quán cà phê êm</option>
               <option value="binaural">Sóng Alpha 10Hz</option>
             </select>
-            {ambient !== "none" && (
+            {timer.ambient !== "none" && (
               <input
                 type="range"
                 min={0.05}
                 max={0.8}
                 step={0.05}
-                value={volume}
-                onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                value={timer.volume}
+                onChange={(e) => timer.changeVolume(Number(e.target.value))}
                 className="w-16 accent-[var(--accent)]"
               />
             )}
           </div>
         </div>
 
-        {statusMessage && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-500/10 px-3.5 py-2 text-xs font-medium text-emerald-500">
+        {timer.statusMessage && (
+          <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-500/10 px-3.5 py-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
-            {statusMessage}
+            {timer.statusMessage}
           </div>
         )}
       </section>
 
       {!zenMode && (
-        <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 lg:col-span-5">
+        <section className="glass-card rounded-2xl p-6 lg:col-span-5">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-[var(--text-primary)]">
@@ -440,7 +294,7 @@ export function PomodoroTimer({
           <ul className="mt-4 space-y-2.5">
             {sessions.slice(0, 7).length === 0 ? (
               <li className="rounded-xl border border-dashed border-[var(--border-subtle)] p-8 text-center text-xs text-[var(--text-muted)]">
-                Chưa có phiên nào. Nhấn <strong>Space</strong> hoặc bấm <strong>Bắt đầu</strong> để bắt đầu phiên đầu tiên.
+                Chưa có phiên nào. Nhấn <strong>Space</strong> hoặc bấm <strong>Bắt đầu</strong> để bắt đầu.
               </li>
             ) : (
               sessions.slice(0, 7).map((s) => {
@@ -479,9 +333,9 @@ export function PomodoroTimer({
                         className={cn(
                           "rounded-md px-2 py-0.5 text-[10px] font-medium",
                           s.status === "completed"
-                            ? "bg-emerald-500/15 text-emerald-500"
+                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                             : s.status === "running"
-                            ? "bg-indigo-500/15 text-indigo-400"
+                            ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
                             : "bg-zinc-500/15 text-[var(--text-muted)]"
                         )}
                       >
