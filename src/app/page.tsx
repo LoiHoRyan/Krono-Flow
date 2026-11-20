@@ -11,6 +11,7 @@ import {
   BookMarked,
   Sparkles,
   Target,
+  Wallet,
   Sliders,
   Database,
   Command,
@@ -56,6 +57,7 @@ import {
   GoalRecord,
   TimeBlockRecord,
 } from "@/components/GoalsTimeblockPanel";
+import { ExpensesPanel, ExpenseRecord } from "@/components/ExpensesPanel";
 import {
   ExtendedUserProfile,
   StudioSettingsPanel,
@@ -70,6 +72,7 @@ type TabId =
   | "habits"
   | "roadmaps"
   | "knowledge"
+  | "expenses"
   | "analytics"
   | "settings";
 
@@ -82,6 +85,7 @@ const NAV_DEF: { id: TabId; icon: typeof Timer }[] = [
   { id: "habits", icon: Sparkles },
   { id: "roadmaps", icon: MapIcon },
   { id: "knowledge", icon: BookMarked },
+  { id: "expenses", icon: Wallet },
   { id: "analytics", icon: BarChart3 },
   { id: "settings", icon: Sliders },
 ];
@@ -116,31 +120,7 @@ function MiniTimerBadge({ onOpenFocus }: { onOpenFocus: () => void }) {
   );
 }
 
-function KronoFlowWorkspace({
-  user,
-  subjects,
-  todos,
-  roadmaps,
-  sessions,
-  notes,
-  flashcards,
-  exams,
-  slots,
-  grades,
-  goals,
-  timeBlocks,
-  habits,
-  resources,
-  reflections,
-  dbStatus,
-  themeId,
-  customAccent,
-  fontStyle,
-  wallpaper,
-  onApplyLocalTheme,
-  onLogout,
-  onRefresh,
-}: {
+interface WorkspaceProps {
   user: ExtendedUserProfile | null;
   subjects: SubjectRecord[];
   todos: TodoItem[];
@@ -156,6 +136,7 @@ function KronoFlowWorkspace({
   habits: HabitRecord[];
   resources: ResourceRecord[];
   reflections: ReflectionRecord[];
+  expenses: ExpenseRecord[];
   dbStatus: "checking" | "connected" | "disconnected";
   themeId: string;
   customAccent: string | null;
@@ -164,10 +145,12 @@ function KronoFlowWorkspace({
   onApplyLocalTheme: (t: string, w: string, acc: string | null, f: string) => void;
   onLogout: () => void;
   onRefresh: () => void;
-}) {
+}
+
+function KronoFlowWorkspace(props: WorkspaceProps) {
   const { t } = useLang();
   const [tab, setTab] = useState<TabId>("dashboard");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [padOpen, setPadOpen] = useState(false);
   const [confettiKey, setConfettiKey] = useState(0);
@@ -181,8 +164,8 @@ function KronoFlowWorkspace({
   }, []);
 
   useEffect(() => {
-    applyThemeToDocument(themeId, customAccent, fontStyle);
-  }, [themeId, customAccent, fontStyle]);
+    applyThemeToDocument(props.themeId, props.customAccent, props.fontStyle);
+  }, [props.themeId, props.customAccent, props.fontStyle]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -190,7 +173,10 @@ function KronoFlowWorkspace({
         e.preventDefault();
         setCmdOpen((v) => !v);
       }
-      if (e.key === "Escape") setCmdOpen(false);
+      if (e.key === "Escape") {
+        setCmdOpen(false);
+        setPadOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -199,39 +185,42 @@ function KronoFlowWorkspace({
   const handleExportBackup = () => {
     const payload = {
       exportedAt: new Date().toISOString(),
-      user,
-      subjects,
-      todos,
-      roadmaps,
-      sessions,
-      notes,
-      flashcards,
-      exams,
-      slots,
-      grades,
-      habits,
-      resources,
-      reflections,
+      user: props.user,
+      subjects: props.subjects,
+      todos: props.todos,
+      roadmaps: props.roadmaps,
+      sessions: props.sessions,
+      notes: props.notes,
+      flashcards: props.flashcards,
+      exams: props.exams,
+      slots: props.slots,
+      grades: props.grades,
+      goals: props.goals,
+      timeBlocks: props.timeBlocks,
+      habits: props.habits,
+      resources: props.resources,
+      reflections: props.reflections,
+      expenses: props.expenses,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-v8-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-v12-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     notify("Đã tải xuống tệp sao lưu JSON!");
   };
 
-  const wpPreset = WALLPAPERS.find((w) => w.id === wallpaper);
-  const bgStyle: React.CSSProperties = wallpaper.startsWith("http")
+  const wpPreset = WALLPAPERS.find((w) => w.id === props.wallpaper);
+  const bgStyle: React.CSSProperties = props.wallpaper.startsWith("http")
     ? {
-        backgroundImage: `linear-gradient(rgba(15,23,42,0.52), rgba(15,23,42,0.62)), url(${wallpaper})`,
+        backgroundImage: `linear-gradient(rgba(15,23,42,0.52), rgba(15,23,42,0.62)), url(${props.wallpaper})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundAttachment: "fixed",
       }
-    : wallpaper === "dots" || wallpaper === "grid"
+    : props.wallpaper === "dots" || props.wallpaper === "grid"
     ? { backgroundImage: wpPreset?.style, backgroundSize: "22px 22px" }
     : { backgroundImage: wpPreset?.style ?? "none" };
 
@@ -239,101 +228,94 @@ function KronoFlowWorkspace({
     <div className="relative min-h-screen lg:flex" style={bgStyle}>
       <ConfettiBurst triggerKey={confettiKey} />
       <QuickScratchpad open={padOpen} onClose={() => setPadOpen(false)} />
+
+      {/* FIXED FULL-HIDE SIDEBAR (0px hoàn toàn khi bấm ẩn) */}
       <aside
         className={cn(
-          "hidden shrink-0 flex-col justify-between border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 transition-all duration-200 lg:flex",
-          sidebarCollapsed ? "w-[74px]" : "w-64"
+          "hidden shrink-0 flex-col justify-between bg-[var(--bg-surface)] transition-all duration-300 ease-out lg:flex",
+          sidebarOpen
+            ? "w-64 border-r border-[var(--border-subtle)] p-4 opacity-100"
+            : "pointer-events-none w-0 overflow-hidden border-r-0 p-0 opacity-0"
         )}
       >
-        <div>
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <span className="btn-primary inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
-                KF
-              </span>
-              {!sidebarCollapsed && (
-                <div className="truncate">
-                  <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-                  <p className="text-[11px] text-[var(--text-muted)]">Grand v11</p>
-                </div>
-              )}
+        <div className="w-56">
+          <div className="flex items-center gap-2.5 px-1">
+            <span className="btn-primary inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
+              KF
+            </span>
+            <div>
+              <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
+              <p className="text-[11px] text-[var(--text-muted)]">Ultimate v12</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed((v) => !v)}
-              title={sidebarCollapsed ? t("expandSidebar") : t("collapseSidebar")}
-              className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-            >
-              {sidebarCollapsed ? (
-                <PanelLeftOpen className="h-3.5 w-3.5" />
-              ) : (
-                <PanelLeftClose className="h-3.5 w-3.5" />
-              )}
-            </button>
           </div>
 
           <nav className="mt-6 space-y-1">
             {NAV_DEF.map((item) => {
               const Icon = item.icon;
-              const label = t(`nav_${item.id}`);
               return (
                 <button
                   key={item.id}
                   type="button"
-                  title={label}
                   onClick={() => setTab(item.id)}
                   className={cn(
                     "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-medium",
-                    sidebarCollapsed && "justify-center px-0",
                     tab === item.id
                       ? "bg-[var(--accent-soft)] text-[var(--accent)] shadow-sm"
                       : "text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {!sidebarCollapsed && <span className="truncate">{label}</span>}
+                  <span className="truncate">{t(`nav_${item.id}`)}</span>
                 </button>
               );
             })}
           </nav>
         </div>
 
-        <div className="border-t border-[var(--border-subtle)] pt-4">
-          <div
-            className={cn(
-              "flex items-center text-xs text-[var(--text-muted)]",
-              sidebarCollapsed ? "flex-col gap-2" : "justify-between px-1"
-            )}
-          >
-            <span className="flex items-center gap-1.5" title="PostgreSQL">
+        <div className="w-56 border-t border-[var(--border-subtle)] pt-4">
+          <div className="flex items-center justify-between px-1 text-xs text-[var(--text-muted)]">
+            <span className="flex items-center gap-1.5">
               <Database
                 className={cn(
                   "h-3.5 w-3.5",
-                  dbStatus === "connected" ? "text-emerald-500" : "text-rose-500"
+                  props.dbStatus === "connected" ? "text-emerald-500" : "text-rose-500"
                 )}
               />
-              {!sidebarCollapsed && (dbStatus === "connected" ? "PostgreSQL" : "Offline")}
+              {props.dbStatus === "connected" ? "PostgreSQL" : "Offline"}
             </span>
             <button
               type="button"
-              onClick={onLogout}
-              title={t("logout")}
+              onClick={props.onLogout}
               className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-rose-500"
             >
               <LogOut className="h-3.5 w-3.5" />
-              {!sidebarCollapsed && t("logout")}
+              {t("logout")}
             </button>
           </div>
         </div>
       </aside>
 
-      <div className="flex-1 pb-24 lg:pb-10">
+      <div className="min-w-0 flex-1 pb-24 lg:pb-10">
         <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/90 px-4 py-3 backdrop-blur-md sm:px-8">
-          <div>
-            <h2 className="text-sm font-semibold text-[var(--text-primary)]">
-              {t(`nav_${tab}`)}
-            </h2>
-            <p className="text-xs text-[var(--text-muted)]">{t(`nav_${tab}_desc`)}</p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen((v) => !v)}
+              title={sidebarOpen ? t("collapseSidebar") : t("expandSidebar")}
+              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] lg:inline-flex"
+            >
+              {sidebarOpen ? (
+                <PanelLeftClose className="h-4 w-4" />
+              ) : (
+                <PanelLeftOpen className="h-4 w-4" />
+              )}
+            </button>
+            <div>
+              <h2 className="text-base font-medium text-[var(--text-primary)]">
+                {t(`nav_${tab}`)}
+              </h2>
+              <p className="text-xs text-[var(--text-muted)]">{t(`nav_${tab}_desc`)}</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -341,7 +323,6 @@ function KronoFlowWorkspace({
             <button
               type="button"
               onClick={() => setPadOpen(true)}
-              title="Giấy nháp nhanh / Scratchpad"
               className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               <NotebookPen className="h-3.5 w-3.5" />
@@ -354,14 +335,13 @@ function KronoFlowWorkspace({
               className="hidden items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] sm:inline-flex"
             >
               <Command className="h-3.5 w-3.5" />
-              <span>{t("quickJump")}</span>
               <kbd className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 font-mono text-[10px]">
                 Ctrl+K
               </kbd>
             </button>
             <button
               type="button"
-              onClick={onLogout}
+              onClick={props.onLogout}
               className="rounded-xl border border-[var(--border-subtle)] p-2 text-[var(--text-secondary)] hover:text-rose-500 lg:hidden"
               title={t("logout")}
             >
@@ -373,84 +353,102 @@ function KronoFlowWorkspace({
         <main key={tab} className="animate-tab-in mx-auto max-w-6xl px-4 py-6 sm:px-8">
           {tab === "dashboard" && (
             <DashboardBento
-              user={user}
-              subjects={subjects}
-              sessions={sessions}
-              todos={todos}
-              roadmaps={roadmaps}
-              flashcards={flashcards}
-              exams={exams}
+              user={props.user}
+              subjects={props.subjects}
+              sessions={props.sessions}
+              todos={props.todos}
+              roadmaps={props.roadmaps}
+              flashcards={props.flashcards}
+              exams={props.exams}
+              timeBlocks={props.timeBlocks}
               onJumpFocus={(title) => {
                 if (title) setFocusedTaskTitle(title);
                 setTab("focus");
               }}
-              onRefresh={onRefresh}
+              onRefresh={props.onRefresh}
             />
           )}
           {tab === "focus" && (
             <PomodoroTimer
-              subjects={subjects}
-              sessions={sessions}
+              subjects={props.subjects}
+              sessions={props.sessions}
               focusedTaskTitle={focusedTaskTitle}
               onClearFocusedTask={() => setFocusedTaskTitle(null)}
+              onSessionSaved={() => {
+                notify("Đã lưu phiên tập trung vào PostgreSQL!");
+                props.onRefresh();
+              }}
             />
           )}
           {tab === "schedule" && (
-            <ScheduleGpaPanel slots={slots} grades={grades} onRefresh={onRefresh} />
+            <ScheduleGpaPanel
+              slots={props.slots}
+              grades={props.grades}
+              onRefresh={props.onRefresh}
+            />
           )}
           {tab === "planner" && (
             <SubjectTodoPanel
-              subjects={subjects}
-              todos={todos}
-              sessions={sessions}
+              subjects={props.subjects}
+              todos={props.todos}
+              sessions={props.sessions}
               onFocusTask={(title) => {
                 setFocusedTaskTitle(title);
                 setTab("focus");
               }}
-              onRefresh={onRefresh}
+              onRefresh={props.onRefresh}
             />
           )}
           {tab === "goals" && (
             <GoalsTimeblockPanel
-              goals={goals}
-              timeBlocks={timeBlocks}
+              goals={props.goals}
+              timeBlocks={props.timeBlocks}
               onNotify={notify}
-              onRefresh={onRefresh}
+              onRefresh={props.onRefresh}
             />
           )}
           {tab === "habits" && (
             <HabitsVaultPanel
-              subjects={subjects}
-              habits={habits}
-              resources={resources}
-              reflections={reflections}
+              subjects={props.subjects}
+              habits={props.habits}
+              resources={props.resources}
+              reflections={props.reflections}
               onNotify={notify}
-              onRefresh={onRefresh}
+              onRefresh={props.onRefresh}
             />
           )}
-          {tab === "roadmaps" && <RoadmapPanel roadmaps={roadmaps} onRefresh={onRefresh} />}
+          {tab === "roadmaps" && (
+            <RoadmapPanel roadmaps={props.roadmaps} onRefresh={props.onRefresh} />
+          )}
           {tab === "knowledge" && (
             <NotesFlashcardsPanel
-              subjects={subjects}
-              notes={notes}
-              flashcards={flashcards}
-              onRefresh={onRefresh}
+              subjects={props.subjects}
+              notes={props.notes}
+              flashcards={props.flashcards}
+              onRefresh={props.onRefresh}
+            />
+          )}
+          {tab === "expenses" && (
+            <ExpensesPanel
+              expenses={props.expenses}
+              onNotify={notify}
+              onRefresh={props.onRefresh}
             />
           )}
           {tab === "analytics" && (
             <AnalyticsPanel
-              sessions={sessions}
-              subjects={subjects}
-              totalHabits={habits.length}
-              totalCards={flashcards.length}
+              sessions={props.sessions}
+              subjects={props.subjects}
+              totalHabits={props.habits.length}
+              totalCards={props.flashcards.length}
             />
           )}
           {tab === "settings" && (
             <StudioSettingsPanel
-              user={user}
-              onApplyLocalTheme={onApplyLocalTheme}
+              user={props.user}
+              onApplyLocalTheme={props.onApplyLocalTheme}
               onExportBackup={handleExportBackup}
-              onRefresh={onRefresh}
+              onRefresh={props.onRefresh}
             />
           )}
         </main>
@@ -553,6 +551,7 @@ function AppShell() {
   const [habits, setHabits] = useState<HabitRecord[]>([]);
   const [resources, setResources] = useState<ResourceRecord[]>([]);
   const [reflections, setReflections] = useState<ReflectionRecord[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [dbStatus, setDbStatus] = useState<"checking" | "connected" | "disconnected">("checking");
 
   const loadAll = useCallback(async () => {
@@ -575,23 +574,39 @@ function AppShell() {
         setAuthState("authed");
       }
 
-      const [sRes, tRes, rRes, seRes, nRes, cRes, eRes, scRes, gRes, hbRes, resRes, refRes, glRes, tbRes] =
-        await Promise.all([
-          fetch("/api/subjects"),
-          fetch("/api/todos"),
-          fetch("/api/roadmaps"),
-          fetch("/api/sessions"),
-          fetch("/api/notes"),
-          fetch("/api/flashcards"),
-          fetch("/api/exams"),
-          fetch("/api/schedule"),
-          fetch("/api/grades"),
-          fetch("/api/habits"),
-          fetch("/api/resources"),
-          fetch("/api/reflections"),
-          fetch("/api/goals"),
-          fetch("/api/timeblocks"),
-        ]);
+      const [
+        sRes,
+        tRes,
+        rRes,
+        seRes,
+        nRes,
+        cRes,
+        eRes,
+        scRes,
+        gRes,
+        hbRes,
+        resRes,
+        refRes,
+        glRes,
+        tbRes,
+        exRes,
+      ] = await Promise.all([
+        fetch("/api/subjects"),
+        fetch("/api/todos"),
+        fetch("/api/roadmaps"),
+        fetch("/api/sessions"),
+        fetch("/api/notes"),
+        fetch("/api/flashcards"),
+        fetch("/api/exams"),
+        fetch("/api/schedule"),
+        fetch("/api/grades"),
+        fetch("/api/habits"),
+        fetch("/api/resources"),
+        fetch("/api/reflections"),
+        fetch("/api/goals"),
+        fetch("/api/timeblocks"),
+        fetch("/api/expenses"),
+      ]);
 
       if (sRes.ok) setSubjects((await sRes.json()).data ?? []);
       if (tRes.ok) setTodos((await tRes.json()).data ?? []);
@@ -607,6 +622,7 @@ function AppShell() {
       if (refRes.ok) setReflections((await refRes.json()).data ?? []);
       if (glRes.ok) setGoals((await glRes.json()).data ?? []);
       if (tbRes.ok) setTimeBlocks((await tbRes.json()).data ?? []);
+      if (exRes.ok) setExpenses((await exRes.json()).data ?? []);
     } catch {
       setDbStatus("disconnected");
       setAuthState("guest");
@@ -653,6 +669,7 @@ function AppShell() {
         habits={habits}
         resources={resources}
         reflections={reflections}
+        expenses={expenses}
         dbStatus={dbStatus}
         themeId={themeId}
         customAccent={customAccent}

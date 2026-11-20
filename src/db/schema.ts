@@ -358,3 +358,22 @@ export const timeBlocks = pgTable(
   },
   (table) => [index("time_blocks_user_date_idx").on(table.userId, table.blockDate)]
 );
+
+export const expenses = pgTable(
+  "expenses",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    amount: integer("amount").notNull(),
+    category: text("category").notNull().default("Tài liệu"),
+    spentDate: text("spent_date").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("expenses_user_idx").on(table.userId),
+    check("expenses_amount_positive", sql`${table.amount} > 0`),
+  ]
+);

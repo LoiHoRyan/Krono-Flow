@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Flame,
   Snowflake,
@@ -15,13 +15,16 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { computeLevelInfo } from "@/lib/themes";
+import { useLang } from "@/lib/i18n";
 import type { SessionLogItem, SubjectOption } from "./PomodoroTimer";
 import type { TodoItem } from "./SubjectTodoPanel";
 import type { RoadmapRecord } from "./RoadmapPanel";
 import type { FlashcardRecord } from "./NotesFlashcardsPanel";
+import type { TimeBlockRecord } from "./GoalsTimeblockPanel";
 
 export interface UserProfile {
   id: string;
@@ -41,6 +44,20 @@ export interface ExamRecord {
   color: string;
 }
 
+const QUOTES_VI = [
+  "Kỷ luật nhỏ mỗi ngày tạo nên khác biệt lớn sau một học kỳ.",
+  "Không cần hoàn hảo ngay lập tức — chỉ cần bắt đầu 25 phút đầu tiên.",
+  "Tập trung sâu 2 giờ đáng giá hơn 8 giờ làm việc xao nhãng.",
+  "Mỗi phiên Pomodoro hoàn thành là một viên gạch xây tương lai.",
+];
+
+const QUOTES_EN = [
+  "Small daily discipline compounds into extraordinary results.",
+  "You don't need perfection — just start the first 25 minutes.",
+  "Two hours of deep focus beats eight hours of distracted work.",
+  "Consistency turns difficult goals into effortless habits.",
+];
+
 export function DashboardBento({
   user,
   subjects,
@@ -49,6 +66,7 @@ export function DashboardBento({
   roadmaps,
   flashcards,
   exams,
+  timeBlocks = [],
   onJumpFocus,
   onRefresh,
 }: {
@@ -59,22 +77,60 @@ export function DashboardBento({
   roadmaps: RoadmapRecord[];
   flashcards: FlashcardRecord[];
   exams: ExamRecord[];
+  timeBlocks?: TimeBlockRecord[];
   onJumpFocus: (taskTitle?: string) => void;
   onRefresh: () => void;
 }) {
-  const [calMonth, setCalMonth] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  });
-  const [selectedDay, setSelectedDay] = useState(() => new Date().toISOString().slice(0, 10));
+  const { lang } = useLang();
+  const [nowClock, setNowClock] = useState("");
+  const [quoteIdx, setQuoteIdx] = useState(0);
+
+  const todayObj = new Date();
+  const [calYear, setCalYear] = useState(todayObj.getFullYear());
+  const [calMonth, setCalMonth] = useState(todayObj.getMonth()); // 0..11
+  const [selectedDay, setSelectedDay] = useState(() => todayObj.toISOString().slice(0, 10));
+
+  // Thêm nhanh sự kiện/block ngay trên ngày đang chọn của Lịch
+  const [quickBlockTitle, setQuickBlockTitle] = useState("");
+  const [quickStart, setQuickStart] = useState("19:30");
+  const [quickEnd, setQuickEnd] = useState("21:00");
+
   const [examTitle, setExamTitle] = useState("");
   const [examDate, setExamDate] = useState("");
+
+  useEffect(() => {
+    const tick = () => {
+      setNowClock(
+        new Date().toLocaleTimeString(lang === "vi" ? "vi-VN" : "en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+      );
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lang]);
+
+  const hour = new Date().getHours();
+  const greeting =
+    lang === "vi"
+      ? hour < 12
+        ? "Chào buổi sáng"
+        : hour < 18
+        ? "Chào buổi chiều"
+        : "Chào buổi tối"
+      : hour < 12
+      ? "Good morning"
+      : hour < 18
+      ? "Good afternoon"
+      : "Good evening";
 
   const completedSessions = sessions.filter((s) => s.status === "completed");
   const totalMinutes = completedSessions.reduce((a, b) => a + b.actualMinutes, 0);
   const completedTodos = todos.filter((t) => t.isCompleted).length;
   const masteredCards = flashcards.filter((c) => c.mastery >= 4).length;
-
   const levelInfo = computeLevelInfo(totalMinutes, completedTodos, masteredCards);
 
   const dayMap = new Map<string, number>();
@@ -95,7 +151,6 @@ export function DashboardBento({
   const dailyGoal = user?.dailyGoalMinutes ?? 120;
   const goalPct = Math.min(100, Math.round((todayMinutes / Math.max(1, dailyGoal)) * 100));
 
-  // Tính chuỗi ngày liên tiếp có tính cả ngày Freeze
   let streak = 0;
   const cursor = new Date();
   for (let i = 0; i < 365; i++) {
@@ -115,6 +170,25 @@ export function DashboardBento({
       body: JSON.stringify({ useStreakFreezeForDate: todayKey }),
     });
     onRefresh();
+  };
+
+  const handleQuickAddBlock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickBlockTitle.trim()) return;
+    const res = await fetch("/api/timeblocks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        blockDate: selectedDay,
+        startTime: quickStart,
+        endTime: quickEnd,
+        title: quickBlockTitle.trim(),
+      }),
+    });
+    if (res.ok) {
+      setQuickBlockTitle("");
+      onRefresh();
+    }
   };
 
   const handleAddExam = async (e: React.FormEvent) => {
@@ -137,57 +211,78 @@ export function DashboardBento({
     onRefresh();
   };
 
-  // Tính tiến độ lộ trình tổng thể
+  const stepMonth = (delta: number) => {
+    const next = new Date(calYear, calMonth + delta, 1);
+    setCalYear(next.getFullYear());
+    setCalMonth(next.getMonth());
+  };
+
+  const jumpToday = () => {
+    const now = new Date();
+    setCalYear(now.getFullYear());
+    setCalMonth(now.getMonth());
+    setSelectedDay(now.toISOString().slice(0, 10));
+  };
+
   const allRoadmapItems = roadmaps.flatMap((r) => r.items);
   const doneRoadmapItems = allRoadmapItems.filter((i) => i.status === "done").length;
   const roadmapPct =
-    allRoadmapItems.length > 0
-      ? Math.round((doneRoadmapItems / allRoadmapItems.length) * 100)
-      : 0;
+    allRoadmapItems.length > 0 ? Math.round((doneRoadmapItems / allRoadmapItems.length) * 100) : 0;
 
-  // Build lịch tháng
-  const year = calMonth.getFullYear();
-  const month = calMonth.getMonth();
-  const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7; // Mon=0
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstWeekday = (new Date(calYear, calMonth, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
   const calCells: (string | null)[] = Array(firstWeekday).fill(null);
   for (let d = 1; d <= daysInMonth; d++) {
-    const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    calCells.push(iso);
+    calCells.push(`${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
   }
 
   const selectedDaySessions = completedSessions.filter(
     (s) => new Date(s.startedAt).toISOString().slice(0, 10) === selectedDay
   );
+  const selectedDayBlocks = timeBlocks.filter((b) => b.blockDate === selectedDay);
   const pendingTodos = todos.filter((t) => !t.isCompleted).slice(0, 5);
   const subjectMap = new Map(subjects.map((s) => [s.id, s]));
 
+  const quotes = lang === "vi" ? QUOTES_VI : QUOTES_EN;
+  const years = Array.from({ length: 11 }, (_, i) => 2022 + i);
+
   return (
     <div className="space-y-6">
-      {/* HERO PROFILE & GAMIFICATION BANNER */}
+      {/* LIVE HERO BRIEF */}
       <section className="glass-card relative overflow-hidden rounded-3xl p-6 sm:p-7">
-        <div
-          className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full opacity-25 blur-3xl"
-          style={{ background: "linear-gradient(135deg, var(--accent), var(--accent2))" }}
-        />
         <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1 text-xs font-semibold">
-              <Trophy className="h-3.5 w-3.5 text-amber-400" />
-              <span className="text-[var(--text-primary)]">
-                Cấp {levelInfo.level} · {levelInfo.rank}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1 text-xs font-medium">
+                <Trophy className="h-3.5 w-3.5 text-amber-500" />
+                Cấp {levelInfo.level} · {levelInfo.rank} ({levelInfo.xp} XP)
               </span>
-              <span className="font-mono text-[var(--accent)]">{levelInfo.xp} XP</span>
+              {nowClock && (
+                <span className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1 font-mono text-xs text-[var(--accent)]">
+                  {nowClock}
+                </span>
+              )}
             </div>
-            <h2 className="text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-3xl">
-              Xin chào, {user?.name ?? "KronoFlow Learner"}
+
+            <h2 className="text-2xl font-medium tracking-tight text-[var(--text-primary)] sm:text-3xl">
+              {greeting}, {user?.name ?? "Learner"}
             </h2>
-            <p className="max-w-xl text-sm text-[var(--text-secondary)]">
-              {user?.bio ?? "Tập trung mỗi ngày — Xây dựng kỷ luật bền vững"}
-            </p>
+
+            <div className="flex items-center gap-2 text-xs italic text-[var(--text-secondary)]">
+              <span>“{quotes[quoteIdx % quotes.length]}”</span>
+              <button
+                type="button"
+                onClick={() => setQuoteIdx((i) => i + 1)}
+                className="rounded-md p-1 text-[var(--text-muted)] hover:text-[var(--accent)]"
+                title="Đổi câu trích dẫn"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </button>
+            </div>
+
             <div className="pt-1">
               <div className="flex max-w-md items-center justify-between text-[11px] text-[var(--text-muted)]">
-                <span>Tiến độ lên Cấp {levelInfo.level + 1}</span>
+                <span>XP Level {levelInfo.level + 1}</span>
                 <span className="font-mono tabular-nums">
                   {levelInfo.currentLevelXp} / {levelInfo.nextLevelXp} XP
                 </span>
@@ -205,32 +300,29 @@ export function DashboardBento({
             <button
               type="button"
               onClick={() => onJumpFocus()}
-              className="btn-primary inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold"
+              className="btn-primary inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-medium"
             >
               <Play className="h-4 w-4 fill-current" />
-              Vào phiên tập trung ngay
+              {lang === "vi" ? "Vào phiên tập trung" : "Start Focus Session"}
             </button>
-
             <button
               type="button"
               disabled={isTodayFrozen || (user?.streakFreezes ?? 0) <= 0}
               onClick={handleUseFreeze}
-              className="inline-flex items-center gap-2 rounded-2xl border border-sky-400/30 bg-sky-500/10 px-4 py-3 text-xs font-semibold text-sky-400 transition hover:bg-sky-500/20 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-xs font-medium text-sky-600 dark:text-sky-400 disabled:opacity-50"
             >
               <Snowflake className="h-4 w-4" />
-              {isTodayFrozen
-                ? "Hôm nay đã đóng băng"
-                : `Đóng băng Streak (${user?.streakFreezes ?? 0})`}
+              {isTodayFrozen ? "Đã đóng băng" : `Freeze (${user?.streakFreezes ?? 0})`}
             </button>
           </div>
         </div>
       </section>
 
-      {/* 4 KPI BENTO CARDS */}
+      {/* 4 KPI CARDS */}
       <div className="stagger-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="glass-card card-lift rounded-2xl p-5">
           <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
-            <span>Hôm nay / Mục tiêu</span>
+            <span>{lang === "vi" ? "Hôm nay / Mục tiêu" : "Today / Goal"}</span>
             <Target className="h-4 w-4 text-[var(--accent)]" />
           </div>
           <div className="mt-2 flex items-baseline gap-1.5">
@@ -246,67 +338,91 @@ export function DashboardBento({
 
         <div className="glass-card card-lift rounded-2xl p-5">
           <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
-            <span>Chuỗi kỷ luật (Streak)</span>
-            <Flame className="h-4 w-4 text-amber-400" />
+            <span>{lang === "vi" ? "Chuỗi kỷ luật" : "Study Streak"}</span>
+            <Flame className="h-4 w-4 text-amber-500" />
           </div>
           <div className="mt-2 font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">
-            {streak} ngày
+            {streak} {lang === "vi" ? "ngày" : "days"}
           </div>
           <p className="mt-2 text-[11px] text-[var(--text-muted)]">
-            Còn <strong className="text-sky-400">{user?.streakFreezes ?? 0}</strong> thẻ Streak Freeze bảo vệ
+            Còn <strong className="text-sky-500">{user?.streakFreezes ?? 0}</strong> Streak Freeze
           </p>
         </div>
 
         <div className="glass-card card-lift rounded-2xl p-5">
           <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
-            <span>Tiến độ Lộ trình</span>
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            <span>{lang === "vi" ? "Tiến độ Lộ trình" : "Roadmap Progress"}</span>
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           </div>
           <div className="mt-2 font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">
             {roadmapPct}%
           </div>
           <p className="mt-2 text-[11px] text-[var(--text-muted)]">
-            {doneRoadmapItems} / {allRoadmapItems.length} chặng đã hoàn thành
+            {doneRoadmapItems} / {allRoadmapItems.length} chặng
           </p>
         </div>
 
         <div className="glass-card card-lift rounded-2xl p-5">
           <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
-            <span>Flashcards đã thuộc</span>
-            <Layers className="h-4 w-4 text-purple-400" />
+            <span>Flashcards</span>
+            <Layers className="h-4 w-4 text-purple-500" />
           </div>
           <div className="mt-2 font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">
             {masteredCards} / {flashcards.length}
           </div>
-          <p className="mt-2 text-[11px] text-[var(--text-muted)]">
-            Mức độ ghi nhớ từ 4/5 sao trở lên
-          </p>
+          <p className="mt-2 text-[11px] text-[var(--text-muted)]">Mức thuộc ≥ 4/5</p>
         </div>
       </div>
 
-      {/* MAIN BENTO ROW: MONTHLY CALENDAR + EXAM COUNTDOWN + QUICK TASKS */}
+      {/* FULL INTERACTIVE CALENDAR + EXAM COUNTDOWN */}
       <div className="grid gap-6 lg:grid-cols-12">
-        {/* Lịch học tháng tương tác */}
-        <section className="glass-card rounded-2xl p-6 lg:col-span-7">
-          <div className="flex items-center justify-between">
+        <section className="glass-card card-lift rounded-2xl p-6 lg:col-span-7">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-[var(--accent)]" />
-              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-                Lịch học tháng {month + 1}/{year}
-              </h3>
+              <select
+                value={calMonth}
+                onChange={(e) => setCalMonth(Number(e.target.value))}
+                className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] outline-none"
+              >
+                {Array.from({ length: 12 }, (_, m) => (
+                  <option key={m} value={m}>
+                    {lang === "vi" ? `Tháng ${m + 1}` : `Month ${m + 1}`}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={calYear}
+                onChange={(e) => setCalYear(Number(e.target.value))}
+                className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1 font-mono text-xs font-medium text-[var(--text-primary)] outline-none"
+              >
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="flex items-center gap-1">
+
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setCalMonth(new Date(year, month - 1, 1))}
-                className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                onClick={jumpToday}
+                className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2.5 py-1 text-[11px] font-medium text-[var(--accent)]"
+              >
+                {lang === "vi" ? "Hôm nay" : "Today"}
+              </button>
+              <button
+                type="button"
+                onClick={() => stepMonth(-1)}
+                className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1.5 text-[var(--text-secondary)]"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </button>
               <button
                 type="button"
-                onClick={() => setCalMonth(new Date(year, month + 1, 1))}
-                className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                onClick={() => stepMonth(1)}
+                className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-1.5 text-[var(--text-secondary)]"
               >
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>
@@ -323,174 +439,180 @@ export function DashboardBento({
               if (!iso) return <div key={`empty-${idx}`} />;
               const mins = dayMap.get(iso) ?? 0;
               const frozen = frozenDates.includes(iso);
+              const hasBlocks = timeBlocks.some((b) => b.blockDate === iso);
               const isSelected = iso === selectedDay;
-              const dayNum = Number(iso.slice(8));
+              const isToday = iso === todayKey;
               return (
                 <button
                   key={iso}
                   type="button"
                   onClick={() => setSelectedDay(iso)}
                   className={cn(
-                    "relative flex h-11 flex-col items-center justify-center rounded-xl border text-xs transition",
+                    "relative flex h-11 flex-col items-center justify-center rounded-xl border text-xs",
                     isSelected
-                      ? "border-[var(--accent)] bg-[var(--accent-soft)] font-bold text-[var(--text-primary)]"
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
                       : mins > 0
-                      ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-400"
-                      : frozen
-                      ? "border-sky-500/30 bg-sky-500/15 text-sky-400"
-                      : "border-transparent bg-[var(--bg-elevated)]/60 text-[var(--text-secondary)] hover:border-[var(--border-subtle)]"
+                      ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-600 dark:text-emerald-400"
+                      : isToday
+                      ? "border-[var(--accent)]/40 bg-[var(--bg-elevated)] font-semibold text-[var(--text-primary)]"
+                      : "border-transparent bg-[var(--bg-canvas)] text-[var(--text-secondary)] hover:border-[var(--border-subtle)]"
                   )}
                 >
-                  <span>{dayNum}</span>
-                  {mins > 0 && <span className="font-mono text-[9px]">{mins}p</span>}
-                  {frozen && mins === 0 && <Snowflake className="h-2.5 w-2.5 text-sky-400" />}
+                  <span>{Number(iso.slice(8))}</span>
+                  <div className="flex items-center gap-0.5">
+                    {mins > 0 && <span className="font-mono text-[9px]">{mins}p</span>}
+                    {hasBlocks && <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />}
+                    {frozen && mins === 0 && <Snowflake className="h-2.5 w-2.5 text-sky-400" />}
+                  </div>
                 </button>
               );
             })}
           </div>
 
-          <div className="mt-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 p-3.5">
+          {/* Chi tiết ngày đang chọn + Thêm lịch nhanh ngay tại ngày đó */}
+          <div className="mt-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-4">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-[var(--text-primary)]">
-                Chi tiết ngày {selectedDay}
+                {lang === "vi" ? "Lịch & Nhật ký ngày" : "Schedule for"} {selectedDay}
               </span>
               <span className="font-mono text-[var(--accent)]">
-                {dayMap.get(selectedDay) ?? 0} phút
+                {dayMap.get(selectedDay) ?? 0}p · {selectedDayBlocks.length} lịch hẹn
               </span>
             </div>
-            {selectedDaySessions.length === 0 ? (
-              <p className="mt-1.5 text-xs text-[var(--text-muted)]">
-                Chưa có phiên học nào được ghi nhận trong ngày này.
-              </p>
-            ) : (
-              <ul className="mt-2 space-y-1.5">
+
+            {(selectedDayBlocks.length > 0 || selectedDaySessions.length > 0) && (
+              <ul className="mt-2.5 space-y-1.5">
+                {selectedDayBlocks.map((b) => (
+                  <li key={b.id} className="flex items-center justify-between text-xs">
+                    <span className="text-[var(--text-primary)]">• {b.title}</span>
+                    <span className="font-mono text-[11px] text-[var(--accent)]">
+                      {b.startTime}–{b.endTime}
+                    </span>
+                  </li>
+                ))}
                 {selectedDaySessions.map((s) => {
                   const sub = s.subjectId ? subjectMap.get(s.subjectId) : undefined;
                   return (
-                    <li
-                      key={s.id}
-                      className="flex items-center justify-between text-xs text-[var(--text-secondary)]"
-                    >
-                      <span className="truncate">{s.notes || sub?.name || s.mode}</span>
-                      <span className="font-mono text-[var(--text-primary)]">
-                        {s.actualMinutes}p
-                      </span>
+                    <li key={s.id} className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+                      <span className="truncate">✓ {s.notes || sub?.name || s.mode}</span>
+                      <span className="font-mono">{s.actualMinutes}p</span>
                     </li>
                   );
                 })}
               </ul>
             )}
+
+            <form onSubmit={handleQuickAddBlock} className="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--border-subtle)] pt-3">
+              <input
+                type="time"
+                value={quickStart}
+                onChange={(e) => setQuickStart(e.target.value)}
+                className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-[11px]"
+              />
+              <input
+                type="time"
+                value={quickEnd}
+                onChange={(e) => setQuickEnd(e.target.value)}
+                className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-[11px]"
+              />
+              <input
+                type="text"
+                value={quickBlockTitle}
+                onChange={(e) => setQuickBlockTitle(e.target.value)}
+                placeholder={`Thêm nhanh lịch học cho ${selectedDay}...`}
+                className="min-w-[140px] flex-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 text-xs outline-none focus:border-[var(--accent)]"
+              />
+              <button
+                type="submit"
+                className="btn-primary inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-medium"
+              >
+                <Plus className="h-3 w-3" />
+                Thêm
+              </button>
+            </form>
           </div>
         </section>
 
-        {/* Đếm ngược kỳ thi + Công việc ưu tiên */}
         <div className="space-y-6 lg:col-span-5">
           <section className="glass-card card-lift rounded-2xl p-5">
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-amber-400" />
+              <Clock className="h-4 w-4 text-amber-500" />
               <h3 className="text-sm font-semibold text-[var(--text-primary)]">
                 Đếm ngược Kỳ thi & Deadline
               </h3>
             </div>
-
             <form onSubmit={handleAddExam} className="mt-3 flex flex-wrap gap-2">
               <input
                 type="text"
                 value={examTitle}
                 onChange={(e) => setExamTitle(e.target.value)}
-                placeholder="VD: Thi cuối kỳ DSA..."
-                className="min-w-[130px] flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                placeholder="VD: Thi cuối kỳ..."
+                className="min-w-[120px] flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs outline-none focus:border-[var(--accent)]"
               />
               <input
                 type="date"
                 value={examDate}
                 onChange={(e) => setExamDate(e.target.value)}
-                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] outline-none"
+                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1.5 text-xs"
               />
-              <button
-                type="submit"
-                className="accent-gradient inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-semibold text-white"
-              >
+              <button type="submit" className="btn-primary rounded-xl px-3 py-1.5 text-xs font-medium">
                 <Plus className="h-3.5 w-3.5" />
-                Thêm
               </button>
             </form>
-
             <ul className="mt-3.5 space-y-2">
-              {exams.length === 0 ? (
-                <li className="text-xs text-[var(--text-muted)]">
-                  Thêm lịch thi hoặc deadline quan trọng để đếm ngược mỗi ngày.
-                </li>
-              ) : (
-                exams.map((ex) => {
-                  const diffDays = Math.ceil(
-                    (new Date(ex.examDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-                  );
-                  return (
-                    <li
-                      key={ex.id}
-                      className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/60 px-3 py-2.5"
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate text-xs font-semibold text-[var(--text-primary)]">
-                          {ex.title}
-                        </div>
-                        <div className="text-[11px] text-[var(--text-muted)]">
-                          {new Date(ex.examDate).toLocaleDateString("vi-VN")}
-                        </div>
+              {exams.map((ex) => {
+                const diffDays = Math.ceil(
+                  (new Date(ex.examDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                );
+                return (
+                  <li
+                    key={ex.id}
+                    className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
+                  >
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-[var(--text-primary)]">{ex.title}</div>
+                      <div className="text-[10px] text-[var(--text-muted)]">
+                        {new Date(ex.examDate).toLocaleDateString("vi-VN")}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "rounded-lg px-2.5 py-1 font-mono text-xs font-bold",
-                            diffDays <= 7
-                              ? "bg-rose-500/15 text-rose-400"
-                              : "bg-amber-500/15 text-amber-400"
-                          )}
-                        >
-                          {diffDays >= 0 ? `Còn ${diffDays} ngày` : "Đã qua"}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteExam(ex.id)}
-                          className="text-[var(--text-muted)] hover:text-rose-400"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </li>
-                  );
-                })
-              )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-lg bg-amber-500/15 px-2 py-0.5 font-mono text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                        {diffDays >= 0 ? `Còn ${diffDays}d` : "Qua"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteExam(ex.id)}
+                        className="text-[var(--text-muted)] hover:text-rose-500"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </section>
 
           <section className="glass-card card-lift rounded-2xl p-5">
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-              Việc cần làm ngay ({pendingTodos.length})
+              Việc ưu tiên ({pendingTodos.length})
             </h3>
             <ul className="mt-3 space-y-2">
-              {pendingTodos.length === 0 ? (
-                <li className="text-xs text-[var(--text-muted)]">
-                  Tuyệt vời! Hiện chưa có công việc tồn đọng nào.
-                </li>
-              ) : (
-                pendingTodos.map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/50 px-3 py-2 text-xs"
+              {pendingTodos.map((t) => (
+                <li
+                  key={t.id}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
+                >
+                  <span className="truncate text-[var(--text-primary)]">{t.title}</span>
+                  <button
+                    type="button"
+                    onClick={() => onJumpFocus(t.title)}
+                    className="shrink-0 rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 font-medium text-[var(--accent)]"
                   >
-                    <span className="truncate text-[var(--text-primary)]">{t.title}</span>
-                    <button
-                      type="button"
-                      onClick={() => onJumpFocus(t.title)}
-                      className="shrink-0 rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 font-semibold text-[var(--accent)] hover:opacity-90"
-                    >
-                      Học ngay
-                    </button>
-                  </li>
-                ))
-              )}
+                    Học ngay
+                  </button>
+                </li>
+              ))}
             </ul>
           </section>
         </div>

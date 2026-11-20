@@ -1,25 +1,55 @@
-export type AmbientType = "none" | "brown" | "rain" | "cafe" | "binaural";
+export type AmbientChannel = "rain" | "brown" | "cafe" | "binaural";
+export type AmbientType = "none" | AmbientChannel;
 
-class AmbientAudioEngine {
+interface ChannelState {
+  gain: GainNode;
+  nodes: AudioNode[];
+}
+
+class MultiChannelAmbientEngine {
   private ctx: AudioContext | null = null;
-  private gainNode: GainNode | null = null;
-  private nodes: AudioNode[] = [];
+  private channels = new Map<AmbientChannel, ChannelState>();
 
-  start(type: AmbientType, volume = 0.25) {
-    this.stop();
-    if (type === "none" || typeof window === "undefined") return;
+  private ensureContext(): AudioContext | null {
+    if (typeof window === "undefined") return null;
+    if (!this.ctx || this.ctx.state === "closed") {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return null;
+      this.ctx = new AudioCtx();
+    }
+    if (this.ctx.state === "suspended") {
+      this.ctx.resume().catch(() => {});
+    }
+    return this.ctx;
+  }
 
-    const AudioCtx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
+  setChannelVolume(channel: AmbientChannel, volume: number) {
+    const v = Math.max(0, Math.min(1, volume));
+    const existing = this.channels.get(channel);
 
-    const ctx = new AudioCtx();
+    if (v <= 0.01) {
+      if (existing) {
+        this.stopChannel(channel);
+      }
+      return;
+    }
+
+    if (existing) {
+      existing.gain.gain.value = v;
+      return;
+    }
+
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+
     const gain = ctx.createGain();
-    gain.gain.value = volume;
+    gain.gain.value = v;
     gain.connect(ctx.destination);
 
-    if (type === "binaural") {
+    let nodes: AudioNode[] = [];
+    if (channel === "binaural") {
       const oscL = ctx.createOscillator();
       const oscR = ctx.createOscillator();
       const panL = ctx.createStereoPanner();
@@ -32,7 +62,7 @@ class AmbientAudioEngine {
       oscR.connect(panR).connect(gain);
       oscL.start();
       oscR.start();
-      this.nodes = [oscL, oscR, panL, panR];
+      nodes = [oscL, oscR, panL, panR];
     } else {
       const bufferSize = ctx.sampleRate * 3;
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -40,37 +70,65 @@ class AmbientAudioEngine {
       let lastOut = 0;
       for (let i = 0; i < bufferSize; i++) {
         const white = Math.random() * 2 - 1;
-        const coeff = type === "brown" ? 0.02 : type === "cafe" ? 0.04 : 0.06;
+        const coeff = channel === "brown" ? 0.02 : channel === "cafe" ? 0.04 : 0.06;
         data[i] = (lastOut + coeff * white) / (1 + coeff);
         lastOut = data[i] ?? 0;
-        data[i] = (data[i] ?? 0) * (type === "brown" ? 3.2 : 1.7);
+        data[i] = (data[i] ?? 0) * (channel === "brown" ? 3.0 : 1.5);
       }
-
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.loop = true;
 
       const filter = ctx.createBiquadFilter();
-      filter.type = type === "cafe" ? "bandpass" : "lowpass";
-      filter.frequency.value = type === "brown" ? 380 : type === "cafe" ? 650 : 1200;
+      filter.type = channel === "cafe" ? "bandpass" : "lowpass";
+      filter.frequency.value = channel === "brown" ? 380 : channel === "cafe" ? 650 : 1200;
 
       source.connect(filter).connect(gain);
       source.start();
-      this.nodes = [source, filter];
+      nodes = [source, filter];
     }
 
-    this.ctx = ctx;
-    this.gainNode = gain;
+    this.channels.set(channel, { gain, nodes });
+  }
+
+  stopChannel(channel: AmbientChannel) {
+    const ch = this.channels.get(channel);
+    if (!ch) return;
+    try {
+      for (const n of ch.nodes) {
+        if ("stop" in n && typeof (n as OscillatorNode).stop === "function") {
+          (n as OscillatorNode).stop();
+        }
+      }
+      ch.gain.disconnect();
+    } catch {
+      // ignore
+    }
+    this.channels.delete(channel);
+  }
+
+  // Giữ tương thích ngược với TimerProvider
+  start(type: AmbientType, volume = 0.25) {
+    this.stop();
+    if (type !== "none") this.setChannelVolume(type, volume);
+  }
+
+  setVolume(volume: number) {
+    for (const ch of this.channels.values()) {
+      ch.gain.gain.value = Math.max(0, Math.min(1, volume));
+    }
+  }
+
+  stop() {
+    for (const key of Array.from(this.channels.keys())) {
+      this.stopChannel(key);
+    }
   }
 
   playBell() {
     if (typeof window === "undefined") return;
-    const AudioCtx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-
-    const ctx = new AudioCtx();
+    const ctx = this.ensureContext();
+    if (!ctx) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "sine";
@@ -82,28 +140,6 @@ class AmbientAudioEngine {
     osc.start();
     osc.stop(ctx.currentTime + 1.15);
   }
-
-  setVolume(volume: number) {
-    if (this.gainNode) {
-      this.gainNode.gain.value = Math.max(0, Math.min(1, volume));
-    }
-  }
-
-  stop() {
-    try {
-      for (const n of this.nodes) {
-        if ("stop" in n && typeof (n as OscillatorNode).stop === "function") {
-          (n as OscillatorNode).stop();
-        }
-      }
-      this.ctx?.close();
-    } catch {
-      // ignore
-    }
-    this.nodes = [];
-    this.gainNode = null;
-    this.ctx = null;
-  }
 }
 
-export const ambientEngine = new AmbientAudioEngine();
+export const ambientEngine = new MultiChannelAmbientEngine();
