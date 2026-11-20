@@ -194,7 +194,7 @@ export function DashboardBento({
               </div>
               <div className="mt-1.5 h-2 max-w-md overflow-hidden rounded-full bg-[var(--bg-elevated)]">
                 <div
-                  className="accent-gradient h-full rounded-full transition-all duration-500"
+                  className="accent-gradient progress-sheen h-full rounded-full transition-all duration-500"
                   style={{ width: `${levelInfo.pct}%` }}
                 />
               </div>
@@ -205,7 +205,7 @@ export function DashboardBento({
             <button
               type="button"
               onClick={() => onJumpFocus()}
-              className="accent-gradient inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-95"
+              className="btn-primary inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold"
             >
               <Play className="h-4 w-4 fill-current" />
               Vào phiên tập trung ngay
@@ -227,8 +227,8 @@ export function DashboardBento({
       </section>
 
       {/* 4 KPI BENTO CARDS */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="glass-card rounded-2xl p-5">
+      <div className="stagger-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="glass-card card-lift rounded-2xl p-5">
           <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
             <span>Hôm nay / Mục tiêu</span>
             <Target className="h-4 w-4 text-[var(--accent)]" />
@@ -240,11 +240,11 @@ export function DashboardBento({
             <span className="text-xs text-[var(--text-muted)]">/ {dailyGoal}p</span>
           </div>
           <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
-            <div className="accent-gradient h-full rounded-full" style={{ width: `${goalPct}%` }} />
+            <div className="accent-gradient progress-sheen h-full rounded-full" style={{ width: `${goalPct}%` }} />
           </div>
         </div>
 
-        <div className="glass-card rounded-2xl p-5">
+        <div className="glass-card card-lift rounded-2xl p-5">
           <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
             <span>Chuỗi kỷ luật (Streak)</span>
             <Flame className="h-4 w-4 text-amber-400" />
@@ -257,7 +257,7 @@ export function DashboardBento({
           </p>
         </div>
 
-        <div className="glass-card rounded-2xl p-5">
+        <div className="glass-card card-lift rounded-2xl p-5">
           <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
             <span>Tiến độ Lộ trình</span>
             <CheckCircle2 className="h-4 w-4 text-emerald-400" />
@@ -270,7 +270,7 @@ export function DashboardBento({
           </p>
         </div>
 
-        <div className="glass-card rounded-2xl p-5">
+        <div className="glass-card card-lift rounded-2xl p-5">
           <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
             <span>Flashcards đã thuộc</span>
             <Layers className="h-4 w-4 text-purple-400" />
@@ -385,7 +385,7 @@ export function DashboardBento({
 
         {/* Đếm ngược kỳ thi + Công việc ưu tiên */}
         <div className="space-y-6 lg:col-span-5">
-          <section className="glass-card rounded-2xl p-5">
+          <section className="glass-card card-lift rounded-2xl p-5">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-amber-400" />
               <h3 className="text-sm font-semibold text-[var(--text-primary)]">
@@ -465,7 +465,7 @@ export function DashboardBento({
             </ul>
           </section>
 
-          <section className="glass-card rounded-2xl p-5">
+          <section className="glass-card card-lift rounded-2xl p-5">
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">
               Việc cần làm ngay ({pendingTodos.length})
             </h3>

@@ -20,12 +20,15 @@ import {
   CheckCircle2,
   PanelLeftClose,
   PanelLeftOpen,
+  NotebookPen,
   X,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { applyThemeToDocument, WALLPAPERS } from "@/lib/themes";
 import { LanguageProvider, LanguageToggle, useLang } from "@/lib/i18n";
 import { AuthScreen } from "@/components/AuthScreen";
+import { ConfettiBurst } from "@/components/ConfettiBurst";
+import { QuickScratchpad } from "@/components/QuickScratchpad";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -166,11 +169,14 @@ function KronoFlowWorkspace({
   const [tab, setTab] = useState<TabId>("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [padOpen, setPadOpen] = useState(false);
+  const [confettiKey, setConfettiKey] = useState(0);
   const [focusedTaskTitle, setFocusedTaskTitle] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const notify = useCallback((msg: string) => {
     setToast(msg);
+    setConfettiKey((k) => k + 1);
     setTimeout(() => setToast(null), 2800);
   }, []);
 
@@ -230,7 +236,9 @@ function KronoFlowWorkspace({
     : { backgroundImage: wpPreset?.style ?? "none" };
 
   return (
-    <div className="min-h-screen lg:flex" style={bgStyle}>
+    <div className="relative min-h-screen lg:flex" style={bgStyle}>
+      <ConfettiBurst triggerKey={confettiKey} />
+      <QuickScratchpad open={padOpen} onClose={() => setPadOpen(false)} />
       <aside
         className={cn(
           "hidden shrink-0 flex-col justify-between border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 transition-all duration-200 lg:flex",
@@ -246,7 +254,7 @@ function KronoFlowWorkspace({
               {!sidebarCollapsed && (
                 <div className="truncate">
                   <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-                  <p className="text-[11px] text-[var(--text-muted)]">Studio v10</p>
+                  <p className="text-[11px] text-[var(--text-muted)]">Grand v11</p>
                 </div>
               )}
             </div>
@@ -330,6 +338,15 @@ function KronoFlowWorkspace({
 
           <div className="flex items-center gap-2">
             {tab !== "focus" && <MiniTimerBadge onOpenFocus={() => setTab("focus")} />}
+            <button
+              type="button"
+              onClick={() => setPadOpen(true)}
+              title="Giấy nháp nhanh / Scratchpad"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              <NotebookPen className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">Nháp</span>
+            </button>
             <LanguageToggle />
             <button
               type="button"
@@ -404,9 +421,7 @@ function KronoFlowWorkspace({
           {tab === "habits" && (
             <HabitsVaultPanel
               subjects={subjects}
-              goals={goals}
-        timeBlocks={timeBlocks}
-        habits={habits}
+              habits={habits}
               resources={resources}
               reflections={reflections}
               onNotify={notify}
