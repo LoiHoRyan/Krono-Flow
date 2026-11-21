@@ -179,6 +179,18 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         setCmdOpen(false);
         setPadOpen(false);
       }
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "/") {
+        e.preventDefault();
+        setCmdOpen(true);
+      } else if (e.key.toLowerCase() === "n" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setPadOpen((v) => !v);
+      } else if (e.key.toLowerCase() === "b" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setSidebarOpen((v) => !v);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -208,7 +220,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-v13-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-v14-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     notify("Đã tải xuống tệp sao lưu JSON!");
@@ -247,7 +259,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </span>
             <div>
               <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-              <p className="text-[11px] text-[var(--text-muted)]">Studio v13</p>
+              <p className="text-[11px] text-[var(--text-muted)]">Studio v14</p>
             </div>
           </div>
 
