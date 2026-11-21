@@ -35,6 +35,7 @@ export interface UserProfile {
   frozenDates: string;
   theme: string;
   wallpaper: string;
+  avatarUrl?: string | null;
 }
 
 export interface ExamRecord {
@@ -264,9 +265,18 @@ export function DashboardBento({
               )}
             </div>
 
-            <h2 className="text-2xl font-medium tracking-tight text-[var(--text-primary)] sm:text-3xl">
-              {greeting}, {user?.name ?? "Learner"}
-            </h2>
+            <div className="flex items-center gap-3">
+              {user?.avatarUrl && (
+                <img
+                  src={user.avatarUrl}
+                  alt="Avatar"
+                  className="h-12 w-12 rounded-full border-2 border-[var(--accent)] object-cover"
+                />
+              )}
+              <h2 className="text-2xl font-medium tracking-tight text-[var(--text-primary)] sm:text-3xl">
+                {greeting}, {user?.name ?? "Learner"}
+              </h2>
+            </div>
 
             <div className="flex items-center gap-2 text-xs italic text-[var(--text-secondary)]">
               <span>“{quotes[quoteIdx % quotes.length]}”</span>

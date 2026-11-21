@@ -3,17 +3,18 @@
 @tailwind utilities;
 
 :root {
-  --bg-canvas: #faf8f4;
+  --bg-canvas: #ffffff;
   --bg-surface: #ffffff;
-  --bg-elevated: #f2efe9;
-  --border-subtle: #e5e0d8;
-  --text-primary: #1c1917;
-  --text-secondary: #57534e;
-  --text-muted: #78716c;
+  --bg-elevated: #f4f6f8;
+  --border-subtle: #e5e7eb;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
   --accent: #2563eb;
   --accent-soft: #eff6ff;
   --active-heading-font: var(--font-newsreader);
   --active-body-font: var(--font-lexend);
+  --card-radius: 1rem;
 }
 
 body {
@@ -88,6 +89,7 @@ button:not(:disabled):active {
 /* Surface Cards with Smooth Lift */
 .glass-card {
   background: var(--bg-surface);
+  border-radius: var(--card-radius);
   border: 1px solid var(--border-subtle);
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
   transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1),

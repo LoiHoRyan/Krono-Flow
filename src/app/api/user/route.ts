@@ -17,6 +17,8 @@ const updateUserSchema = z.object({
     .optional(),
   fontStyle: z.enum(["editorial", "studio", "soft", "sans", "serif", "mono"]).optional(),
   wallpaper: z.string().trim().max(500).optional(),
+  avatarUrl: z.string().max(150000).nullable().optional(),
+  borderRadius: z.enum(["sharp", "normal", "soft"]).optional(),
   useStreakFreezeForDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 

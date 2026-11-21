@@ -141,8 +141,9 @@ interface WorkspaceProps {
   themeId: string;
   customAccent: string | null;
   fontStyle: string;
+  borderRadius: string;
   wallpaper: string;
-  onApplyLocalTheme: (t: string, w: string, acc: string | null, f: string) => void;
+  onApplyLocalTheme: (t: string, w: string, acc: string | null, f: string, r: string) => void;
   onLogout: () => void;
   onRefresh: () => void;
 }
@@ -152,6 +153,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [tab, setTab] = useState<TabId>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [cmdQuery, setCmdQuery] = useState("");
   const [padOpen, setPadOpen] = useState(false);
   const [confettiKey, setConfettiKey] = useState(0);
   const [focusedTaskTitle, setFocusedTaskTitle] = useState<string | null>(null);
@@ -164,8 +166,8 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   }, []);
 
   useEffect(() => {
-    applyThemeToDocument(props.themeId, props.customAccent, props.fontStyle);
-  }, [props.themeId, props.customAccent, props.fontStyle]);
+    applyThemeToDocument(props.themeId, props.customAccent, props.fontStyle, props.borderRadius);
+  }, [props.themeId, props.customAccent, props.fontStyle, props.borderRadius]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -206,7 +208,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-v12-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-v13-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     notify("Đã tải xuống tệp sao lưu JSON!");
@@ -245,7 +247,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </span>
             <div>
               <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-              <p className="text-[11px] text-[var(--text-muted)]">Ultimate v12</p>
+              <p className="text-[11px] text-[var(--text-muted)]">Studio v13</p>
             </div>
           </div>
 
@@ -329,6 +331,20 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               <span className="hidden md:inline">Nháp</span>
             </button>
             <LanguageToggle />
+            <button
+              type="button"
+              onClick={() => setTab("settings")}
+              title={props.user?.name ?? "Hồ sơ"}
+              className="h-8 w-8 overflow-hidden rounded-full border border-[var(--border-subtle)] bg-[var(--bg-elevated)]"
+            >
+              {props.user?.avatarUrl ? (
+                <img src={props.user.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-[11px] font-semibold text-[var(--accent)]">
+                  {(props.user?.name ?? "KF").slice(0, 2).toUpperCase()}
+                </span>
+              )}
+            </button>
             <button
               type="button"
               onClick={() => setCmdOpen(true)}
@@ -478,8 +494,58 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                 <X className="h-4 w-4 text-[var(--text-muted)]" />
               </button>
             </div>
+            <input
+              type="text"
+              autoFocus
+              value={cmdQuery}
+              onChange={(e) => setCmdQuery(e.target.value)}
+              placeholder="Tìm nhanh tab, công việc, ghi chú, tài liệu..."
+              className="mt-3 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+            />
             <div className="mt-2 max-h-80 space-y-1 overflow-y-auto">
-              {NAV_DEF.map((item) => {
+              {cmdQuery.trim().length > 0 && (
+                <>
+                  {props.todos
+                    .filter((x) => x.title.toLowerCase().includes(cmdQuery.toLowerCase()))
+                    .slice(0, 4)
+                    .map((x) => (
+                      <button
+                        key={x.id}
+                        type="button"
+                        onClick={() => {
+                          setTab("planner");
+                          setCmdOpen(false);
+                          setCmdQuery("");
+                        }}
+                        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]"
+                      >
+                        <span className="truncate">✓ {x.title}</span>
+                        <span className="text-[10px] text-[var(--accent)]">Công việc</span>
+                      </button>
+                    ))}
+                  {props.notes
+                    .filter((x) => x.title.toLowerCase().includes(cmdQuery.toLowerCase()))
+                    .slice(0, 4)
+                    .map((x) => (
+                      <button
+                        key={x.id}
+                        type="button"
+                        onClick={() => {
+                          setTab("knowledge");
+                          setCmdOpen(false);
+                          setCmdQuery("");
+                        }}
+                        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]"
+                      >
+                        <span className="truncate">✎ {x.title}</span>
+                        <span className="text-[10px] text-[var(--accent)]">Ghi chú</span>
+                      </button>
+                    ))}
+                </>
+              )}
+              {NAV_DEF.filter((item) =>
+                t(`nav_${item.id}`).toLowerCase().includes(cmdQuery.toLowerCase())
+              ).map((item) => {
                 const Icon = item.icon;
                 return (
                   <button
@@ -533,9 +599,10 @@ function AppShell() {
   const { t } = useLang();
   const [authState, setAuthState] = useState<"loading" | "guest" | "authed">("loading");
   const [user, setUser] = useState<ExtendedUserProfile | null>(null);
-  const [themeId, setThemeId] = useState("ivory");
+  const [themeId, setThemeId] = useState("pure-white");
   const [customAccent, setCustomAccent] = useState<string | null>(null);
   const [fontStyle, setFontStyle] = useState("editorial");
+  const [borderRadius, setBorderRadius] = useState("normal");
   const [wallpaper, setWallpaper] = useState("none");
   const [subjects, setSubjects] = useState<SubjectRecord[]>([]);
   const [todos, setTodos] = useState<TodoItem[]>([]);
@@ -570,6 +637,7 @@ function AppShell() {
         if (u?.theme) setThemeId(u.theme);
         setCustomAccent(u?.customAccent ?? null);
         if (u?.fontStyle) setFontStyle(u.fontStyle);
+        if (u?.borderRadius) setBorderRadius(u.borderRadius);
         if (u?.wallpaper) setWallpaper(u.wallpaper);
         setAuthState("authed");
       }
@@ -674,12 +742,14 @@ function AppShell() {
         themeId={themeId}
         customAccent={customAccent}
         fontStyle={fontStyle}
+        borderRadius={borderRadius}
         wallpaper={wallpaper}
-        onApplyLocalTheme={(tId, wp, acc, f) => {
+        onApplyLocalTheme={(tId, wp, acc, f, r) => {
           setThemeId(tId);
           setWallpaper(wp);
           setCustomAccent(acc);
           setFontStyle(f);
+          setBorderRadius(r);
         }}
         onLogout={handleLogout}
         onRefresh={loadAll}

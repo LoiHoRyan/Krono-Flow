@@ -53,10 +53,12 @@ export const users = pgTable("users", {
   dailyGoalMinutes: integer("daily_goal_minutes").notNull().default(120),
   streakFreezes: integer("streak_freezes").notNull().default(3),
   frozenDates: text("frozen_dates").notNull().default("[]"),
-  theme: text("theme").notNull().default("ivory"),
+  theme: text("theme").notNull().default("pure-white"),
   customAccent: text("custom_accent"),
   fontStyle: text("font_style").notNull().default("editorial"),
   wallpaper: text("wallpaper").notNull().default("none"),
+  avatarUrl: text("avatar_url"),
+  borderRadius: text("border_radius").notNull().default("normal"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
