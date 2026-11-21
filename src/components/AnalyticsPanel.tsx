@@ -189,14 +189,23 @@ export function AnalyticsPanel({
             <Layers className="h-4 w-4 text-sky-500" />
             {lang === "vi" ? "Báo cáo nhanh" : "Quick Export"}
           </div>
-          <button
-            type="button"
-            onClick={handleExportJson}
-            className="btn-primary mt-2 inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-medium"
-          >
-            <Download className="h-3.5 w-3.5" />
-            {lang === "vi" ? "Xuất JSON" : "Export JSON"}
-          </button>
+          <div className="mt-2 flex gap-1.5">
+            <button
+              type="button"
+              onClick={handleExportJson}
+              className="btn-primary inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-medium"
+            >
+              <Download className="h-3.5 w-3.5" />
+              JSON
+            </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex flex-1 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2.5 py-2 text-xs font-medium text-[var(--text-primary)]"
+            >
+              In PDF
+            </button>
+          </div>
         </div>
       </div>
 

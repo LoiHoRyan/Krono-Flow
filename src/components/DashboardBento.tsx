@@ -13,6 +13,7 @@ import {
   Layers,
   Clock,
   RefreshCw,
+  Droplets,
 } from "lucide-react";
 import { computeLevelInfo } from "@/lib/themes";
 import { useLang } from "@/lib/i18n";
@@ -84,6 +85,20 @@ export function DashboardBento({
   const [quoteIdx, setQuoteIdx] = useState(0);
   const [examTitle, setExamTitle] = useState("");
   const [examDate, setExamDate] = useState("");
+  const [waterCups, setWaterCups] = useState(0);
+
+  useEffect(() => {
+    const key = `kronoflow-water-${new Date().toISOString().slice(0, 10)}`;
+    const saved = Number(localStorage.getItem(key) || "0");
+    if (!Number.isNaN(saved)) setWaterCups(saved);
+  }, []);
+
+  const updateWater = (n: number) => {
+    const next = n === waterCups ? n - 1 : n;
+    setWaterCups(next);
+    const key = `kronoflow-water-${new Date().toISOString().slice(0, 10)}`;
+    localStorage.setItem(key, String(next));
+  };
 
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), 1000);
@@ -431,6 +446,37 @@ export function DashboardBento({
                 );
               })}
             </ul>
+          </section>
+
+          <section className="glass-card card-lift p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Droplets className="h-4 w-4 text-sky-500" />
+                <h3 className="text-sm font-medium text-[var(--text-primary)]">
+                  {lang === "vi" ? "Uống đủ nước hôm nay" : "Daily Hydration"}
+                </h3>
+              </div>
+              <span className="font-mono text-xs font-semibold text-sky-500">
+                {waterCups} / 8 ly
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-8 gap-1.5">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((cup) => (
+                <button
+                  key={cup}
+                  type="button"
+                  onClick={() => updateWater(cup)}
+                  title={`${cup} ly`}
+                  className={
+                    cup <= waterCups
+                      ? "animate-pop flex h-9 items-center justify-center rounded-xl bg-sky-500 text-xs font-semibold text-white shadow-sm"
+                      : "flex h-9 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-xs text-[var(--text-muted)] hover:border-sky-400"
+                  }
+                >
+                  {cup}
+                </button>
+              ))}
+            </div>
           </section>
 
           <section className="glass-card card-lift p-5">

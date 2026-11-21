@@ -136,6 +136,18 @@ export function ScheduleGpaPanel({
         ).toFixed(2)
       : "0.00";
 
+  const semesterMap = new Map<string, { weighted4: number; credits: number }>();
+  for (const g of grades) {
+    const cur = semesterMap.get(g.semester) ?? { weighted4: 0, credits: 0 };
+    cur.weighted4 += toGpa4(g.score10).gpa4 * g.credits;
+    cur.credits += g.credits;
+    semesterMap.set(g.semester, cur);
+  }
+  const semesterTrend = Array.from(semesterMap.entries()).map(([sem, v]) => ({
+    sem,
+    gpa: v.credits > 0 ? +(v.weighted4 / v.credits).toFixed(2) : 0,
+  }));
+
   return (
     <div className="space-y-6">
       {/* THỜI KHÓA BIỂU TUẦN */}
@@ -197,7 +209,19 @@ export function ScheduleGpaPanel({
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
           {DAYS.map((d) => {
             const daySlots = slots.filter((s) => s.dayOfWeek === d.id);
-            return (
+            const semesterMap = new Map<string, { weighted4: number; credits: number }>();
+  for (const g of grades) {
+    const cur = semesterMap.get(g.semester) ?? { weighted4: 0, credits: 0 };
+    cur.weighted4 += toGpa4(g.score10).gpa4 * g.credits;
+    cur.credits += g.credits;
+    semesterMap.set(g.semester, cur);
+  }
+  const semesterTrend = Array.from(semesterMap.entries()).map(([sem, v]) => ({
+    sem,
+    gpa: v.credits > 0 ? +(v.weighted4 / v.credits).toFixed(2) : 0,
+  }));
+
+  return (
               <div
                 key={d.id}
                 className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3"
@@ -323,7 +347,19 @@ export function ScheduleGpaPanel({
               <tbody className="divide-y divide-[var(--border-subtle)]">
                 {grades.map((g) => {
                   const conv = toGpa4(g.score10);
-                  return (
+                  const semesterMap = new Map<string, { weighted4: number; credits: number }>();
+  for (const g of grades) {
+    const cur = semesterMap.get(g.semester) ?? { weighted4: 0, credits: 0 };
+    cur.weighted4 += toGpa4(g.score10).gpa4 * g.credits;
+    cur.credits += g.credits;
+    semesterMap.set(g.semester, cur);
+  }
+  const semesterTrend = Array.from(semesterMap.entries()).map(([sem, v]) => ({
+    sem,
+    gpa: v.credits > 0 ? +(v.weighted4 / v.credits).toFixed(2) : 0,
+  }));
+
+  return (
                     <tr key={g.id}>
                       <td className="py-2.5 font-medium text-[var(--text-primary)]">{g.courseName}</td>
                       <td className="py-2.5 text-[var(--text-muted)]">{g.semester}</td>
@@ -346,6 +382,29 @@ export function ScheduleGpaPanel({
               </tbody>
             </table>
           </div>
+          {semesterTrend.length > 0 && (
+            <div className="mt-5 border-t border-[var(--border-subtle)] pt-4">
+              <div className="text-xs font-medium text-[var(--text-secondary)]">
+                Xu hướng GPA (Hệ 4.0) theo Học kỳ
+              </div>
+              <div className="mt-3 flex h-28 items-end gap-3">
+                {semesterTrend.map((st) => (
+                  <div key={st.sem} className="flex flex-1 flex-col items-center gap-1">
+                    <span className="font-mono text-[11px] font-semibold text-[var(--accent)]">
+                      {st.gpa.toFixed(2)}
+                    </span>
+                    <div className="flex h-16 w-full max-w-[56px] items-end rounded-lg bg-[var(--bg-elevated)] p-1">
+                      <div
+                        className="progress-sheen w-full rounded bg-[var(--accent)]"
+                        style={{ height: `${Math.max(8, Math.round((st.gpa / 4) * 100))}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-[var(--text-muted)]">{st.sem}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* MÁY TÍNH ĐIỂM CẦN ĐẠT CUỐI KỲ */}

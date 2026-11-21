@@ -227,7 +227,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-v15-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-v16-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     notify("Đã tải xuống tệp sao lưu JSON!");
@@ -275,7 +275,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </span>
             <div>
               <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-              <p className="text-[11px] text-[var(--text-muted)]">Studio v15</p>
+              <p className="text-[11px] text-[var(--text-muted)]">Studio v16</p>
             </div>
           </div>
 
@@ -755,8 +755,18 @@ function AppShell() {
 
   if (authState === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[var(--bg-canvas)] text-sm text-[var(--text-muted)]">
-        {t("loadingSpace")}
+      <div className="mx-auto max-w-6xl space-y-6 p-8">
+        <div className="skeleton-box h-28 w-full rounded-2xl" />
+        <div className="grid gap-4 sm:grid-cols-4">
+          <div className="skeleton-box h-24 rounded-2xl" />
+          <div className="skeleton-box h-24 rounded-2xl" />
+          <div className="skeleton-box h-24 rounded-2xl" />
+          <div className="skeleton-box h-24 rounded-2xl" />
+        </div>
+        <div className="grid gap-6 lg:grid-cols-12">
+          <div className="skeleton-box h-80 rounded-2xl lg:col-span-7" />
+          <div className="skeleton-box h-80 rounded-2xl lg:col-span-5" />
+        </div>
       </div>
     );
   }

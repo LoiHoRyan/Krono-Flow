@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Circle, Clock, Map, Plus, Sparkles, Trash2 } from "lucide-react";
+import { CheckCircle2, Circle, Clock, Download, Map, Plus, Sparkles, Trash2, Upload } from "lucide-react";
 import { ROADMAP_TEMPLATES } from "@/lib/roadmap-templates";
 
 export interface RoadmapItemRecord {
@@ -73,9 +73,41 @@ export function RoadmapPanel({
     onRefresh();
   };
 
-  const handleDeleteRoadmap = async (id: string) => {
+  const handleDeleteRoadmap = async (id: string, rmTitle: string) => {
+    if (!window.confirm(`Bạn có chắc muốn xóa lộ trình "${rmTitle}" không?`)) return;
     await fetch(`/api/roadmaps/${id}`, { method: "DELETE" });
     onRefresh();
+  };
+
+  const handleExportSingle = (rm: RoadmapRecord) => {
+    const payload = {
+      title: rm.title,
+      category: rm.category,
+      items: rm.items.map((i) => ({ title: i.title, estimatedMinutes: i.estimatedMinutes })),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `roadmap-${rm.title.toLowerCase().replace(/[^a-z0-9]+/gi, "-")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportSingle = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const json = JSON.parse(await file.text());
+      const res = await fetch("/api/roadmaps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(json),
+      });
+      if (res.ok) onRefresh();
+    } catch {
+      // ignore invalid json
+    }
   };
 
   return (
@@ -117,6 +149,11 @@ export function RoadmapPanel({
           <h3 className="text-sm font-semibold text-[var(--text-primary)]">
             Tạo lộ trình cá nhân mới
           </h3>
+          <label className="ml-auto inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]">
+            <Upload className="h-3.5 w-3.5 text-[var(--accent)]" />
+            Nhập lộ trình (.json)
+            <input type="file" accept=".json" onChange={handleImportSingle} className="hidden" />
+          </label>
         </div>
         <form onSubmit={handleCreate} className="mt-4 grid gap-3">
           <input
@@ -162,7 +199,16 @@ export function RoadmapPanel({
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleDeleteRoadmap(rm.id)}
+                    onClick={() => handleExportSingle(rm)}
+                    title="Xuất lộ trình này ra file JSON"
+                    className="text-[var(--text-muted)] hover:text-[var(--accent)]"
+                  >
+                    <Download className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteRoadmap(rm.id, rm.title)}
+                    title="Xóa lộ trình"
                     className="text-[var(--text-muted)] hover:text-rose-500"
                   >
                     <Trash2 className="h-4 w-4" />
