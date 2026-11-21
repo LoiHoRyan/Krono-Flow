@@ -1,0 +1,9 @@
+{
+  "name": "KronoFlow — Study & Deep Focus OS",
+  "short_name": "KronoFlow",
+  "description": "Không gian quản lý thời gian, Pomodoro, Lịch học, GPA, Ghi chú & Flashcards.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb"
+}

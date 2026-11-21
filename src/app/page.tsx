@@ -90,6 +90,13 @@ const NAV_DEF: { id: TabId; icon: typeof Timer }[] = [
   { id: "settings", icon: Sliders },
 ];
 
+const NAV_GROUPS: { titleVi: string; titleEn: string; ids: TabId[] }[] = [
+  { titleVi: "Không gian chính", titleEn: "Workspace", ids: ["dashboard", "focus"] },
+  { titleVi: "Kế hoạch & Học tập", titleEn: "Planning", ids: ["schedule", "planner", "goals"] },
+  { titleVi: "Kiến thức & Thói quen", titleEn: "Knowledge", ids: ["habits", "roadmaps", "knowledge"] },
+  { titleVi: "Tài chính & Hệ thống", titleEn: "Insights", ids: ["expenses", "analytics", "settings"] },
+];
+
 function MiniTimerBadge({ onOpenFocus }: { onOpenFocus: () => void }) {
   const timer = useTimer();
   if (!timer.isRunning && !timer.activeSessionId) return null;
@@ -149,7 +156,7 @@ interface WorkspaceProps {
 }
 
 function KronoFlowWorkspace(props: WorkspaceProps) {
-  const { t } = useLang();
+  const { lang, t } = useLang();
   const [tab, setTab] = useState<TabId>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [cmdOpen, setCmdOpen] = useState(false);
@@ -220,11 +227,20 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-v14-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-v15-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     notify("Đã tải xuống tệp sao lưu JSON!");
   };
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayFocusedMins = props.sessions
+    .filter((s) => s.status === "completed" && s.startedAt.slice(0, 10) === todayIso)
+    .reduce((a, b) => a + b.actualMinutes, 0);
+  const headerGoalPct = Math.min(
+    100,
+    Math.round((todayFocusedMins / Math.max(1, props.user?.dailyGoalMinutes ?? 120)) * 100)
+  );
 
   const wpPreset = WALLPAPERS.find((w) => w.id === props.wallpaper);
   const bgStyle: React.CSSProperties = props.wallpaper.startsWith("http")
@@ -259,30 +275,41 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </span>
             <div>
               <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-              <p className="text-[11px] text-[var(--text-muted)]">Studio v14</p>
+              <p className="text-[11px] text-[var(--text-muted)]">Studio v15</p>
             </div>
           </div>
 
-          <nav className="mt-6 space-y-1">
-            {NAV_DEF.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setTab(item.id)}
-                  className={cn(
-                    "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-medium",
-                    tab === item.id
-                      ? "bg-[var(--accent-soft)] text-[var(--accent)] shadow-sm"
-                      : "text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{t(`nav_${item.id}`)}</span>
-                </button>
-              );
-            })}
+          <nav className="mt-5 space-y-4">
+            {NAV_GROUPS.map((grp) => (
+              <div key={grp.titleEn}>
+                <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                  {lang === "vi" ? grp.titleVi : grp.titleEn}
+                </div>
+                <div className="space-y-0.5">
+                  {grp.ids.map((id) => {
+                    const item = NAV_DEF.find((n) => n.id === id);
+                    if (!item) return null;
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setTab(item.id)}
+                        className={cn(
+                          "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-medium",
+                          tab === item.id
+                            ? "bg-[var(--accent-soft)] text-[var(--accent)] shadow-sm"
+                            : "text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
+                        )}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{t(`nav_${item.id}`)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
         </div>
 
@@ -342,6 +369,13 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               <NotebookPen className="h-3.5 w-3.5" />
               <span className="hidden md:inline">Nháp</span>
             </button>
+            <span
+              title="Tiến độ mục tiêu tập trung hôm nay"
+              className="hidden items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 font-mono text-[11px] font-medium text-[var(--accent)] md:inline-flex"
+            >
+              <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
+              {headerGoalPct}%
+            </span>
             <LanguageToggle />
             <button
               type="button"

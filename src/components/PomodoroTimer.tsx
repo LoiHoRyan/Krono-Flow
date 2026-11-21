@@ -58,6 +58,7 @@ export function PomodoroTimer({
   const timer = useTimer();
   const [clockTab, setClockTab] = useState<"pomodoro" | "exam" | "stopwatch">("pomodoro");
   const [zenMode, setZenMode] = useState(false);
+  const [eyeCare, setEyeCare] = useState(true);
 
   // Stopwatch state
   const [swSeconds, setSwSeconds] = useState(0);
@@ -160,11 +161,19 @@ export function PomodoroTimer({
 
           <button
             type="button"
-            onClick={() => setZenMode((v) => !v)}
+            onClick={() => {
+              const next = !zenMode;
+              setZenMode(next);
+              if (next && document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(() => {});
+              } else if (!next && document.fullscreenElement) {
+                document.exitFullscreen().catch(() => {});
+              }
+            }}
             className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)]"
           >
             {zenMode ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-            {zenMode ? "Thoát Zen" : "Chế độ Zen"}
+            {zenMode ? "Thoát Toàn màn hình" : "Toàn màn hình"}
           </button>
         </div>
 
@@ -366,8 +375,25 @@ export function PomodoroTimer({
           </>
         )}
 
-        {/* 4-CHANNEL SOUND MIXER */}
+        {/* 4-CHANNEL SOUND MIXER + EYE CARE 20-20-20 */}
         <div className="mt-6 border-t border-[var(--border-subtle)] pt-5">
+          <div className="mb-4 flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-xs">
+            <span className="text-[var(--text-secondary)]">
+              Nhắc nghỉ mắt 20-20-20 (nhìn xa 6m mỗi 20 phút)
+            </span>
+            <button
+              type="button"
+              onClick={() => setEyeCare((v) => !v)}
+              className={cn(
+                "rounded-lg px-2.5 py-1 text-[11px] font-medium",
+                eyeCare
+                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                  : "bg-[var(--bg-elevated)] text-[var(--text-muted)]"
+              )}
+            >
+              {eyeCare ? "Đang bật" : "Đã tắt"}
+            </button>
+          </div>
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
               <SlidersHorizontal className="h-3.5 w-3.5 text-[var(--accent)]" />

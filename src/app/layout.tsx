@@ -37,6 +37,7 @@ const ibmMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "KronoFlow — Không gian học tập & quản lý thời gian",
+  manifest: "/manifest.json",
   description:
     "Pomodoro chạy nền, Time Blocking, Mục tiêu học kỳ, Thời khóa biểu, Sổ điểm GPA, Kanban, Eisenhower, Flashcards Quiz 3D & Habit Tracker trên PostgreSQL.",
 };

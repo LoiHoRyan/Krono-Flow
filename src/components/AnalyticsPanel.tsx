@@ -46,6 +46,16 @@ export function AnalyticsPanel({
   const last7 = days.slice(-7);
   const max7 = Math.max(30, ...last7.map((d) => d.minutes));
 
+  const thisWeekMins = days.slice(-7).reduce((a, b) => a + b.minutes, 0);
+  const prevWeekMins = days.slice(-14, -7).reduce((a, b) => a + b.minutes, 0);
+  const weekDeltaPct =
+    prevWeekMins > 0
+      ? Math.round(((thisWeekMins - prevWeekMins) / prevWeekMins) * 100)
+      : thisWeekMins > 0
+      ? 100
+      : 0;
+  const bestDay7 = last7.reduce((a, b) => (b.minutes > a.minutes ? b : a), last7[0]!);
+
   let streak = 0;
   for (let i = days.length - 1; i >= 0; i--) {
     const item = days[i];
@@ -300,6 +310,35 @@ export function AnalyticsPanel({
           </ul>
         </section>
       </div>
+
+      {/* TÓM TẮT HIỆU SUẤT TUẦN (WEEKLY DIGEST) */}
+      <section className="glass-card card-lift flex flex-wrap items-center justify-between gap-4 p-5">
+        <div>
+          <span className="text-[11px] font-medium uppercase tracking-wider text-[var(--accent)]">
+            {lang === "vi" ? "Báo cáo So sánh Tuần (Weekly Digest)" : "Weekly Digest"}
+          </span>
+          <h3 className="mt-0.5 text-base font-medium text-[var(--text-primary)]">
+            {lang === "vi"
+              ? `Tuần này bạn đã tập trung ${thisWeekMins} phút`
+              : `You focused ${thisWeekMins} minutes this week`}
+          </h3>
+          <p className="text-xs text-[var(--text-muted)]">
+            {lang === "vi"
+              ? `Tuần trước: ${prevWeekMins} phút · Ngày chăm nhất: ${bestDay7.date} (${bestDay7.minutes}p)`
+              : `Last week: ${prevWeekMins}m · Best day: ${bestDay7.date} (${bestDay7.minutes}m)`}
+          </p>
+        </div>
+        <span
+          className={cn(
+            "rounded-xl px-3.5 py-2 font-mono text-sm font-bold",
+            weekDeltaPct >= 0
+              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+              : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+          )}
+        >
+          {weekDeltaPct >= 0 ? `+${weekDeltaPct}%` : `${weekDeltaPct}%`}
+        </span>
+      </section>
 
       {/* GIỜ VÀNG TẬP TRUNG */}
       <section className="glass-card rounded-2xl p-6">

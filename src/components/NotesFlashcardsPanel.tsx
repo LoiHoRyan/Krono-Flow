@@ -15,6 +15,7 @@ import {
   Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MarkdownView } from "./MarkdownView";
 import type { SubjectOption } from "./PomodoroTimer";
 
 export interface NoteRecord {
@@ -261,7 +262,7 @@ export function NotesFlashcardsPanel({
               rows={6}
               value={noteContent}
               onChange={(e) => setNoteContent(e.target.value)}
-              placeholder="Nội dung kiến thức, công thức..."
+              placeholder="Hỗ trợ Markdown: # Tiêu đề, **in đậm**, `code`, - [ ] checklist..."
               className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
             />
             <button
@@ -304,9 +305,9 @@ export function NotesFlashcardsPanel({
                         </button>
                       </div>
                     </div>
-                    <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-[var(--text-secondary)]">
-                      {n.content}
-                    </p>
+                    <div className="mt-2">
+                      <MarkdownView content={n.content} />
+                    </div>
                   </div>
                   <div className="mt-4 flex items-center justify-between border-t border-[var(--border-subtle)] pt-2.5 text-[11px] text-[var(--text-muted)]">
                     <span>{sub ? sub.name : "Chung"}</span>
