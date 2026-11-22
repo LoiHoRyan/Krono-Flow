@@ -414,6 +414,29 @@ export function DashboardBento({
         </div>
       </section>
 
+      {pinnedVault.length > 0 && (
+        <section className="glass-card rounded-2xl p-4">
+          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)]">
+            <Pin className="h-3.5 w-3.5 text-amber-500" />
+            Tài liệu đã ghim từ Kho
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {pinnedVault.map((r) => (
+              <a
+                key={r.id}
+                href={r.url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                {r.title}
+                <ExternalLink className="h-3 w-3 opacity-70" />
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* LIVE EXAM SPOTLIGHT COUNTDOWN */}
       {upcomingExam && (
         <section className="glass-card card-lift flex flex-wrap items-center justify-between gap-4 border-amber-500/30 p-5">

@@ -29,7 +29,7 @@ export function BreathingModal({
         setPhaseIdx((p) => {
           const next = (p + 1) % PHASES.length;
           if (next === 0) setCycles((c) => c + 1);
-          setSecLeft(PHASES[next].seconds);
+          setSecLeft((PHASES[next] ?? PHASES[0]).seconds);
           return next;
         });
         return 1;
