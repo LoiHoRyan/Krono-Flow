@@ -16,7 +16,7 @@ export function AnalyticsPanel({
   totalCards = 0,
 }: {
   sessions: SessionLogItem[];
-  subjects: SubjectOption[];
+  subjects: (SubjectOption & { targetHours?: number })[];
   totalHabits?: number;
   totalCards?: number;
 }) {
@@ -469,7 +469,7 @@ export function AnalyticsPanel({
           const mins = sessions
             .filter((s) => s.status === "completed" && s.subjectId === sub.id)
             .reduce((a, b) => a + b.actualMinutes, 0);
-          const ratio = Math.min(1, mins / Math.max(1, sub.targetHours * 60));
+          const ratio = Math.min(1, mins / Math.max(1, (sub.targetHours ?? 20) * 60));
           const angle = (Math.PI * 2 * i) / Math.max(3, subList.length) - Math.PI / 2;
           const r = Math.max(12, ratio * maxR);
           return {
