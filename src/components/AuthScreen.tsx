@@ -74,9 +74,11 @@ export function AuthScreen({ onSuccess }: { onSuccess: () => void }) {
           <div>
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <span className="btn-primary inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold">
-                  KF
-                </span>
+                <img
+                  src="/logo.png"
+                  alt="KronoFlow Logo"
+                  className="h-9 w-9 rounded-xl border border-[var(--border-subtle)] bg-white object-contain p-0.5 shadow-sm"
+                />
                 <span className="text-base font-semibold text-[var(--text-primary)]">
                   KronoFlow
                 </span>

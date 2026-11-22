@@ -254,7 +254,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-v20-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-v21-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     notify("Đã tải xuống tệp sao lưu JSON!");
@@ -335,7 +335,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </span>
             <div>
               <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-              <p className="text-[11px] text-[var(--text-muted)]">AI Studio v20</p>
+              <p className="text-[11px] text-[var(--text-muted)]">KronoFlow v21</p>
             </div>
           </div>
 

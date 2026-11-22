@@ -38,6 +38,13 @@ const ibmMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "KronoFlow — Không gian học tập & quản lý thời gian",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/logo.png", type: "image/png", sizes: "512x512" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+    ],
+    apple: [{ url: "/icon-192.png", sizes: "180x180", type: "image/png" }],
+  },
   description:
     "Pomodoro chạy nền, Time Blocking, Mục tiêu học kỳ, Thời khóa biểu, Sổ điểm GPA, Kanban, Eisenhower, Flashcards Quiz 3D & Habit Tracker trên PostgreSQL.",
 };
