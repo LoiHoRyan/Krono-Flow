@@ -24,6 +24,7 @@ import {
   NotebookPen,
   Plus,
   HelpCircle,
+  Bot,
   X,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
@@ -34,6 +35,7 @@ import { ConfettiBurst } from "@/components/ConfettiBurst";
 import { QuickScratchpad } from "@/components/QuickScratchpad";
 import { QuickCaptureModal } from "@/components/QuickCaptureModal";
 import { ShortcutsModal } from "@/components/ShortcutsModal";
+import { AiCopilotDrawer } from "@/components/AiCopilotDrawer";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -172,6 +174,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [padOpen, setPadOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [confettiKey, setConfettiKey] = useState(0);
   const [focusedTaskTitle, setFocusedTaskTitle] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -199,6 +202,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         setPadOpen(false);
         setQuickOpen(false);
         setHelpOpen(false);
+        setAiOpen(false);
       }
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
@@ -217,6 +221,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       } else if (e.key === "?") {
         e.preventDefault();
         setHelpOpen((v) => !v);
+      } else if (e.key.toLowerCase() === "a" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setAiOpen((v) => !v);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -247,7 +254,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-v19-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-v20-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     notify("Đã tải xuống tệp sao lưu JSON!");
@@ -279,6 +286,12 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       <ConfettiBurst triggerKey={confettiKey} />
       <QuickScratchpad open={padOpen} onClose={() => setPadOpen(false)} />
       <ShortcutsModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <AiCopilotDrawer
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        onNotify={notify}
+        onRefresh={props.onRefresh}
+      />
       <QuickCaptureModal
         open={quickOpen}
         onClose={() => setQuickOpen(false)}
@@ -287,14 +300,24 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
           props.onRefresh();
         }}
       />
-      <button
-        type="button"
-        onClick={() => setQuickOpen(true)}
-        title="Thêm nhanh (Phím Q)"
-        className="btn-primary no-print fixed bottom-20 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full shadow-xl lg:bottom-7 lg:right-7"
-      >
-        <Plus className="h-5 w-5" />
-      </button>
+      <div className="no-print fixed bottom-20 right-5 z-40 flex flex-col gap-2.5 lg:bottom-7 lg:right-7">
+        <button
+          type="button"
+          onClick={() => setAiOpen(true)}
+          title="Trợ lý AI Copilot (Phím A)"
+          className="btn-primary flex h-12 w-12 items-center justify-center rounded-full shadow-xl"
+        >
+          <Bot className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setQuickOpen(true)}
+          title="Thêm nhanh (Phím Q)"
+          className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-lg hover:border-[var(--accent)] hover:text-[var(--accent)]"
+        >
+          <Plus className="h-5 w-5" />
+        </button>
+      </div>
 
       {/* FIXED FULL-HIDE SIDEBAR (0px hoàn toàn khi bấm ẩn) */}
       <aside
@@ -312,7 +335,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </span>
             <div>
               <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-              <p className="text-[11px] text-[var(--text-muted)]">Studio v19</p>
+              <p className="text-[11px] text-[var(--text-muted)]">AI Studio v20</p>
             </div>
           </div>
 

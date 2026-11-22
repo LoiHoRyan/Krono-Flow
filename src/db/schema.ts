@@ -418,3 +418,17 @@ export const mistakes = pgTable(
   },
   (table) => [index("mistakes_user_idx").on(table.userId)]
 );
+
+export const aiMessages = pgTable(
+  "ai_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // "user" | "assistant"
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("ai_messages_user_idx").on(table.userId, table.createdAt)]
+);

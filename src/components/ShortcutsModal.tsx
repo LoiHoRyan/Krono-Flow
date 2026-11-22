@@ -5,6 +5,7 @@ import { useLang } from "@/lib/i18n";
 
 const SHORTCUTS = [
   { keys: "Ctrl + K / /", vi: "Mở Tìm kiếm toàn cục & Chuyển tab nhanh", en: "Global Search & Quick Jump" },
+  { keys: "A", vi: "Mở Trợ lý Chatbot AI Copilot", en: "Open AI Study Copilot" },
   { keys: "Q", vi: "Mở hộp thoại Thêm nhanh (Việc, Ghi chú, Thẻ, Chi tiêu)", en: "Open Quick Capture modal" },
   { keys: "N", vi: "Bật / Tắt ngăn kéo Giấy nháp nhanh (Scratchpad)", en: "Toggle Quick Scratchpad" },
   { keys: "B", vi: "Ẩn / Hiện thanh bên (Sidebar)", en: "Toggle Sidebar" },
