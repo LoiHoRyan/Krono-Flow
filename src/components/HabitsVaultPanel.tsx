@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Check,
   ExternalLink,
@@ -10,6 +10,8 @@ import {
   Sparkles,
   Trash2,
   BookOpen,
+  Pin,
+  Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SubjectOption } from "./PomodoroTimer";
@@ -80,6 +82,34 @@ export function HabitsVaultPanel({
   const [resCat, setResCat] = useState("Tài liệu");
   const [resSub, setResSub] = useState("");
   const [resFilter, setResFilter] = useState("Tất cả");
+  const [resTagFilter, setResTagFilter] = useState("Tất cả");
+  const [vaultMeta, setVaultMeta] = useState<Record<string, { tags: string[]; pinned?: boolean }>>({});
+  const VAULT_TAGS = ["Slide", "Đề cũ", "Video", "PDF", "Tóm tắt"];
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("kronoflow-vault-meta");
+      if (raw) setVaultMeta(JSON.parse(raw));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const updateVaultMeta = (next: Record<string, { tags: string[]; pinned?: boolean }>) => {
+    setVaultMeta(next);
+    localStorage.setItem("kronoflow-vault-meta", JSON.stringify(next));
+  };
+
+  const toggleVaultPin = (id: string) => {
+    const cur = vaultMeta[id] ?? { tags: [], pinned: false };
+    updateVaultMeta({ ...vaultMeta, [id]: { ...cur, pinned: !cur.pinned } });
+  };
+
+  const toggleVaultTag = (id: string, tag: string) => {
+    const cur = vaultMeta[id] ?? { tags: [], pinned: false };
+    const tags = cur.tags.includes(tag) ? cur.tags.filter((x) => x !== tag) : [...cur.tags, tag];
+    updateVaultMeta({ ...vaultMeta, [id]: { ...cur, tags } });
+  };
 
   const todayKey = new Date().toISOString().slice(0, 10);
   const todayRef = reflections.find((r) => r.entryDate === todayKey);
@@ -405,13 +435,35 @@ export function HabitsVaultPanel({
             </div>
           </form>
 
-          <ul className="mt-4 space-y-2">
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
+            <Tag className="h-3 w-3 text-[var(--text-muted)]" />
+            {["Tất cả", ...VAULT_TAGS].map((tg) => (
+              <button
+                key={tg}
+                type="button"
+                onClick={() => setResTagFilter(tg)}
+                className={cn(
+                  "rounded-full border px-2 py-0.5 transition-colors",
+                  resTagFilter === tg
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] font-medium"
+                    : "border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                )}
+              >
+                {tg}
+              </button>
+            ))}
+          </div>
+          <ul className="mt-3 space-y-2">
             {resources.length === 0 ? (
               <li className="text-xs text-[var(--text-muted)]">
                 Chưa có liên kết nào được lưu.
               </li>
             ) : (
-              resources.filter((r) => resFilter === "Tất cả" || r.category === resFilter).map((r) => {
+              resources
+                .filter((r) => resFilter === "Tất cả" || r.category === resFilter)
+                .filter((r) => resTagFilter === "Tất cả" || (vaultMeta[r.id]?.tags ?? []).includes(resTagFilter))
+                .map((r) => {
+                const meta = vaultMeta[r.id] ?? { tags: [], pinned: false };
                 const sub = r.subjectId ? subjectMap.get(r.subjectId) : undefined;
                 return (
                   <li
@@ -435,13 +487,43 @@ export function HabitsVaultPanel({
                         {sub && <span>{sub.name}</span>}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => deleteResource(r.id)}
-                      className="text-[var(--text-muted)] hover:text-rose-500"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <div className="hidden flex-wrap gap-1 sm:flex">
+                        {VAULT_TAGS.slice(0, 3).map((tg) => (
+                          <button
+                            key={tg}
+                            type="button"
+                            onClick={() => toggleVaultTag(r.id, tg)}
+                            className={cn(
+                              "rounded px-1.5 py-0.5 text-[10px]",
+                              meta.tags.includes(tg)
+                                ? "bg-[var(--accent)] text-white"
+                                : "bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                            )}
+                          >
+                            {tg}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleVaultPin(r.id)}
+                        title="Ghim ra Dashboard"
+                        className={cn(
+                          "rounded p-1",
+                          meta.pinned ? "text-amber-500" : "text-[var(--text-muted)] hover:text-amber-500"
+                        )}
+                      >
+                        <Pin className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteResource(r.id)}
+                        className="text-[var(--text-muted)] hover:text-rose-500"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </li>
                 );
               })

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Bell,
   Camera,
@@ -13,6 +13,10 @@ import {
   Type,
   Upload,
   User,
+  SunMoon,
+  PartyPopper,
+  ShieldCheck,
+  Compass,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -35,6 +39,7 @@ export function StudioSettingsPanel({
   user,
   onApplyLocalTheme,
   onExportBackup,
+  onOpenOnboarding,
   onRefresh,
 }: {
   user: ExtendedUserProfile | null;
@@ -46,6 +51,7 @@ export function StudioSettingsPanel({
     borderRadius: string
   ) => void;
   onExportBackup: () => void;
+  onOpenOnboarding?: () => void;
   onRefresh: () => void;
 }) {
   const [themeTab, setThemeTab] = useState<"light" | "dark">("light");
@@ -65,6 +71,32 @@ export function StudioSettingsPanel({
     typeof document !== "undefined" && document.documentElement.classList.contains("compact-ui")
   );
   const [seeding, setSeeding] = useState(false);
+  const [celebrationsOn, setCelebrationsOn] = useState(true);
+  const [autoDayNight, setAutoDayNight] = useState(false);
+  const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCelebrationsOn(localStorage.getItem("kronoflow-celebrations") !== "off");
+    setAutoDayNight(localStorage.getItem("kronoflow-auto-theme") === "on");
+    setLastBackupAt(localStorage.getItem("kronoflow-last-backup"));
+  }, []);
+
+  const toggleCelebrations = () => {
+    const next = !celebrationsOn;
+    setCelebrationsOn(next);
+    localStorage.setItem("kronoflow-celebrations", next ? "on" : "off");
+  };
+
+  const toggleAutoDayNight = () => {
+    const next = !autoDayNight;
+    setAutoDayNight(next);
+    localStorage.setItem("kronoflow-auto-theme", next ? "on" : "off");
+    if (next) {
+      const hr = new Date().getHours();
+      const target = hr >= 19 || hr < 6 ? "nord-slate" : "pure-white";
+      onApplyLocalTheme(target, wallpaper, customAccent, fontStyle, borderRadius);
+    }
+  };
 
   const toggleDensity = () => {
     const next = !compactUi;
@@ -649,6 +681,71 @@ export function StudioSettingsPanel({
                 Khôi phục JSON
                 <input type="file" accept=".json" onChange={handleImportFile} className="hidden" />
               </label>
+            </div>
+            <div className="mt-3 grid gap-2 border-t border-[var(--border-subtle)] pt-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={toggleAutoDayNight}
+                className={cn(
+                  "flex items-center justify-between rounded-xl border px-3 py-2 text-xs font-medium",
+                  autoDayNight
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-primary)]"
+                )}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <SunMoon className="h-3.5 w-3.5" />
+                  Tự chuyển Sáng/Tối (19h)
+                </span>
+                <span>{autoDayNight ? "Bật" : "Tắt"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={toggleCelebrations}
+                className={cn(
+                  "flex items-center justify-between rounded-xl border px-3 py-2 text-xs font-medium",
+                  celebrationsOn
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-primary)]"
+                )}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <PartyPopper className="h-3.5 w-3.5" />
+                  Pháo giấy ăn mừng
+                </span>
+                <span>{celebrationsOn ? "Bật" : "Tắt"}</span>
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-[11px]">
+              <span className="inline-flex items-center gap-1.5 text-[var(--text-secondary)]">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                {lastBackupAt ? (
+                  <>
+                    Sao lưu gần nhất:{" "}
+                    <strong className="text-[var(--text-primary)]">
+                      {new Date(lastBackupAt).toLocaleDateString("vi-VN")}
+                    </strong>
+                    {Math.floor((Date.now() - new Date(lastBackupAt).getTime()) / 86400000) > 14 && (
+                      <span className="ml-1 text-amber-500">(Đã quá 14 ngày, nên sao lưu mới)</span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-amber-600 dark:text-amber-400">
+                    Chưa từng sao lưu JSON — khuyên tải bản dự phòng
+                  </span>
+                )}
+              </span>
+              {onOpenOnboarding && (
+                <button
+                  type="button"
+                  onClick={onOpenOnboarding}
+                  className="inline-flex items-center gap-1 text-[var(--accent)] hover:underline"
+                >
+                  <Compass className="h-3 w-3" />
+                  Mở lại Thiết lập nhanh
+                </button>
+              )}
             </div>
             {restoreMsg && <p className="text-xs text-[var(--accent)]">{restoreMsg}</p>}
           </section>

@@ -7,6 +7,9 @@ export function ConfettiBurst({ triggerKey }: { triggerKey: number }) {
 
   useEffect(() => {
     if (triggerKey <= 0) return;
+    if (typeof window !== "undefined" && localStorage.getItem("kronoflow-celebrations") === "off") {
+      return;
+    }
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");

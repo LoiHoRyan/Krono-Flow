@@ -17,6 +17,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionLogItem } from "./PomodoroTimer";
+import type { NoteRecord, FlashcardRecord } from "./NotesFlashcardsPanel";
+import type { ExamRecord } from "./DashboardBento";
+import { SubjectHubDrawer } from "./SubjectHubDrawer";
 
 export interface TodoItem {
   id: string;
@@ -48,15 +51,24 @@ export function SubjectTodoPanel({
   subjects,
   todos,
   sessions,
+  notes = [],
+  flashcards = [],
+  exams = [],
   onFocusTask,
+  onUndoableDelete,
   onRefresh,
 }: {
   subjects: SubjectRecord[];
   todos: TodoItem[];
   sessions: SessionLogItem[];
-  onFocusTask: (taskTitle: string) => void;
+  notes?: NoteRecord[];
+  flashcards?: FlashcardRecord[];
+  exams?: ExamRecord[];
+  onFocusTask?: (title: string) => void;
+  onUndoableDelete?: (label: string, onUndo: () => Promise<void>) => void;
   onRefresh: () => void;
 }) {
+  const [hubSubject, setHubSubject] = useState<SubjectRecord | null>(null);
   const [view, setView] = useState<"list" | "kanban" | "eisenhower">("list");
   const [subjectName, setSubjectName] = useState("");
   const [subjectColor, setSubjectColor] = useState(SWATCHES[0] ?? "#2563eb");
@@ -162,8 +174,24 @@ export function SubjectTodoPanel({
   };
 
   const deleteTodo = async (id: string) => {
+    const target = todos.find((t) => t.id === id);
     await fetch(`/api/todos/${id}`, { method: "DELETE" });
     onRefresh();
+    if (target && onUndoableDelete) {
+      onUndoableDelete(`Đã xóa việc "${target.title}"`, async () => {
+        await fetch("/api/todos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: target.title,
+            priority: target.priority,
+            subjectId: target.subjectId ?? undefined,
+            dueDate: target.dueDate ?? undefined,
+          }),
+        });
+        onRefresh();
+      });
+    }
   };
 
   const normalizedStatus = (t: TodoItem): "todo" | "in_progress" | "done" =>
@@ -181,6 +209,16 @@ export function SubjectTodoPanel({
 
   return (
     <div className="space-y-6">
+      <SubjectHubDrawer
+        subject={hubSubject}
+        sessions={sessions}
+        todos={todos}
+        notes={notes}
+        flashcards={flashcards}
+        exams={exams}
+        onClose={() => setHubSubject(null)}
+        onFocusSubject={(title) => onFocusTask?.(title)}
+      />
       <div className="grid gap-6 lg:grid-cols-12">
         <section className="glass-card card-lift rounded-2xl p-6 lg:col-span-4">
           <div className="flex items-center gap-2">
@@ -246,13 +284,18 @@ export function SubjectTodoPanel({
                   className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3"
                 >
                   <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="flex items-center gap-2 font-medium text-[var(--text-primary)]">
+                    <button
+                      type="button"
+                      onClick={() => setHubSubject(sub)}
+                      title="Mở bảng chi tiết môn học (Subject Hub)"
+                      className="flex items-center gap-2 text-left font-medium text-[var(--text-primary)] hover:text-[var(--accent)]"
+                    >
                       <span
                         className="h-2.5 w-2.5 rounded-full"
                         style={{ backgroundColor: sub.color }}
                       />
-                      {sub.name}
-                    </span>
+                      <span className="underline-offset-2 hover:underline">{sub.name}</span>
+                    </button>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-[11px] text-[var(--text-muted)]">
                         {loggedHours}h/{sub.targetHours}h

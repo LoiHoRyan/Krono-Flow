@@ -26,6 +26,9 @@ import {
   HelpCircle,
   Bot,
   X,
+  Pin,
+  Undo2,
+  Terminal,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { applyThemeToDocument, WALLPAPERS } from "@/lib/themes";
@@ -36,6 +39,8 @@ import { QuickScratchpad } from "@/components/QuickScratchpad";
 import { QuickCaptureModal } from "@/components/QuickCaptureModal";
 import { ShortcutsModal } from "@/components/ShortcutsModal";
 import { AiCopilotDrawer } from "@/components/AiCopilotDrawer";
+import { WeeklyReviewModal } from "@/components/WeeklyReviewModal";
+import { OnboardingModal } from "@/components/OnboardingModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -168,26 +173,69 @@ interface WorkspaceProps {
 function KronoFlowWorkspace(props: WorkspaceProps) {
   const { lang, t } = useLang();
   const [tab, setTab] = useState<TabId>("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarMode, setSidebarMode] = useState<"full" | "compact" | "hidden">("full");
+  const [pinnedTabs, setPinnedTabs] = useState<TabId[]>([]);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [cmdQuery, setCmdQuery] = useState("");
   const [padOpen, setPadOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [confettiKey, setConfettiKey] = useState(0);
   const [focusedTaskTitle, setFocusedTaskTitle] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; onUndo?: () => Promise<void> } | null>(null);
 
   const notify = useCallback((msg: string) => {
-    setToast(msg);
+    setToast({ msg });
     setConfettiKey((k) => k + 1);
-    setTimeout(() => setToast(null), 2800);
+    setTimeout(() => setToast((cur) => (cur?.msg === msg ? null : cur)), 3000);
+  }, []);
+
+  const notifyUndoable = useCallback((msg: string, onUndo: () => Promise<void>) => {
+    setToast({ msg, onUndo });
+    setTimeout(() => setToast((cur) => (cur?.msg === msg ? null : cur)), 5500);
   }, []);
 
   useEffect(() => {
-    applyThemeToDocument(props.themeId, props.customAccent, props.fontStyle, props.borderRadius);
+    try {
+      const savedPins = localStorage.getItem("kronoflow-pinned-nav");
+      if (savedPins) setPinnedTabs(JSON.parse(savedPins));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    if (
+      props.user &&
+      props.subjects.length === 0 &&
+      props.sessions.length === 0 &&
+      !localStorage.getItem("kronoflow-onboarded")
+    ) {
+      setOnboardingOpen(true);
+    }
+  }, [props.user, props.subjects.length, props.sessions.length]);
+
+  const togglePinTab = (id: TabId) => {
+    const next = pinnedTabs.includes(id)
+      ? pinnedTabs.filter((x) => x !== id)
+      : [...pinnedTabs, id].slice(0, 4);
+    setPinnedTabs(next);
+    localStorage.setItem("kronoflow-pinned-nav", JSON.stringify(next));
+  };
+
+  const cycleSidebar = () => {
+    setSidebarMode((m) => (m === "full" ? "compact" : m === "compact" ? "hidden" : "full"));
+  };
+
+  useEffect(() => {
+    const autoMode = localStorage.getItem("kronoflow-auto-theme") === "on";
+    const hr = new Date().getHours();
+    const effectiveTheme = autoMode ? (hr >= 19 || hr < 6 ? "nord-slate" : "pure-white") : props.themeId;
+    applyThemeToDocument(effectiveTheme, props.customAccent, props.fontStyle, props.borderRadius);
     const savedDensity = localStorage.getItem("kronoflow-density");
     document.documentElement.classList.toggle("compact-ui", savedDensity === "compact");
   }, [props.themeId, props.customAccent, props.fontStyle, props.borderRadius]);
@@ -215,7 +263,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         setPadOpen((v) => !v);
       } else if (e.key.toLowerCase() === "b" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        setSidebarOpen((v) => !v);
+        setSidebarMode((m) => (m === "full" ? "compact" : m === "compact" ? "hidden" : "full"));
       } else if (e.key.toLowerCase() === "q" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         setQuickOpen((v) => !v);
@@ -255,7 +303,8 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-v23-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-v25-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    localStorage.setItem("kronoflow-last-backup", new Date().toISOString());
     a.click();
     URL.revokeObjectURL(url);
     notify("Đã tải xuống tệp sao lưu JSON!");
@@ -293,6 +342,23 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onNotify={notify}
         onRefresh={props.onRefresh}
       />
+      <WeeklyReviewModal
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        sessions={props.sessions}
+        todos={props.todos}
+        onRefresh={props.onRefresh}
+        onNotify={notify}
+      />
+      <OnboardingModal
+        open={onboardingOpen}
+        onClose={() => setOnboardingOpen(false)}
+        onApplyTheme={(th) =>
+          props.onApplyLocalTheme(th, props.wallpaper, props.customAccent, props.fontStyle, props.borderRadius)
+        }
+        onRefresh={props.onRefresh}
+        onNotify={notify}
+      />
       <QuickCaptureModal
         open={quickOpen}
         onClose={() => setQuickOpen(false)}
@@ -320,41 +386,50 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         </button>
       </div>
 
-      {/* FIXED FULL-HIDE SIDEBAR (0px hoàn toàn khi bấm ẩn) */}
+      {/* SIDEBAR 3 CHẾ ĐỘ: Đầy đủ (256px) -> Thu gọn icon (64px) -> Ẩn hoàn toàn (0px) */}
       <aside
         className={cn(
           "hidden shrink-0 flex-col justify-between bg-[var(--bg-surface)] transition-all duration-300 ease-out lg:flex",
-          sidebarOpen
+          sidebarMode === "full"
             ? "w-64 border-r border-[var(--border-subtle)] p-4 opacity-100"
+            : sidebarMode === "compact"
+            ? "w-16 border-r border-[var(--border-subtle)] px-2 py-4 opacity-100 items-center"
             : "pointer-events-none w-0 overflow-hidden border-r-0 p-0 opacity-0"
         )}
       >
-        <div className="w-56">
-          <div className="flex items-center gap-3 px-1.5 py-1">
+        <div className={sidebarMode === "full" ? "w-56" : "w-full"}>
+          <div
+            className={cn(
+              "flex items-center py-1",
+              sidebarMode === "full" ? "gap-3 px-1.5" : "justify-center"
+            )}
+          >
             <img
               src="/logo.png"
               alt="KronoFlow Logo"
               className="h-9 w-9 shrink-0 rounded-xl border border-[var(--border-subtle)] bg-white object-contain p-0.5 shadow-sm"
             />
-            <h1 className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">
-              KronoFlow
-            </h1>
+            {sidebarMode === "full" && (
+              <h1 className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">
+                KronoFlow
+              </h1>
+            )}
           </div>
 
           <nav className="mt-5 space-y-4">
-            {NAV_GROUPS.map((grp) => (
-              <div key={grp.titleEn}>
-                <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                  {lang === "vi" ? grp.titleVi : grp.titleEn}
+            {sidebarMode === "full" && pinnedTabs.length > 0 && (
+              <div>
+                <div className="mb-1 flex items-center gap-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-amber-500">
+                  <Pin className="h-3 w-3" /> Đã ghim
                 </div>
                 <div className="space-y-0.5">
-                  {grp.ids.map((id) => {
-                    const item = NAV_DEF.find((n) => n.id === id);
+                  {pinnedTabs.map((pid) => {
+                    const item = NAV_DEF.find((n) => n.id === pid);
                     if (!item) return null;
                     const Icon = item.icon;
                     return (
                       <button
-                        key={item.id}
+                        key={`pin-${item.id}`}
                         type="button"
                         onClick={() => setTab(item.id)}
                         className={cn(
@@ -371,28 +446,81 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                   })}
                 </div>
               </div>
+            )}
+
+            {NAV_GROUPS.map((grp) => (
+              <div key={grp.titleEn}>
+                {sidebarMode === "full" && (
+                  <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                    {lang === "vi" ? grp.titleVi : grp.titleEn}
+                  </div>
+                )}
+                <div className="space-y-0.5">
+                  {grp.ids.map((id) => {
+                    const item = NAV_DEF.find((n) => n.id === id);
+                    if (!item) return null;
+                    const Icon = item.icon;
+                    const isPinned = pinnedTabs.includes(item.id);
+                    return (
+                      <div key={item.id} className="group flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => setTab(item.id)}
+                          title={t(`nav_${item.id}`)}
+                          className={cn(
+                            "flex flex-1 items-center rounded-xl text-left text-[13px] font-medium",
+                            sidebarMode === "full" ? "gap-2.5 px-3 py-2" : "justify-center p-2.5",
+                            tab === item.id
+                              ? "bg-[var(--accent-soft)] text-[var(--accent)] shadow-sm"
+                              : "text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
+                          )}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          {sidebarMode === "full" && (
+                            <span className="truncate">{t(`nav_${item.id}`)}</span>
+                          )}
+                        </button>
+                        {sidebarMode === "full" && (
+                          <button
+                            type="button"
+                            onClick={() => togglePinTab(item.id)}
+                            title={isPinned ? "Bỏ ghim" : "Ghim lên đầu"}
+                            className={cn(
+                              "ml-0.5 rounded-lg p-1 text-[var(--text-muted)] transition-opacity hover:text-amber-500",
+                              isPinned ? "opacity-100 text-amber-500" : "opacity-0 group-hover:opacity-100"
+                            )}
+                          >
+                            <Pin className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </nav>
         </div>
 
-        <div className="w-56 border-t border-[var(--border-subtle)] pt-4">
-          <div className="flex items-center justify-between px-1 text-xs text-[var(--text-muted)]">
-            <span className="flex items-center gap-1.5">
+        <div className={cn("border-t border-[var(--border-subtle)] pt-4", sidebarMode === "full" ? "w-56" : "w-full")}>
+          <div className={cn("flex items-center text-xs text-[var(--text-muted)]", sidebarMode === "full" ? "justify-between px-1" : "flex-col gap-2")}>
+            <span className="flex items-center gap-1.5" title={props.dbStatus === "connected" ? "PostgreSQL" : "Offline"}>
               <Database
                 className={cn(
                   "h-3.5 w-3.5",
                   props.dbStatus === "connected" ? "text-emerald-500" : "text-rose-500"
                 )}
               />
-              {props.dbStatus === "connected" ? "PostgreSQL" : "Offline"}
+              {sidebarMode === "full" && (props.dbStatus === "connected" ? "PostgreSQL" : "Offline")}
             </span>
             <button
               type="button"
               onClick={props.onLogout}
+              title={t("logout")}
               className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-rose-500"
             >
               <LogOut className="h-3.5 w-3.5" />
-              {t("logout")}
+              {sidebarMode === "full" && t("logout")}
             </button>
           </div>
         </div>
@@ -403,14 +531,14 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setSidebarOpen((v) => !v)}
-              title={sidebarOpen ? t("collapseSidebar") : t("expandSidebar")}
+              onClick={cycleSidebar}
+              title="Đổi chế độ thanh bên: Đầy đủ → Thu gọn Icon → Ẩn (Phím B)"
               className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] lg:inline-flex"
             >
-              {sidebarOpen ? (
-                <PanelLeftClose className="h-4 w-4" />
-              ) : (
+              {sidebarMode === "hidden" ? (
                 <PanelLeftOpen className="h-4 w-4" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4" />
               )}
             </button>
             <div>
@@ -494,6 +622,8 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               exams={props.exams}
               timeBlocks={props.timeBlocks}
               notes={props.notes}
+              resources={props.resources}
+              onOpenWeeklyReview={() => setReviewOpen(true)}
               onJumpFocus={(title) => {
                 if (title) setFocusedTaskTitle(title);
                 setTab("focus");
@@ -525,10 +655,14 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               subjects={props.subjects}
               todos={props.todos}
               sessions={props.sessions}
+              notes={props.notes}
+              flashcards={props.flashcards}
+              exams={props.exams}
               onFocusTask={(title) => {
                 setFocusedTaskTitle(title);
                 setTab("focus");
               }}
+              onUndoableDelete={notifyUndoable}
               onRefresh={props.onRefresh}
             />
           )}
@@ -560,6 +694,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               notes={props.notes}
               flashcards={props.flashcards}
               mistakes={props.mistakes}
+              onUndoableDelete={notifyUndoable}
               onRefresh={props.onRefresh}
             />
           )}
@@ -583,6 +718,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               user={props.user}
               onApplyLocalTheme={props.onApplyLocalTheme}
               onExportBackup={handleExportBackup}
+              onOpenOnboarding={() => setOnboardingOpen(true)}
               onRefresh={props.onRefresh}
             />
           )}
@@ -590,9 +726,25 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       </div>
 
       {toast && (
-        <div className="animate-pop fixed bottom-20 right-5 z-50 flex items-center gap-2 rounded-xl border border-[var(--accent)]/40 bg-[var(--bg-surface)] px-4 py-2.5 text-xs font-medium text-[var(--text-primary)] shadow-xl lg:bottom-6">
+        <div className="animate-pop fixed bottom-20 right-5 z-50 flex items-center gap-2.5 rounded-xl border border-[var(--accent)]/40 bg-[var(--bg-surface)] px-4 py-2.5 text-xs font-medium text-[var(--text-primary)] shadow-xl lg:bottom-6">
           <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          {toast}
+          <span>{toast.msg}</span>
+          {toast.onUndo && (
+            <button
+              type="button"
+              onClick={async () => {
+                const fn = toast.onUndo;
+                setToast(null);
+                if (fn) {
+                  await fn();
+                  notify("Đã hoàn tác khôi phục dữ liệu!");
+                }
+              }}
+              className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent)] px-2.5 py-1 text-[11px] font-semibold text-white hover:opacity-90"
+            >
+              <Undo2 className="h-3 w-3" /> Hoàn tác
+            </button>
+          )}
         </div>
       )}
 
@@ -618,9 +770,88 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               autoFocus
               value={cmdQuery}
               onChange={(e) => setCmdQuery(e.target.value)}
-              placeholder="Tìm nhanh tab, công việc, ghi chú, tài liệu..."
+              onKeyDown={async (e) => {
+                if (e.key === "Enter" && cmdQuery.trim().startsWith(">")) {
+                  const cmd = cmdQuery.trim().slice(1).trim();
+                  const lower = cmd.toLowerCase();
+                  if (lower.startsWith("todo ") && cmd.slice(5).trim()) {
+                    await fetch("/api/todos", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ title: cmd.slice(5).trim(), priority: "medium" }),
+                    });
+                    notify(`Đã thêm việc: ${cmd.slice(5).trim()}`);
+                    props.onRefresh();
+                  } else if (lower.startsWith("theme dark")) {
+                    props.onApplyLocalTheme("nord-slate", props.wallpaper, props.customAccent, props.fontStyle, props.borderRadius);
+                    notify("Đã chuyển sang chủ đề Tối (Nord Slate)");
+                  } else if (lower.startsWith("theme light")) {
+                    props.onApplyLocalTheme("pure-white", props.wallpaper, props.customAccent, props.fontStyle, props.borderRadius);
+                    notify("Đã chuyển sang chủ đề Sáng (Pure White)");
+                  } else if (lower.startsWith("pomodoro") || lower.startsWith("focus")) {
+                    setTab("focus");
+                  } else if (lower.startsWith("backup")) {
+                    handleExportBackup();
+                  } else if (lower.startsWith("review")) {
+                    setReviewOpen(true);
+                  } else if (lower.startsWith("ai")) {
+                    setAiOpen(true);
+                  }
+                  setCmdOpen(false);
+                  setCmdQuery("");
+                }
+              }}
+              placeholder="Tìm nhanh hoặc gõ lệnh: > todo ..., > theme dark, > review, > backup"
               className="mt-3 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
             />
+            <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => {
+                  setTab("focus");
+                  setCmdOpen(false);
+                }}
+                className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <Terminal className="h-3 w-3" /> &gt; Pomodoro 25p
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setReviewOpen(true);
+                  setCmdOpen(false);
+                }}
+                className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                &gt; Tổng kết tuần
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  props.onApplyLocalTheme(
+                    props.themeId === "pure-white" ? "nord-slate" : "pure-white",
+                    props.wallpaper,
+                    props.customAccent,
+                    props.fontStyle,
+                    props.borderRadius
+                  );
+                  setCmdOpen(false);
+                }}
+                className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                &gt; Đổi Sáng/Tối
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleExportBackup();
+                  setCmdOpen(false);
+                }}
+                className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                &gt; Sao lưu JSON
+              </button>
+            </div>
             <div className="mt-2 max-h-80 space-y-1 overflow-y-auto">
               {cmdQuery.trim().length > 0 && (
                 <>

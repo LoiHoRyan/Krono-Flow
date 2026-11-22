@@ -18,6 +18,8 @@ import {
   Maximize2,
   AlertTriangle,
   X,
+  Volume2,
+  Columns2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarkdownView } from "./MarkdownView";
@@ -55,12 +57,14 @@ export function NotesFlashcardsPanel({
   notes,
   flashcards,
   mistakes = [],
+  onUndoableDelete,
   onRefresh,
 }: {
   subjects: SubjectOption[];
   notes: NoteRecord[];
   flashcards: FlashcardRecord[];
   mistakes?: MistakeRecord[];
+  onUndoableDelete?: (label: string, onUndo: () => Promise<void>) => void;
   onRefresh: () => void;
 }) {
   const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz" | "typing" | "mistakes">("notes");
@@ -79,6 +83,22 @@ export function NotesFlashcardsPanel({
 
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
+  const [splitPreview, setSplitPreview] = useState(false);
+  const [speechLang, setSpeechLang] = useState<"vi-VN" | "en-US">("vi-VN");
+  const [autoSpeak, setAutoSpeak] = useState(false);
+
+  const speakText = (text: string) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = speechLang;
+    u.rate = 0.96;
+    window.speechSynthesis.speak(u);
+  };
+
+  const insertMdSnippet = (snippet: string) => {
+    setNoteContent((prev) => (prev ? `${prev}${snippet}` : snippet.trimStart()));
+  };
   const [noteSubject, setNoteSubject] = useState("");
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -177,9 +197,23 @@ export function NotesFlashcardsPanel({
   };
 
   const deleteNote = async (id: string) => {
-    if (!window.confirm("Bạn có chắc muốn xóa ghi chú này?")) return;
+    const target = notes.find((n) => n.id === id);
     await fetch(`/api/notes/${id}`, { method: "DELETE" });
     onRefresh();
+    if (target && onUndoableDelete) {
+      onUndoableDelete(`Đã xóa ghi chú "${target.title}"`, async () => {
+        await fetch("/api/notes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: target.title,
+            content: target.content,
+            subjectId: target.subjectId ?? undefined,
+          }),
+        });
+        onRefresh();
+      });
+    }
   };
 
   const handleCreateCard = async (e: React.FormEvent) => {
@@ -220,10 +254,24 @@ export function NotesFlashcardsPanel({
   };
 
   const deleteCard = async (id: string) => {
+    const target = flashcards.find((c) => c.id === id);
     await fetch(`/api/flashcards/${id}`, { method: "DELETE" });
-    setCardIdx(0);
     setFlipped(false);
     onRefresh();
+    if (target && onUndoableDelete) {
+      onUndoableDelete("Đã xóa 1 thẻ Flashcard", async () => {
+        await fetch("/api/flashcards", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            front: target.front,
+            back: target.back,
+            subjectId: target.subjectId ?? undefined,
+          }),
+        });
+        onRefresh();
+      });
+    }
   };
 
   const filteredNotes = notes.filter(
@@ -370,13 +418,50 @@ export function NotesFlashcardsPanel({
                 </option>
               ))}
             </select>
-            <textarea
-              rows={6}
-              value={noteContent}
-              onChange={(e) => setNoteContent(e.target.value)}
-              placeholder="Hỗ trợ Markdown: # Tiêu đề, **in đậm**, `code`, - [ ] checklist..."
-              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
-            />
+            <div className="flex flex-wrap items-center justify-between gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1.5 text-[11px]">
+              <div className="flex flex-wrap gap-1">
+                <button type="button" onClick={() => insertMdSnippet(" **in đậm** ")} className="rounded px-1.5 py-0.5 font-bold hover:bg-[var(--bg-elevated)]">B</button>
+                <button type="button" onClick={() => insertMdSnippet(" *nghiêng* ")} className="rounded px-1.5 py-0.5 italic hover:bg-[var(--bg-elevated)]">I</button>
+                <button type="button" onClick={() => insertMdSnippet(" `code` ")} className="rounded px-1.5 py-0.5 font-mono hover:bg-[var(--bg-elevated)]">&lt;/&gt;</button>
+                <button type="button" onClick={() => insertMdSnippet("\n## Tiêu đề mục\n")} className="rounded px-1.5 py-0.5 hover:bg-[var(--bg-elevated)]">H2</button>
+                <button type="button" onClick={() => insertMdSnippet("\n- [ ] Việc cần làm")} className="rounded px-1.5 py-0.5 hover:bg-[var(--bg-elevated)]">☑ List</button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSplitPreview((v) => !v)}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-lg px-2 py-0.5 font-medium",
+                  splitPreview ? "bg-[var(--accent)] text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]"
+                )}
+              >
+                <Columns2 className="h-3 w-3" />
+                {splitPreview ? "Đang chia đôi" : "Chia đôi xem trước"}
+              </button>
+            </div>
+            <div className={cn("grid gap-2.5", splitPreview ? "sm:grid-cols-2" : "grid-cols-1")}>
+              <textarea
+                rows={7}
+                value={noteContent}
+                onChange={(e) => setNoteContent(e.target.value)}
+                placeholder="Hỗ trợ Markdown: # Tiêu đề, **in đậm**, `code`, - [ ] checklist..."
+                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+              />
+              {splitPreview && (
+                <div className="max-h-[196px] overflow-y-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3 text-xs">
+                  {noteContent.trim() ? (
+                    <MarkdownView content={noteContent} />
+                  ) : (
+                    <span className="text-[var(--text-muted)]">Xem trước Markdown trực tiếp...</span>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
+              <span>
+                {noteContent.trim() ? noteContent.trim().split(/\s+/).length : 0} từ · ~
+                {Math.max(1, Math.ceil((noteContent.trim() ? noteContent.trim().split(/\s+/).length : 0) / 180))} phút đọc
+              </span>
+            </div>
             <button
               type="submit"
               className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-medium"
@@ -759,10 +844,44 @@ export function NotesFlashcardsPanel({
                   </div>
                 </div>
 
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-[11px]">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => speakText(flipped ? activeCard.back : activeCard.front)}
+                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent-soft)] px-2 py-1 font-medium text-[var(--accent)]"
+                    >
+                      <Volume2 className="h-3.5 w-3.5" />
+                      Đọc {flipped ? "đáp án" : "câu hỏi"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSpeechLang((l) => (l === "vi-VN" ? "en-US" : "vi-VN"))}
+                      className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 font-mono text-[10px] text-[var(--text-secondary)]"
+                    >
+                      {speechLang === "vi-VN" ? "Giọng VI" : "Voice EN"}
+                    </button>
+                  </div>
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 text-[var(--text-secondary)]">
+                    <input
+                      type="checkbox"
+                      checked={autoSpeak}
+                      onChange={(e) => setAutoSpeak(e.target.checked)}
+                    />
+                    Tự đọc khi lật
+                  </label>
+                </div>
+
                 {/* 3D FLIP CARD */}
                 <div
-                  onClick={() => setFlipped((f) => !f)}
-                  className="perspective-1000 mt-4 h-[220px] w-full cursor-pointer"
+                  onClick={() => {
+                    const nextFlipped = !flipped;
+                    setFlipped(nextFlipped);
+                    if (autoSpeak) {
+                      speakText(nextFlipped ? activeCard.back : activeCard.front);
+                    }
+                  }}
+                  className="perspective-1000 mt-3 h-[220px] w-full cursor-pointer"
                 >
                   <div
                     className={cn(

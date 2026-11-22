@@ -13,6 +13,11 @@ import {
   Keyboard,
   Timer as TimerIcon,
   Save,
+  Lightbulb,
+  ListOrdered,
+  ArrowRight,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { ambientEngine, AmbientChannel, BellStyle } from "@/lib/ambient-audio";
@@ -58,6 +63,85 @@ export function PomodoroTimer({
   const timer = useTimer();
   const [clockTab, setClockTab] = useState<"pomodoro" | "exam" | "stopwatch">("pomodoro");
   const [zenMode, setZenMode] = useState(false);
+  const [zenTheme, setZenTheme] = useState<"aurora" | "sunset" | "ocean" | "minimal">("aurora");
+  const [parkingInput, setParkingInput] = useState("");
+  const [parkedItems, setParkedItems] = useState<{ id: string; text: string }[]>([]);
+  const [flowQueue, setFlowQueue] = useState<
+    { id: string; label: string; mode: "pomodoro" | "deep_work" | "short_break" | "long_break"; subjectId: string }[]
+  >([]);
+  const [flowIdx, setFlowIdx] = useState(0);
+  const [flowSubject, setFlowSubject] = useState("");
+  const [flowMode, setFlowMode] = useState<"pomodoro" | "deep_work" | "short_break" | "long_break">("pomodoro");
+
+  useEffect(() => {
+    try {
+      const savedPark = localStorage.getItem("kronoflow-parking-lot");
+      if (savedPark) setParkedItems(JSON.parse(savedPark));
+      const savedFlow = localStorage.getItem("kronoflow-study-flow");
+      if (savedFlow) setFlowQueue(JSON.parse(savedFlow));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const saveParked = (next: { id: string; text: string }[]) => {
+    setParkedItems(next);
+    localStorage.setItem("kronoflow-parking-lot", JSON.stringify(next));
+  };
+
+  const addParked = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!parkingInput.trim()) return;
+    saveParked([{ id: String(Date.now()), text: parkingInput.trim() }, ...parkedItems].slice(0, 12));
+    setParkingInput("");
+  };
+
+  const promoteParkedToTodo = async (item: { id: string; text: string }) => {
+    await fetch("/api/todos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: item.text, priority: "medium" }),
+    });
+    saveParked(parkedItems.filter((x) => x.id !== item.id));
+    onSessionSaved?.();
+  };
+
+  const saveFlow = (
+    next: { id: string; label: string; mode: "pomodoro" | "deep_work" | "short_break" | "long_break"; subjectId: string }[]
+  ) => {
+    setFlowQueue(next);
+    localStorage.setItem("kronoflow-study-flow", JSON.stringify(next));
+  };
+
+  const addFlowStep = () => {
+    const subName = subjects.find((s) => s.id === flowSubject)?.name;
+    const modeLabel =
+      flowMode === "pomodoro"
+        ? "25p Pomodoro"
+        : flowMode === "deep_work"
+        ? "50p Deep Work"
+        : flowMode === "short_break"
+        ? "5p Nghỉ ngắn"
+        : "15p Nghỉ dài";
+    saveFlow([
+      ...flowQueue,
+      {
+        id: String(Date.now()),
+        label: subName ? `${modeLabel} · ${subName}` : modeLabel,
+        mode: flowMode,
+        subjectId: flowSubject,
+      },
+    ]);
+  };
+
+  const runFlowStep = (idx: number) => {
+    const step = flowQueue[idx];
+    if (!step) return;
+    setFlowIdx(idx);
+    timer.switchMode(step.mode);
+    if (step.subjectId) timer.setSubjectId(step.subjectId);
+    timer.setNotes(step.label);
+  };
   const [eyeCare, setEyeCare] = useState(true);
   const [bellStyle, setBellStyle] = useState<BellStyle>("soft");
 
@@ -138,12 +222,58 @@ export function PomodoroTimer({
   const strokeDashoffset = circumference * (1 - progress);
   const subjectMap = new Map(subjects.map((s) => [s.id, s]));
 
+  const zenBackdropStyle: React.CSSProperties | undefined = zenMode
+    ? {
+        backgroundImage:
+          zenTheme === "aurora"
+            ? "radial-gradient(circle at 20% 20%, rgba(56,189,248,0.22), transparent 50%), radial-gradient(circle at 80% 80%, rgba(139,92,246,0.24), transparent 50%), linear-gradient(135deg, #0f172a, #1e1b4b)"
+            : zenTheme === "sunset"
+            ? "radial-gradient(circle at 25% 25%, rgba(251,146,60,0.28), transparent 50%), radial-gradient(circle at 75% 75%, rgba(244,63,94,0.25), transparent 50%), linear-gradient(135deg, #1c1917, #3b1d2e)"
+            : zenTheme === "ocean"
+            ? "radial-gradient(circle at 30% 20%, rgba(45,212,191,0.22), transparent 55%), linear-gradient(135deg, #042f2e, #0f172a)"
+            : undefined,
+      }
+    : undefined;
+
   return (
-    <div className={cn("grid gap-6", zenMode ? "grid-cols-1" : "lg:grid-cols-12")}>
+    <div
+      className={cn(
+        "grid gap-6",
+        zenMode
+          ? "fixed inset-0 z-50 flex flex-col items-center justify-center overflow-y-auto p-6 backdrop-blur-xl bg-[var(--bg-canvas)]"
+          : "lg:grid-cols-12"
+      )}
+      style={zenBackdropStyle}
+    >
+      {zenMode && (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-[11px] text-white backdrop-blur-md">
+          <span className="mr-1 opacity-75">Zen Cinema:</span>
+          {(
+            [
+              ["aurora", "Aurora"],
+              ["sunset", "Hoàng hôn"],
+              ["ocean", "Đại dương"],
+              ["minimal", "Tối giản"],
+            ] as const
+          ).map(([k, lb]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setZenTheme(k)}
+              className={cn(
+                "rounded-full px-2.5 py-0.5 transition-colors",
+                zenTheme === k ? "bg-white text-slate-900 font-semibold" : "hover:bg-white/15"
+              )}
+            >
+              {lb}
+            </button>
+          ))}
+        </div>
+      )}
       <section
         className={cn(
           "glass-card card-lift rounded-2xl p-6",
-          zenMode ? "mx-auto w-full max-w-2xl" : "lg:col-span-7"
+          zenMode ? "mx-auto w-full max-w-2xl shadow-2xl" : "lg:col-span-7"
         )}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -382,6 +512,140 @@ export function PomodoroTimer({
               <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-500/10 px-3.5 py-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
                 {timer.statusMessage}
+              </div>
+            )}
+
+            {/* BÃI ĐỖ XAO NHÃNG (Distraction Parking Lot) */}
+            <div className="mt-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3.5 text-left">
+              <div className="flex items-center justify-between text-xs font-medium text-[var(--text-primary)]">
+                <span className="flex items-center gap-1.5">
+                  <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+                  Bãi đỗ xao nhãng ({parkedItems.length})
+                </span>
+                <span className="text-[10px] text-[var(--text-muted)]">Ghi nhanh để không rời phiên</span>
+              </div>
+              <form onSubmit={addParked} className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  value={parkingInput}
+                  onChange={(e) => setParkingInput(e.target.value)}
+                  placeholder="Chợt nhớ việc gì? Đỗ tạm vào đây..."
+                  className="flex-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                />
+                <button
+                  type="submit"
+                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)]"
+                >
+                  Đỗ tạm
+                </button>
+              </form>
+              {parkedItems.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {parkedItems.map((it) => (
+                    <li
+                      key={it.id}
+                      className="flex items-center justify-between gap-2 rounded-lg bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs"
+                    >
+                      <span className="truncate text-[var(--text-secondary)]">{it.text}</span>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => promoteParkedToTodo(it)}
+                          className="inline-flex items-center gap-0.5 rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent)]"
+                        >
+                          <ArrowRight className="h-3 w-3" /> Todo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => saveParked(parkedItems.filter((x) => x.id !== it.id))}
+                          className="text-[var(--text-muted)] hover:text-rose-500"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* CHUỖI POMODORO TỰ ĐỘNG (Study Flow Queue) */}
+            {!zenMode && (
+              <div className="mt-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3.5 text-left">
+                <div className="flex items-center justify-between text-xs font-medium text-[var(--text-primary)]">
+                  <span className="flex items-center gap-1.5">
+                    <ListOrdered className="h-3.5 w-3.5 text-[var(--accent)]" />
+                    Chuỗi phiên học (Study Flow · {flowQueue.length} bước)
+                  </span>
+                  {flowQueue.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => runFlowStep((flowIdx + 1) % flowQueue.length)}
+                      className="text-[11px] font-medium text-[var(--accent)] hover:underline"
+                    >
+                      Bước tiếp theo →
+                    </button>
+                  )}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <select
+                    value={flowMode}
+                    onChange={(e) =>
+                      setFlowMode(e.target.value as "pomodoro" | "deep_work" | "short_break" | "long_break")
+                    }
+                    className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-[11px] text-[var(--text-primary)]"
+                  >
+                    <option value="pomodoro">25p Pomodoro</option>
+                    <option value="deep_work">50p Deep Work</option>
+                    <option value="short_break">5p Nghỉ ngắn</option>
+                    <option value="long_break">15p Nghỉ dài</option>
+                  </select>
+                  <select
+                    value={flowSubject}
+                    onChange={(e) => setFlowSubject(e.target.value)}
+                    className="flex-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-[11px] text-[var(--text-primary)]"
+                  >
+                    <option value="">-- Môn học --</option>
+                    {subjects.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={addFlowStep}
+                    className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--accent)]"
+                  >
+                    <Plus className="h-3 w-3" /> Thêm bước
+                  </button>
+                </div>
+                {flowQueue.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {flowQueue.map((st, idx) => (
+                      <div
+                        key={st.id}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px]",
+                          idx === flowIdx
+                            ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] font-medium"
+                            : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)]"
+                        )}
+                      >
+                        <button type="button" onClick={() => runFlowStep(idx)}>
+                          {idx + 1}. {st.label}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => saveFlow(flowQueue.filter((x) => x.id !== st.id))}
+                          className="text-[var(--text-muted)] hover:text-rose-500"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>

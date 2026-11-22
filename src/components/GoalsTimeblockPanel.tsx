@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, Circle, Clock, Flag, Plus, Sparkles, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CheckCircle2, Circle, Clock, Flag, Plus, Sparkles, Trash2,
+  LayoutGrid,
+  List,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
 
@@ -38,6 +41,18 @@ export function GoalsTimeblockPanel({
 }) {
   const { lang } = useLang();
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [tbView, setTbView] = useState<"grid" | "list">("grid");
+  useEffect(() => {
+    const t = setInterval(() => {
+      const d = new Date();
+      setNowHm({ h: d.getHours(), m: d.getMinutes() });
+    }, 60000);
+    return () => clearInterval(t);
+  }, []);
+  const [nowHm, setNowHm] = useState(() => {
+    const d = new Date();
+    return { h: d.getHours(), m: d.getMinutes() };
+  });
   const [startTime, setStartTime] = useState("19:00");
   const [endTime, setEndTime] = useState("20:30");
   const [blockTitle, setBlockTitle] = useState("");
@@ -174,12 +189,36 @@ export function GoalsTimeblockPanel({
               {lang === "vi" ? "Chặn khung giờ trong ngày (Time Blocking)" : "Daily Time Blocking"}
             </h3>
           </div>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs text-[var(--text-primary)]"
-          />
+          <div className="flex items-center gap-1.5">
+            <div className="inline-flex rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-0.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setTbView("grid")}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-lg px-2 py-1 font-medium",
+                  tbView === "grid" ? "bg-[var(--accent)] text-white" : "text-[var(--text-muted)]"
+                )}
+              >
+                <LayoutGrid className="h-3 w-3" /> Lưới giờ
+              </button>
+              <button
+                type="button"
+                onClick={() => setTbView("list")}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-lg px-2 py-1 font-medium",
+                  tbView === "list" ? "bg-[var(--accent)] text-white" : "text-[var(--text-muted)]"
+                )}
+              >
+                <List className="h-3 w-3" /> Danh sách
+              </button>
+            </div>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs text-[var(--text-primary)]"
+            />
+          </div>
         </div>
 
         <form onSubmit={handleAddBlock} className="mt-4 flex flex-wrap gap-2">
@@ -211,6 +250,69 @@ export function GoalsTimeblockPanel({
           </button>
         </form>
 
+        {tbView === "grid" ? (
+          <div className="mt-4 max-h-[380px] overflow-y-auto rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2">
+            {Array.from({ length: 18 }, (_, i) => i + 6).map((hr) => {
+              const hrStr = String(hr).padStart(2, "0");
+              const slotBlocks = dayBlocks.filter((b) => b.startTime.startsWith(hrStr + ":"));
+              const isCurrentHour = nowHm.h === hr && selectedDate === new Date().toISOString().slice(0, 10);
+              return (
+                <div
+                  key={hr}
+                  className="relative flex min-h-[38px] items-start gap-2.5 border-b border-[var(--border-subtle)]/60 py-1.5 last:border-b-0"
+                >
+                  <span className="w-11 shrink-0 font-mono text-[10px] text-[var(--text-muted)]">
+                    {hrStr}:00
+                  </span>
+                  {isCurrentHour && (
+                    <div
+                      className="pointer-events-none absolute left-11 right-1 z-10 flex items-center"
+                      style={{ top: `${Math.min(85, Math.round((nowHm.m / 60) * 100))}%` }}
+                    >
+                      <span className="h-2 w-2 rounded-full bg-rose-500" />
+                      <span className="h-[1.5px] flex-1 bg-rose-500/80" />
+                    </div>
+                  )}
+                  <div className="flex flex-1 flex-wrap gap-1.5">
+                    {slotBlocks.map((b) => (
+                      <div
+                        key={b.id}
+                        className="flex flex-1 min-w-[160px] items-center justify-between gap-2 rounded-lg border-l-4 px-2.5 py-1.5 text-xs shadow-xs"
+                        style={{
+                          borderLeftColor: b.color || "var(--accent)",
+                          backgroundColor: "var(--bg-surface)",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleBlock(b)}
+                          className={cn(
+                            "truncate text-left font-medium",
+                            b.isCompleted
+                              ? "line-through text-[var(--text-muted)]"
+                              : "text-[var(--text-primary)]"
+                          )}
+                        >
+                          <span className="mr-1.5 font-mono text-[10px] text-[var(--accent)]">
+                            {b.startTime}–{b.endTime}
+                          </span>
+                          {b.title}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteBlock(b.id)}
+                          className="text-[var(--text-muted)] hover:text-rose-500"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
         <ul className="mt-5 space-y-2.5">
           {dayBlocks.length === 0 ? (
             <li className="rounded-xl border border-dashed border-[var(--border-subtle)] p-6 text-center text-xs text-[var(--text-muted)]">
@@ -261,6 +363,7 @@ export function GoalsTimeblockPanel({
             ))
           )}
         </ul>
+        )}
       </section>
 
       {/* SEMESTER GOALS */}

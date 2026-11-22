@@ -17,6 +17,10 @@ import {
   Moon,
   Dices,
   SlidersHorizontal,
+  AlertTriangle,
+  ExternalLink,
+  CalendarCheck2,
+  Pin,
 } from "lucide-react";
 import { computeLevelInfo } from "@/lib/themes";
 import { useLang } from "@/lib/i18n";
@@ -26,6 +30,7 @@ import type { TodoItem } from "./SubjectTodoPanel";
 import type { RoadmapRecord } from "./RoadmapPanel";
 import type { FlashcardRecord, NoteRecord } from "./NotesFlashcardsPanel";
 import type { TimeBlockRecord } from "./GoalsTimeblockPanel";
+import type { ResourceRecord } from "./HabitsVaultPanel";
 
 export interface UserProfile {
   id: string;
@@ -70,7 +75,9 @@ export function DashboardBento({
   exams,
   timeBlocks = [],
   notes = [],
+  resources = [],
   onJumpFocus,
+  onOpenWeeklyReview,
   onRefresh,
 }: {
   user: UserProfile | null;
@@ -82,9 +89,25 @@ export function DashboardBento({
   exams: ExamRecord[];
   timeBlocks?: TimeBlockRecord[];
   notes?: NoteRecord[];
+  resources?: ResourceRecord[];
   onJumpFocus: (taskTitle?: string) => void;
+  onOpenWeeklyReview?: () => void;
   onRefresh: () => void;
 }) {
+  const [pinnedResourceIds, setPinnedResourceIds] = useState<string[]>([]);
+  const [dismissedGuard, setDismissedGuard] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("kronoflow-vault-meta");
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, { pinned?: boolean }>;
+        setPinnedResourceIds(Object.entries(parsed).filter(([, v]) => v?.pinned).map(([k]) => k));
+      }
+    } catch {
+      // ignore
+    }
+  }, [resources]);
   const { lang } = useLang();
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [quoteIdx, setQuoteIdx] = useState(0);
@@ -258,8 +281,39 @@ export function DashboardBento({
   const spMins = Math.floor((spotlightDiff % 3600) / 60);
   const spSecs = spotlightDiff % 60;
 
+  const currentHour = new Date().getHours();
+  const showStreakGuard = !dismissedGuard && currentHour >= 21 && todayMinutes === 0;
+  const pinnedVault = resources.filter((r) => pinnedResourceIds.includes(r.id)).slice(0, 4);
+
   return (
     <div className="space-y-6">
+      {showStreakGuard && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs">
+          <div className="flex items-center gap-2.5 text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>
+              <strong>Cảnh báo giữ chuỗi (Streak Guard):</strong> Đã qua 21:00 nhưng hôm nay bạn chưa hoàn thành phiên tập trung nào.
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onJumpFocus("Phiên giữ chuỗi nhanh 15 phút")}
+              className="btn-primary rounded-lg px-3 py-1.5 text-[11px] font-medium"
+            >
+              Vào phiên nhanh
+            </button>
+            <button
+              type="button"
+              onClick={() => setDismissedGuard(true)}
+              className="rounded-lg px-2 py-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            >
+              Ẩn
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* LIVE HERO BRIEF */}
       <section className="glass-card relative overflow-hidden p-6 sm:p-7">
         <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
@@ -272,6 +326,16 @@ export function DashboardBento({
               <span className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1 font-mono text-xs text-[var(--accent)]">
                 {nowClock}
               </span>
+              {onOpenWeeklyReview && (
+                <button
+                  type="button"
+                  onClick={onOpenWeeklyReview}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-3 py-1 text-xs font-medium text-[var(--accent)] hover:opacity-90"
+                >
+                  <CalendarCheck2 className="h-3.5 w-3.5" />
+                  Tổng kết tuần
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-3">

@@ -10,6 +10,8 @@ import {
   Sparkles,
   Trash2,
   X,
+  ClipboardCheck,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
@@ -47,7 +49,63 @@ export function AiCopilotDrawer({
   onRefresh: () => void;
 }) {
   const { lang } = useLang();
-  const [aiTab, setAiTab] = useState<"chat" | "flashcards" | "roadmap">("chat");
+  const [aiTab, setAiTab] = useState<"chat" | "flashcards" | "roadmap" | "quiz">("chat");
+  const [quizTopic, setQuizTopic] = useState("");
+  const [quizCount, setQuizCount] = useState(5);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizData, setQuizData] = useState<
+    { question: string; options: string[]; correctIndex: number; explanation: string }[]
+  >([]);
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [savingMistakes, setSavingMistakes] = useState(false);
+
+  const handleGenerateQuiz = async () => {
+    if (!quizTopic.trim()) return;
+    setQuizLoading(true);
+    setQuizSubmitted(false);
+    setQuizAnswers({});
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (userKey.trim()) headers["x-gemini-key"] = userKey.trim();
+      const res = await fetch("/api/ai/quiz", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ topic: quizTopic.trim(), count: quizCount }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setQuizData(json.data?.questions ?? []);
+      }
+    } finally {
+      setQuizLoading(false);
+    }
+  };
+
+  const saveWrongToMistakeLog = async () => {
+    const wrongs = quizData.filter((q, idx) => quizAnswers[idx] !== q.correctIndex);
+    if (wrongs.length === 0) return;
+    setSavingMistakes(true);
+    try {
+      await Promise.all(
+        wrongs.map((w) =>
+          fetch("/api/mistakes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              question: w.question,
+              reason: `Làm sai trong đề thi thử AI (${quizTopic.trim() || "Ôn tập"})`,
+              solution: `Đáp án đúng: ${w.options[w.correctIndex] ?? ""} — ${w.explanation}`,
+            }),
+          })
+        )
+      );
+      onNotify?.(`Đã lưu ${wrongs.length} câu sai vào Sổ Lỗi Sai!`);
+      onRefresh?.();
+    } finally {
+      setSavingMistakes(false);
+    }
+  };
   const [rmGoal, setRmGoal] = useState("");
   const [rmGenerating, setRmGenerating] = useState(false);
   const [rmPreview, setRmPreview] = useState<{ title: string; category: string; items: { title: string; estimatedMinutes: number }[] } | null>(null);
@@ -358,9 +416,133 @@ export function AiCopilotDrawer({
           >
             ✦ Lộ trình AI
           </button>
+          <button
+            type="button"
+            onClick={() => setAiTab("quiz")}
+            className={cn(
+              "rounded-lg px-2.5 py-1 font-medium",
+              aiTab === "quiz"
+                ? "bg-[var(--accent)] text-white"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            )}
+          >
+            ✦ Thi thử
+          </button>
         </div>
 
-        {aiTab === "roadmap" ? (
+        {aiTab === "quiz" ? (
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+            <div className="space-y-2.5">
+              <label className="text-xs font-medium text-[var(--text-primary)]">
+                Tạo đề thi thử nhanh bằng AI (chấm điểm & lưu câu sai)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={quizTopic}
+                  onChange={(e) => setQuizTopic(e.target.value)}
+                  placeholder="VD: Kinh tế chính trị chương 3, Cây nhị phân..."
+                  className="flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                />
+                <select
+                  value={quizCount}
+                  onChange={(e) => setQuizCount(Number(e.target.value))}
+                  className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-2 text-xs text-[var(--text-primary)]"
+                >
+                  <option value={5}>5 câu</option>
+                  <option value={8}>8 câu</option>
+                </select>
+              </div>
+              <button
+                type="button"
+                disabled={quizLoading || !quizTopic.trim()}
+                onClick={handleGenerateQuiz}
+                className="btn-primary inline-flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-medium disabled:opacity-50"
+              >
+                <ClipboardCheck className="h-3.5 w-3.5" />
+                {quizLoading ? "Đang soạn đề thi thử..." : "Tạo đề thi thử ngay"}
+              </button>
+            </div>
+
+            {quizData.length > 0 && (
+              <div className="space-y-3">
+                {quizData.map((q, qIdx) => {
+                  const picked = quizAnswers[qIdx];
+                  return (
+                    <div
+                      key={qIdx}
+                      className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3.5 text-xs"
+                    >
+                      <div className="font-semibold text-[var(--text-primary)]">
+                        Câu {qIdx + 1}: {q.question}
+                      </div>
+                      <div className="mt-2 space-y-1.5">
+                        {q.options.map((opt, oIdx) => {
+                          const isPicked = picked === oIdx;
+                          const isCorrect = oIdx === q.correctIndex;
+                          return (
+                            <button
+                              key={oIdx}
+                              type="button"
+                              disabled={quizSubmitted}
+                              onClick={() => setQuizAnswers((prev) => ({ ...prev, [qIdx]: oIdx }))}
+                              className={cn(
+                                "w-full rounded-lg border px-2.5 py-1.5 text-left transition-colors",
+                                quizSubmitted && isCorrect
+                                  ? "border-emerald-500 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-medium"
+                                  : quizSubmitted && isPicked && !isCorrect
+                                  ? "border-rose-500 bg-rose-500/15 text-rose-600"
+                                  : isPicked
+                                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] font-medium"
+                                  : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)]"
+                              )}
+                            >
+                              {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {quizSubmitted && (
+                        <p className="mt-2 text-[11px] text-[var(--text-muted)]">
+                          💡 {q.explanation}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {!quizSubmitted ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuizSubmitted(true)}
+                    className="btn-primary w-full rounded-xl py-2.5 text-xs font-semibold"
+                  >
+                    Nộp bài & Chấm điểm
+                  </button>
+                ) : (
+                  <div className="space-y-2 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] p-3.5 text-xs">
+                    <div className="font-semibold text-[var(--accent)]">
+                      Kết quả:{" "}
+                      {quizData.filter((q, idx) => quizAnswers[idx] === q.correctIndex).length} /{" "}
+                      {quizData.length} câu đúng
+                    </div>
+                    {quizData.some((q, idx) => quizAnswers[idx] !== q.correctIndex) && (
+                      <button
+                        type="button"
+                        disabled={savingMistakes}
+                        onClick={saveWrongToMistakeLog}
+                        className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-rose-600 px-3 py-2 text-xs font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+                      >
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        {savingMistakes ? "Đang lưu..." : "Lưu các câu sai vào Sổ Lỗi Sai"}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ) : aiTab === "roadmap" ? (
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
             <div className="space-y-2.5">
               <label className="text-xs font-medium text-[var(--text-primary)]">
