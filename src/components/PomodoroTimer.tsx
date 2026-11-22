@@ -75,6 +75,40 @@ export function PomodoroTimer({
   const [breathOpen, setBreathOpen] = useState(false);
   const [pipOpen, setPipOpen] = useState(false);
   const [waterNudgeDone, setWaterNudgeDone] = useState(false);
+  const [focusTag, setFocusTag] = useState("Đang giải đề");
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (timer.isRunning) timer.pause();
+        else timer.start();
+      } else if (e.key.toLowerCase() === "r" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        timer.reset();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [timer]);
+
+  const completedSessions = sessions.filter((s) => s.status === "completed");
+  const suggestedMins =
+    completedSessions.length >= 3
+      ? Math.max(
+          15,
+          Math.min(
+            60,
+            Math.round(
+              completedSessions.reduce((a, b) => a + b.actualMinutes, 0) /
+                completedSessions.length /
+                5
+            ) * 5
+          )
+        )
+      : null;
 
   const todayCompletedCount = sessions.filter(
     (s) => s.status === "completed" && s.startedAt.slice(0, 10) === new Date().toISOString().slice(0, 10)
@@ -410,6 +444,42 @@ export function PomodoroTimer({
             >
               <Wind className="h-3 w-3" /> Thở 4-7-8
             </button>
+          </div>
+        </div>
+
+        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[var(--text-muted)]">Trạng thái:</span>
+            {["Đang giải đề", "Đang đọc sách", "Viết báo cáo", "Luyện code"].map((st) => (
+              <button
+                key={st}
+                type="button"
+                onClick={() => {
+                  setFocusTag(st);
+                  timer.setNotes(st);
+                }}
+                className={cn(
+                  "rounded-full border px-2.5 py-0.5 transition-colors",
+                  focusTag === st
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] font-medium"
+                    : "border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                )}
+              >
+                {st}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 text-[var(--text-muted)]">
+            {suggestedMins && (
+              <button
+                type="button"
+                onClick={() => timer.changeDuration(suggestedMins)}
+                className="rounded-lg bg-[var(--accent-soft)] px-2 py-0.5 font-medium text-[var(--accent)]"
+              >
+                Gợi ý nhịp tối ưu: {suggestedMins}p
+              </button>
+            )}
+            <span className="hidden sm:inline font-mono text-[10px]">Space: Chạy/Dừng · R: Đặt lại</span>
           </div>
         </div>
 

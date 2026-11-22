@@ -79,6 +79,7 @@ export function StudioSettingsPanel({
   const [soundStyle, setSoundStyle] = useState<UiSoundStyle>("wood");
   const [glassOpacity, setGlassOpacity] = useState(96);
   const [fontScale, setFontScale] = useState<"95%" | "100%" | "108%">("100%");
+  const [bedtime, setBedtime] = useState("23:30");
   const [diagText, setDiagText] = useState<string | null>(null);
   const [autoDayNight, setAutoDayNight] = useState(false);
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
@@ -91,6 +92,8 @@ export function StudioSettingsPanel({
     if (!isNaN(savedGlass)) setGlassOpacity(savedGlass);
     const savedScale = localStorage.getItem("kronoflow-font-scale");
     if (savedScale === "95%" || savedScale === "100%" || savedScale === "108%") setFontScale(savedScale);
+    const savedBed = localStorage.getItem("kronoflow-bedtime");
+    if (savedBed) setBedtime(savedBed);
     setAutoDayNight(localStorage.getItem("kronoflow-auto-theme") === "on");
     setLastBackupAt(localStorage.getItem("kronoflow-last-backup"));
   }, []);
@@ -815,6 +818,20 @@ export function StudioSettingsPanel({
                     </button>
                   ))}
                 </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs sm:col-span-2">
+                <span className="text-[var(--text-secondary)]">
+                  Giờ đi ngủ mong muốn (Nhắc hạ nhiệt trước 30p):
+                </span>
+                <input
+                  type="time"
+                  value={bedtime}
+                  onChange={(e) => {
+                    setBedtime(e.target.value);
+                    localStorage.setItem("kronoflow-bedtime", e.target.value);
+                  }}
+                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 font-mono text-xs text-[var(--text-primary)]"
+                />
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs sm:col-span-2">
                 <span className="text-[var(--text-secondary)]">

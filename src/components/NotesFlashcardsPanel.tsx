@@ -26,6 +26,7 @@ import {
   StickyNote,
   Gamepad2,
   PlayCircle,
+  Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarkdownView } from "./MarkdownView";
@@ -205,6 +206,25 @@ export function NotesFlashcardsPanel({
     const updated = { ...noteColors, [id]: next };
     setNoteColors(updated);
     localStorage.setItem("kronoflow-note-colors", JSON.stringify(updated));
+  };
+
+  const printFlashcardsA4 = () => {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    const cardsHtml = flashcards
+      .map(
+        (c, i) =>
+          `<div style="border:1px dashed #94a3b8;padding:14px;border-radius:10px;break-inside:avoid;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px;">Thẻ #${i + 1} · Mặt trước</div>
+            <div style="font-weight:600;font-size:14px;margin-bottom:10px;">${c.front.replaceAll("<", "&lt;")}</div>
+            <div style="border-top:1px solid #e2e8f0;padding-top:8px;font-size:13px;color:#334155;">${c.back.replaceAll("<", "&lt;")}</div>
+          </div>`
+      )
+      .join("");
+    win.document.write(
+      `<html><head><title>KronoFlow Flashcards A4</title><style>body{font-family:system-ui,sans-serif;padding:24px;} .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}</style></head><body><h2 style="margin-bottom:16px;">Bộ thẻ Flashcards A4 (${flashcards.length} thẻ)</h2><div class="grid">${cardsHtml}</div><script>window.print();</script></body></html>`
+    );
+    win.document.close();
   };
 
   const handleBulkImportCards = async () => {
@@ -587,6 +607,15 @@ export function NotesFlashcardsPanel({
               className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--accent)] hover:border-[var(--accent)]"
             >
               <Upload className="h-3.5 w-3.5" /> Nhập hàng loạt CSV/Quizlet
+            </button>
+          )}
+          {subTab === "flashcards" && flashcards.length > 0 && (
+            <button
+              type="button"
+              onClick={printFlashcardsA4}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              <Printer className="h-3.5 w-3.5" /> In thẻ A4
             </button>
           )}
         </div>

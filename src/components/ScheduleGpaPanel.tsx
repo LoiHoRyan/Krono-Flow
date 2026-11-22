@@ -148,6 +148,12 @@ export function ScheduleGpaPanel({
     (finalWeight / 100)
   ).toFixed(2);
 
+  const hasSlotConflict = slots.some(
+    (sl) =>
+      sl.dayOfWeek === dayOfWeek &&
+      !(endTime <= sl.startTime || startTime >= sl.endTime)
+  );
+
   const handleAddSlot = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!slotTitle.trim()) return;
@@ -307,6 +313,11 @@ export function ScheduleGpaPanel({
             Thêm lịch
           </button>
         </form>
+        {hasSlotConflict && (
+          <div className="mt-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+            ⚠ Cảnh báo trùng giờ: Khung {startTime}–{endTime} đang chồng lấn với một tiết học đã có trong cùng thứ.
+          </div>
+        )}
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
           {DAYS.map((d) => {

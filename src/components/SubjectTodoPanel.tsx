@@ -15,6 +15,7 @@ import {
   ArrowRight,
   Pencil,
   GripVertical,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionLogItem } from "./PomodoroTimer";
@@ -71,6 +72,44 @@ export function SubjectTodoPanel({
   onRefresh: () => void;
 }) {
   const [hubSubject, setHubSubject] = useState<SubjectRecord | null>(null);
+  const [subRingView, setSubRingView] = useState(false);
+  const [breakingId, setBreakingId] = useState<string | null>(null);
+
+  const handleAiBreakdown = async (todo: TodoItem) => {
+    setBreakingId(todo.id);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const k = localStorage.getItem("kronoflow-gemini-key");
+      if (k) headers["x-gemini-key"] = k;
+      const res = await fetch("/api/ai/breakdown", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ title: todo.title }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const subs: string[] = json.data?.subtasks ?? [];
+        await Promise.all(
+          subs.map((st) =>
+            fetch("/api/todos", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: st,
+                priority: todo.priority,
+                subjectId: todo.subjectId ?? undefined,
+                dueDate: todo.dueDate ?? undefined,
+              }),
+            })
+          )
+        );
+        playUiTick("check");
+        onRefresh();
+      }
+    } finally {
+      setBreakingId(null);
+    }
+  };
   const [view, setView] = useState<"list" | "kanban" | "eisenhower">("list");
   const [subjectName, setSubjectName] = useState("");
   const [subjectColor, setSubjectColor] = useState(SWATCHES[0] ?? "#2563eb");
@@ -270,9 +309,18 @@ export function SubjectTodoPanel({
       />
       <div className="grid gap-6 lg:grid-cols-12">
         <section className="glass-card card-lift rounded-2xl p-6 lg:col-span-4">
-          <div className="flex items-center gap-2">
-            <BookOpen className="h-4 w-4 text-[var(--accent)]" />
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Môn học & Tiến độ</h3>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-[var(--accent)]" />
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Môn học & Tiến độ</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSubRingView((v) => !v)}
+              className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-[10px] font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              {subRingView ? "Thanh ngang" : "Vòng tròn KPI"}
+            </button>
           </div>
 
           <form onSubmit={handleAddSubject} className="mt-4 space-y-3">
@@ -358,12 +406,33 @@ export function SubjectTodoPanel({
                       </button>
                     </div>
                   </div>
-                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${pct}%`, backgroundColor: sub.color }}
-                    />
-                  </div>
+                  {subRingView ? (
+                    <div className="mt-2.5 flex items-center gap-3">
+                      <svg viewBox="0 0 36 36" className="h-10 w-10 -rotate-90 shrink-0">
+                        <circle cx="18" cy="18" r="15" fill="none" stroke="var(--bg-elevated)" strokeWidth="3.5" />
+                        <circle
+                          cx="18"
+                          cy="18"
+                          r="15"
+                          fill="none"
+                          stroke={sub.color}
+                          strokeWidth="3.5"
+                          strokeDasharray={`${Math.round((pct / 100) * 94.2)} 94.2`}
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <span className="font-mono text-xs font-semibold text-[var(--text-primary)]">
+                        {pct}% mục tiêu
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${pct}%`, backgroundColor: sub.color }}
+                      />
+                    </div>
+                  )}
                 </li>
               );
             })}
@@ -618,7 +687,18 @@ export function SubjectTodoPanel({
                           <Flame className="h-3.5 w-3.5" />
                         </button>
                         {!todo.isCompleted && (
-                          <button
+                        <>
+<button
+                            type="button"
+                            disabled={breakingId === todo.id}
+                            onClick={() => handleAiBreakdown(todo)}
+                            title="AI tự chia nhỏ việc này thành 4 bước"
+                            className="inline-flex items-center gap-0.5 rounded-lg bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent)] disabled:opacity-50"
+                          >
+                            <Sparkles className="h-3 w-3" />
+                            {breakingId === todo.id ? "..." : "Chia nhỏ"}
+                          </button>
+<button
                             type="button"
                             onClick={() => onFocusTask(todo.title)}
                             className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-[11px] font-medium text-[var(--accent)]"
@@ -626,6 +706,7 @@ export function SubjectTodoPanel({
                             <PlayCircle className="h-3 w-3" />
                             Học
                           </button>
+</>
                         )}
                         <span
                           className={cn(

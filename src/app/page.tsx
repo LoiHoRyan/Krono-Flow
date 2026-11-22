@@ -34,6 +34,7 @@ import {
   EyeOff,
   Code2,
   BellRing,
+  MoonStar,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -197,14 +198,42 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [cheatOpen, setCheatOpen] = useState(false);
   const [privacyMode, setPrivacyMode] = useState(false);
   const [warmLevel, setWarmLevel] = useState(0);
+  const [fontScale, setFontScale] = useState<"95%" | "100%" | "108%">("100%");
+  const [bedtimeWarning, setBedtimeWarning] = useState<string | null>(null);
+
+  const cycleFontScale = () => {
+    const next: "95%" | "100%" | "108%" =
+      fontScale === "100%" ? "108%" : fontScale === "108%" ? "95%" : "100%";
+    setFontScale(next);
+    localStorage.setItem("kronoflow-font-scale", next);
+    document.documentElement.style.fontSize = next;
+    notify(`Cỡ chữ toàn trang: ${next === "95%" ? "Gọn (95%)" : next === "108%" ? "Lớn (108%)" : "Gốc (100%)"}`);
+  };
 
   const [upcomingClass, setUpcomingClass] = useState<{ title: string; startTime: string; location: string | null } | null>(null);
 
   useEffect(() => {
     const savedScale = localStorage.getItem("kronoflow-font-scale");
     if (savedScale === "95%" || savedScale === "100%" || savedScale === "108%") {
+      setFontScale(savedScale);
       document.documentElement.style.fontSize = savedScale;
     }
+    const checkBed = () => {
+      const bed = localStorage.getItem("kronoflow-bedtime") || "23:30";
+      const [bh, bm] = bed.split(":").map(Number);
+      const now = new Date();
+      const curM = now.getHours() * 60 + now.getMinutes();
+      const bedM = (bh ?? 23) * 60 + (bm ?? 30);
+      const diff = bedM - curM;
+      if (diff <= 30 && diff >= -90) {
+        setBedtimeWarning(`Sắp đến giờ đi ngủ (${bed}) — hãy hoàn tất phiên hiện tại và nghỉ ngơi sớm nhé!`);
+      } else {
+        setBedtimeWarning(null);
+      }
+    };
+    checkBed();
+    const bedId = setInterval(checkBed, 60000);
+    return () => clearInterval(bedId);
     const savedGlass = Number(localStorage.getItem("kronoflow-glass-opacity") || "96");
     if (!isNaN(savedGlass)) {
       document.documentElement.style.setProperty("--glass-opacity", String(savedGlass / 100));
@@ -453,7 +482,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
           props.onRefresh();
         }}
       />
-      <div className="no-print fixed bottom-20 right-5 z-40 flex flex-col gap-2.5 lg:bottom-7 lg:right-7">
+      <div className="no-print fixed bottom-24 right-4 z-40 flex flex-col gap-2.5 lg:bottom-7 lg:right-7">
         <button
           type="button"
           onClick={() => setAiOpen(true)}
@@ -588,7 +617,25 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
           </nav>
         </div>
 
-        <div className={cn("border-t border-[var(--border-subtle)] pt-4", sidebarMode === "full" ? "w-56" : "w-full")}>
+        <div className={cn("border-t border-[var(--border-subtle)] pt-3", sidebarMode === "full" ? "w-56" : "w-full")}>
+          {sidebarMode === "full" && (() => {
+            const totalXp = props.sessions
+              .filter((s) => s.status === "completed")
+              .reduce((a, b) => a + b.actualMinutes, 0) * 2;
+            const lv = Math.floor(totalXp / 250) + 1;
+            const lvPct = Math.round(((totalXp % 250) / 250) * 100);
+            return (
+              <div className="mb-3 px-1">
+                <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)]">
+                  <span>Cấp {lv}</span>
+                  <span className="font-mono">{totalXp % 250}/250 XP</span>
+                </div>
+                <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                  <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${lvPct}%` }} />
+                </div>
+              </div>
+            );
+          })()}
           <div className={cn("flex items-center text-xs text-[var(--text-muted)]", sidebarMode === "full" ? "justify-between px-1" : "flex-col gap-2")}>
             <span className="flex items-center gap-1.5" title={props.dbStatus === "connected" ? "PostgreSQL" : "Offline"}>
               <Database
@@ -653,6 +700,15 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             >
               <Code2 className="h-3.5 w-3.5" />
               <span>Công thức</span>
+            </button>
+            <button
+              type="button"
+              onClick={cycleFontScale}
+              title={`Chỉnh cỡ chữ toàn trang (Hiện tại: ${fontScale})`}
+              className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              <span>Aa</span>
+              <span className="hidden font-mono text-[10px] text-[var(--accent)] sm:inline">{fontScale}</span>
             </button>
             <button
               type="button"
@@ -757,6 +813,23 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                 className="text-[11px] underline opacity-80 hover:opacity-100"
               >
                 Đã rõ
+              </button>
+            </div>
+          </div>
+        )}
+        {bedtimeWarning && (
+          <div className="mx-auto mt-3 max-w-6xl px-4 sm:px-8">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-xs text-indigo-700 dark:text-indigo-300">
+              <span className="inline-flex items-center gap-2 font-medium">
+                <MoonStar className="h-4 w-4 shrink-0" />
+                {bedtimeWarning}
+              </span>
+              <button
+                type="button"
+                onClick={() => setBedtimeWarning(null)}
+                className="text-[11px] underline opacity-80"
+              >
+                Ẩn
               </button>
             </div>
           </div>
@@ -1338,17 +1411,13 @@ function AppShell() {
 
   if (authState === "loading") {
     return (
-      <div className="mx-auto max-w-6xl space-y-6 p-8">
-        <div className="skeleton-box h-28 w-full rounded-2xl" />
-        <div className="grid gap-4 sm:grid-cols-4">
-          <div className="skeleton-box h-24 rounded-2xl" />
-          <div className="skeleton-box h-24 rounded-2xl" />
-          <div className="skeleton-box h-24 rounded-2xl" />
-          <div className="skeleton-box h-24 rounded-2xl" />
-        </div>
-        <div className="grid gap-6 lg:grid-cols-12">
-          <div className="skeleton-box h-80 rounded-2xl lg:col-span-7" />
-          <div className="skeleton-box h-80 rounded-2xl lg:col-span-5" />
+      <div className="mx-auto min-h-screen max-w-6xl space-y-6 p-6 sm:p-10">
+        <div className="h-12 w-48 animate-pulse rounded-2xl bg-[var(--bg-elevated)]" />
+        <div className="h-40 w-full animate-pulse rounded-2xl bg-[var(--bg-elevated)]" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-28 animate-pulse rounded-2xl bg-[var(--bg-elevated)]" />
+          ))}
         </div>
       </div>
     );

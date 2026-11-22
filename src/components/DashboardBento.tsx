@@ -30,6 +30,9 @@ import {
   Check,
   Image,
   Sparkles,
+  Sunrise,
+  History,
+  GraduationCap,
 } from "lucide-react";
 import { computeLevelInfo } from "@/lib/themes";
 import { useLang } from "@/lib/i18n";
@@ -111,6 +114,66 @@ export function DashboardBento({
   const [coverPreset, setCoverPreset] = useState("none");
   const [copiedStandup, setCopiedStandup] = useState(false);
   const [recallFlipped, setRecallFlipped] = useState(false);
+  const [customQuotes, setCustomQuotes] = useState<string[]>([]);
+  const [kickoffBusy, setKickoffBusy] = useState(false);
+
+  useEffect(() => {
+    try {
+      const rawQ = localStorage.getItem("kronoflow-custom-quotes");
+      if (rawQ) setCustomQuotes(JSON.parse(rawQ));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const addCustomQuote = () => {
+    const q = window.prompt("Nhập câu trích dẫn / châm ngôn cá nhân của bạn:");
+    if (!q || !q.trim()) return;
+    const next = [q.trim(), ...customQuotes].slice(0, 15);
+    setCustomQuotes(next);
+    localStorage.setItem("kronoflow-custom-quotes", JSON.stringify(next));
+    setQuoteIdx(0);
+  };
+
+  const handleMorningKickoff = async () => {
+    setKickoffBusy(true);
+    try {
+      const overdue = todos.filter(
+        (t) => !t.isCompleted && t.dueDate && t.dueDate.slice(0, 10) < todayKey
+      );
+      await Promise.all(
+        overdue.slice(0, 10).map((t) =>
+          fetch(`/api/todos/${t.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dueDate: todayKey }),
+          })
+        )
+      );
+      onRefresh();
+      onJumpFocus("Khởi động ngày mới · Phiên tập trung #1");
+    } finally {
+      setKickoffBusy(false);
+    }
+  };
+
+  const handleExamToGpa = async (ex: ExamRecord) => {
+    const raw = window.prompt(`Nhập điểm hệ 10 đạt được cho "${ex.title}" (VD: 8.5):`, "8.5");
+    if (!raw) return;
+    const score = Number(raw);
+    if (isNaN(score) || score < 0 || score > 10) return;
+    await fetch("/api/grades", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        courseName: ex.title,
+        credits: 3,
+        score10: score,
+        semester: "HK hiện tại",
+      }),
+    });
+    onRefresh();
+  };
 
   useEffect(() => {
     const savedCover = localStorage.getItem("kronoflow-cover-banner");
@@ -310,7 +373,7 @@ export function DashboardBento({
   ];
 
   const pendingTodos = todos.filter((t) => !t.isCompleted).slice(0, 5);
-  const quotes = lang === "vi" ? QUOTES_VI : QUOTES_EN;
+  const quotes = [...customQuotes, ...(lang === "vi" ? QUOTES_VI : QUOTES_EN)];
 
   // Kỳ thi gần nhất cho Spotlight Countdown (Ngày : Giờ : Phút : Giây)
   const upcomingExam = exams.find((e) => new Date(e.examDate).getTime() > nowMs);
@@ -380,46 +443,6 @@ export function DashboardBento({
               <span className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1 font-mono text-xs text-[var(--accent)]">
                 {nowClock}
               </span>
-              {onOpenWeeklyReview && (
-                <button
-                  type="button"
-                  onClick={onOpenWeeklyReview}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-3 py-1 text-xs font-medium text-[var(--accent)] hover:opacity-90"
-                >
-                  <CalendarCheck2 className="h-3.5 w-3.5" />
-                  Tổng kết tuần
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={copyDailyStandup}
-                title="Sao chép nhanh báo cáo học tập hôm nay"
-                className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                {copiedStandup ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
-                {copiedStandup ? "Đã chép" : "Chép tóm tắt"}
-              </button>
-              <button
-                type="button"
-                onClick={cycleCover}
-                title="Đổi dải ảnh bìa trang trí"
-                className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              >
-                <Image className="h-3 w-3" /> Ảnh bìa
-              </button>
-              <button
-                type="button"
-                onClick={toggleCleanMode}
-                title="Ẩn bớt thẻ phụ để tập trung tối giản"
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium",
-                  cleanMode
-                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
-                    : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)]"
-                )}
-              >
-                {cleanMode ? "Chế độ: Tối giản" : "Chế độ: Đầy đủ"}
-              </button>
             </div>
 
             <div className="flex items-center gap-3">
@@ -455,6 +478,14 @@ export function DashboardBento({
               >
                 <RefreshCw className="h-3 w-3" />
               </button>
+              <button
+                type="button"
+                onClick={addCustomQuote}
+                className="rounded-md p-1 text-[var(--text-muted)] hover:text-[var(--accent)]"
+                title="Thêm câu trích dẫn riêng của bạn"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
             </div>
 
             <div className="pt-1">
@@ -473,7 +504,7 @@ export function DashboardBento({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex shrink-0 flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => onJumpFocus()}
@@ -494,6 +525,60 @@ export function DashboardBento({
           </div>
         </div>
       </section>
+
+      {/* THANH TIỆN ÍCH NHANH (Tách riêng để giữ Hero luôn thoáng và cân đối) */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={kickoffBusy}
+            onClick={handleMorningKickoff}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 hover:opacity-90"
+          >
+            <Sunrise className="h-3.5 w-3.5" />
+            {kickoffBusy ? "Đang dọn lịch..." : "Khởi động ngày mới"}
+          </button>
+          {onOpenWeeklyReview && (
+            <button
+              type="button"
+              onClick={onOpenWeeklyReview}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-medium text-[var(--accent)] hover:opacity-90"
+            >
+              <CalendarCheck2 className="h-3.5 w-3.5" />
+              Tổng kết tuần
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={copyDailyStandup}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
+            {copiedStandup ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+            {copiedStandup ? "Đã chép tóm tắt" : "Chép tóm tắt ngày"}
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={cycleCover}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
+            <Image className="h-3.5 w-3.5" /> Ảnh bìa
+          </button>
+          <button
+            type="button"
+            onClick={toggleCleanMode}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium",
+              cleanMode
+                ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)]"
+            )}
+          >
+            {cleanMode ? "Giao diện: Tối giản" : "Giao diện: Đầy đủ"}
+          </button>
+        </div>
+      </div>
 
       {/* THANH TIẾN ĐỘ THÁNG & NĂM + GỢI Ý VIỆC NÊN LÀM NGAY */}
       {(() => {
@@ -864,6 +949,16 @@ export function DashboardBento({
                       <span className="rounded-lg bg-amber-500/15 px-2 py-0.5 font-mono text-[11px] font-semibold text-amber-600 dark:text-amber-400">
                         {diffDays >= 0 ? `Còn ${diffDays}d` : "Qua"}
                       </span>
+                      {diffDays < 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleExamToGpa(ex)}
+                          title="Nhập điểm thi vào Sổ điểm GPA"
+                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                        >
+                          <GraduationCap className="h-3 w-3" /> Lưu GPA
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleDeleteExam(ex.id)}
@@ -1029,6 +1124,43 @@ export function DashboardBento({
           </section>
         </div>
       </div>
+      {!cleanMode && (sessions.length > 0 || todos.length > 0 || notes.length > 0) && (
+        <section className="glass-card rounded-2xl p-5">
+          <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)]">
+            <History className="h-4 w-4 text-[var(--accent)]" />
+            Hoạt động gần đây (Recent Activity)
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {sessions.slice(0, 4).map((s) => (
+              <div
+                key={`act-s-${s.id}`}
+                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
+              >
+                <div className="font-medium text-[var(--text-primary)]">
+                  ⏱ Phiên {s.actualMinutes} phút
+                </div>
+                <div className="mt-0.5 truncate text-[11px] text-[var(--text-muted)]">
+                  {s.notes || "Tập trung sâu"} · {s.startedAt.slice(0, 10)}
+                </div>
+              </div>
+            ))}
+            {todos
+              .filter((t) => t.isCompleted)
+              .slice(0, 4)
+              .map((t) => (
+                <div
+                  key={`act-t-${t.id}`}
+                  className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
+                >
+                  <div className="truncate font-medium text-emerald-600 dark:text-emerald-400">
+                    ✓ {t.title}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-[var(--text-muted)]">Đã hoàn thành</div>
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

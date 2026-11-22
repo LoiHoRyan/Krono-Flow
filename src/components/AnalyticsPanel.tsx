@@ -456,6 +456,64 @@ export function AnalyticsPanel({
         </div>
       </section>
 
+      {/* SO SÁNH TUẦN NÀY VS TUẦN TRƯỚC (DUAL-BAR CHART) */}
+      {(() => {
+        const msDay = 86400000;
+        const nowMs = Date.now();
+        const rows = Array.from({ length: 7 }, (_, i) => {
+          const dCur = new Date(nowMs - (6 - i) * msDay);
+          const dPrev = new Date(nowMs - (13 - i) * msDay);
+          const curIso = dCur.toISOString().slice(0, 10);
+          const prevIso = dPrev.toISOString().slice(0, 10);
+          const label = dCur.getDay() === 0 ? "CN" : `T${dCur.getDay() + 1}`;
+          return {
+            label,
+            curMins: dayMinutes.get(curIso) ?? 0,
+            prevMins: dayMinutes.get(prevIso) ?? 0,
+          };
+        });
+        const maxM = Math.max(30, ...rows.map((r) => Math.max(r.curMins, r.prevMins)));
+        return (
+          <section className="glass-card rounded-2xl p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-[var(--accent)]" />
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                  So sánh Tuần này vs Tuần trước (Biểu đồ cột đôi)
+                </h3>
+              </div>
+              <div className="flex items-center gap-3 text-[11px] text-[var(--text-muted)]">
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-[var(--accent)]" /> Tuần này
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-[var(--border-subtle)]" /> Tuần trước
+                </span>
+              </div>
+            </div>
+            <div className="mt-5 flex h-32 items-end gap-3">
+              {rows.map((r, idx) => (
+                <div key={idx} className="flex flex-1 flex-col items-center gap-1.5">
+                  <div className="flex h-24 w-full items-end justify-center gap-1">
+                    <div
+                      className="w-3 rounded-t bg-[var(--border-subtle)] transition-all"
+                      style={{ height: `${Math.max(6, Math.round((r.prevMins / maxM) * 100))}%` }}
+                      title={`Tuần trước: ${r.prevMins}p`}
+                    />
+                    <div
+                      className="w-3 rounded-t bg-[var(--accent)] transition-all"
+                      style={{ height: `${Math.max(6, Math.round((r.curMins / maxM) * 100))}%` }}
+                      title={`Tuần này: ${r.curMins}p`}
+                    />
+                  </div>
+                  <span className="font-mono text-[10px] text-[var(--text-muted)]">{r.label}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })()}
+
       {/* BẢNG KỶ LỤC CÁ NHÂN (PERSONAL RECORDS HALL) */}
       {(() => {
         let bestDayMins = 0;
