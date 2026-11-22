@@ -329,14 +329,15 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         )}
       >
         <div className="w-56">
-          <div className="flex items-center gap-2.5 px-1">
-            <span className="btn-primary inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold">
-              KF
-            </span>
-            <div>
-              <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-              <p className="text-[11px] text-[var(--text-muted)]">KronoFlow v21</p>
-            </div>
+          <div className="flex items-center gap-3 px-1.5 py-1">
+            <img
+              src="/logo.png"
+              alt="KronoFlow Logo"
+              className="h-9 w-9 shrink-0 rounded-xl border border-[var(--border-subtle)] bg-white object-contain p-0.5 shadow-sm"
+            />
+            <h1 className="text-lg font-semibold tracking-tight text-[var(--text-primary)]">
+              KronoFlow
+            </h1>
           </div>
 
           <nav className="mt-5 space-y-4">
