@@ -288,7 +288,7 @@ export function GoalsTimeblockPanel({
                           onClick={() => toggleBlock(b)}
                           className={cn(
                             "truncate text-left font-medium",
-                            b.isCompleted
+                            b.isDone
                               ? "line-through text-[var(--text-muted)]"
                               : "text-[var(--text-primary)]"
                           )}

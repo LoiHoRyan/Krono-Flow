@@ -138,8 +138,8 @@ export function PomodoroTimer({
     const step = flowQueue[idx];
     if (!step) return;
     setFlowIdx(idx);
-    timer.switchMode(step.mode);
-    if (step.subjectId) timer.setSubjectId(step.subjectId);
+    timer.changeMode(step.mode);
+    if (step.subjectId) timer.setSelectedSubjectId(step.subjectId);
     timer.setNotes(step.label);
   };
   const [eyeCare, setEyeCare] = useState(true);

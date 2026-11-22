@@ -42,8 +42,8 @@ export function SubjectHubDrawer({
   );
   const totalMins = subSessions.reduce((a, b) => a + b.actualMinutes, 0);
   const subTodos = todos.filter((t) => t.subjectId === subject.id);
-  const openTodos = subTodos.filter((t) => t.status !== "done");
-  const doneTodos = subTodos.filter((t) => t.status === "done");
+  const openTodos = subTodos.filter((t) => !t.isCompleted && t.status !== "done");
+  const doneTodos = subTodos.filter((t) => t.isCompleted || t.status === "done");
   const subNotes = notes.filter((n) => n.subjectId === subject.id);
   const subCards = flashcards.filter((c) => c.subjectId === subject.id);
   const subExams = exams.filter((e) =>

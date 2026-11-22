@@ -94,7 +94,7 @@ export function StudioSettingsPanel({
     if (next) {
       const hr = new Date().getHours();
       const target = hr >= 19 || hr < 6 ? "nord-slate" : "pure-white";
-      onApplyLocalTheme(target, wallpaper, customAccent, fontStyle, borderRadius);
+      onApplyLocalTheme(target, user?.wallpaper ?? "none", customAccent || null, fontStyle, borderRadius);
     }
   };
 

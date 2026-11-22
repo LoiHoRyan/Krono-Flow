@@ -5,7 +5,7 @@ import {
   X,
   TrendingUp,
   Sparkles,
-  CalendarArrowUp,
+  CalendarDays,
   CheckCircle2,
   ArrowRight,
   ArrowLeft,
@@ -60,8 +60,8 @@ export function WeeklyReviewModal({
       }
     }
 
-    const doneTodos = todos.filter((t) => t.status === "done").length;
-    const openTodos = todos.filter((t) => t.status !== "done");
+    const doneTodos = todos.filter((t) => t.isCompleted || t.status === "done").length;
+    const openTodos = todos.filter((t) => !t.isCompleted && t.status !== "done");
     const deltaPct =
       lastWeekMins > 0
         ? Math.round(((thisWeekMins - lastWeekMins) / lastWeekMins) * 100)
@@ -299,7 +299,7 @@ export function WeeklyReviewModal({
                 <span className="text-xs font-semibold text-[var(--text-primary)]">
                   Công việc chưa hoàn thành ({stats.openTodos.length})
                 </span>
-                <CalendarArrowUp className="h-4 w-4 text-[var(--accent)]" />
+                <CalendarDays className="h-4 w-4 text-[var(--accent)]" />
               </div>
               {stats.openTodos.length === 0 ? (
                 <p className="mt-2 flex items-center gap-1.5 text-xs text-emerald-600">
@@ -340,7 +340,7 @@ export function WeeklyReviewModal({
                     onClick={rolloverUnfinished}
                     className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-medium"
                   >
-                    <CalendarArrowUp className="h-3.5 w-3.5" />
+                    <CalendarDays className="h-3.5 w-3.5" />
                     Dời hết sang tuần mới
                   </button>
                 )}
