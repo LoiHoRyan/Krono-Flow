@@ -64,7 +64,7 @@ export function SubjectTodoPanel({
   notes?: NoteRecord[];
   flashcards?: FlashcardRecord[];
   exams?: ExamRecord[];
-  onFocusTask?: (title: string) => void;
+  onFocusTask: (taskTitle: string) => void;
   onUndoableDelete?: (label: string, onUndo: () => Promise<void>) => void;
   onRefresh: () => void;
 }) {

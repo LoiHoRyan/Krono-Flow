@@ -8,7 +8,7 @@ const reqSchema = z.object({
   count: z.number().int().min(3).max(10).optional().default(5),
 });
 
-export interface QuizQuestion {
+interface QuizQuestion {
   question: string;
   options: string[];
   correctIndex: number;
