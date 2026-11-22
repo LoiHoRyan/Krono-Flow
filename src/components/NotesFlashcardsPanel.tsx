@@ -1276,9 +1276,10 @@ export function NotesFlashcardsPanel({
               Tạo thẻ ôn tập
             </button>
           </form>
+          </div>
         </div>
       )}
-          {readingNote && (
+      {readingNote && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
           onClick={() => setReadingNote(null)}
@@ -1308,7 +1309,6 @@ export function NotesFlashcardsPanel({
               <MarkdownView content={readingNote.content} />
             </div>
           </div>
-        </div>
         </div>
       )}
     </div>
