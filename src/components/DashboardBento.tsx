@@ -24,6 +24,8 @@ import {
   CalendarCheck2,
   Pin,
   Download,
+  Compass,
+  CalendarRange,
 } from "lucide-react";
 import { computeLevelInfo } from "@/lib/themes";
 import { useLang } from "@/lib/i18n";
@@ -34,6 +36,7 @@ import type { RoadmapRecord } from "./RoadmapPanel";
 import type { FlashcardRecord, NoteRecord } from "./NotesFlashcardsPanel";
 import type { TimeBlockRecord } from "./GoalsTimeblockPanel";
 import type { ResourceRecord } from "./HabitsVaultPanel";
+import { ReverseExamPlannerModal } from "./ReverseExamPlannerModal";
 
 export interface UserProfile {
   id: string;
@@ -99,6 +102,7 @@ export function DashboardBento({
 }) {
   const [pinnedResourceIds, setPinnedResourceIds] = useState<string[]>([]);
   const [dismissedGuard, setDismissedGuard] = useState(false);
+  const [reverseOpen, setReverseOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -414,6 +418,87 @@ export function DashboardBento({
         </div>
       </section>
 
+      {/* THANH TIẾN ĐỘ THÁNG & NĂM + GỢI Ý VIỆC NÊN LÀM NGAY */}
+      {(() => {
+        const now = new Date();
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const monthPct = Math.round((now.getDate() / daysInMonth) * 100);
+        const startYear = new Date(now.getFullYear(), 0, 1).getTime();
+        const endYear = new Date(now.getFullYear() + 1, 0, 1).getTime();
+        const yearPct = Math.round(((now.getTime() - startYear) / (endYear - startYear)) * 100);
+
+        const overdueCount = todos.filter(
+          (t) => !t.isCompleted && t.dueDate && t.dueDate.slice(0, 10) < todayKey
+        ).length;
+        const dueCardsCount = flashcards.filter(
+          (c) => !c.nextReviewAt || new Date(c.nextReviewAt).getTime() <= nowMs
+        ).length;
+        const nearExam = exams.find((e) => {
+          const d = Math.ceil((new Date(e.examDate).getTime() - nowMs) / 86400000);
+          return d >= 0 && d <= 7;
+        });
+
+        const nextRec = nearExam
+          ? {
+              msg: `Kỳ thi "${nearExam.title}" sắp diễn ra trong vòng 7 ngày tới — hãy tập trung ôn ngay.`,
+              cta: "Vào phiên ôn thi",
+              action: () => onJumpFocus(`Ôn thi ${nearExam.title}`),
+            }
+          : overdueCount > 0
+          ? {
+              msg: `Bạn đang có ${overdueCount} việc trễ hạn cần xử lý dứt điểm trước khi mở việc mới.`,
+              cta: "Tập trung xử lý",
+              action: () => onJumpFocus("Xử lý công việc trễ hạn"),
+            }
+          : dueCardsCount > 0
+          ? {
+              msg: `Có ${dueCardsCount} thẻ Flashcard đang đến hạn ôn lặp lại ngắt quãng (SM-2).`,
+              cta: "Bắt đầu phiên ôn 25p",
+              action: () => onJumpFocus("Ôn tập Flashcards đến hạn"),
+            }
+          : {
+              msg: `Hôm nay bạn đã đạt ${goalPct}% mục tiêu tập trung (${todayMinutes}/${dailyGoal} phút).`,
+              cta: "Vào phiên Pomodoro",
+              action: () => onJumpFocus(),
+            };
+
+        return (
+          <div className="grid gap-4 lg:grid-cols-12">
+            <div className="glass-card flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-3 text-xs lg:col-span-7">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Compass className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+                <span className="text-[var(--text-primary)]">
+                  <strong>Nên làm ngay:</strong> {nextRec.msg}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={nextRec.action}
+                className="btn-primary shrink-0 rounded-xl px-3 py-1.5 text-[11px] font-medium"
+              >
+                {nextRec.cta}
+              </button>
+            </div>
+            <div className="glass-card flex flex-col justify-center gap-1.5 rounded-2xl px-4 py-3 text-[11px] lg:col-span-5">
+              <div className="flex items-center justify-between text-[var(--text-secondary)]">
+                <span>Tiến độ Tháng {now.getMonth() + 1}: <strong>{monthPct}%</strong></span>
+                <span>Năm {now.getFullYear()}: <strong>{yearPct}%</strong></span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${monthPct}%` }} />
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      <ReverseExamPlannerModal
+        open={reverseOpen}
+        exams={exams}
+        onClose={() => setReverseOpen(false)}
+        onRefresh={onRefresh}
+      />
+
       {pinnedVault.length > 0 && (
         <section className="glass-card rounded-2xl p-4">
           <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)]">
@@ -625,6 +710,16 @@ export function DashboardBento({
                   className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
                 >
                   <Download className="h-3 w-3" /> Tải ảnh
+                </button>
+              )}
+              {exams.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setReverseOpen(true)}
+                  title="Tự động chia lịch ôn ngược từ ngày thi"
+                  className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent-soft)] px-2 py-1 text-[11px] font-medium text-[var(--accent)]"
+                >
+                  <CalendarRange className="h-3 w-3" /> Chia lịch ôn
                 </button>
               )}
             </div>

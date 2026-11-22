@@ -7,6 +7,7 @@ import { CheckCircle2, Circle, Clock, Flag, Plus, Sparkles, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
+import { GroupProjectPanel } from "./GroupProjectPanel";
 
 export interface GoalRecord {
   id: string;
@@ -524,6 +525,9 @@ export function GoalsTimeblockPanel({
           </div>
         </form>
       </section>
+      <div className="lg:col-span-12">
+        <GroupProjectPanel />
+      </div>
     </div>
   );
 }

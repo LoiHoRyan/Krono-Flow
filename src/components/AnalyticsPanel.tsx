@@ -2,6 +2,8 @@
 
 import { Download, Flame, TrendingUp, Award, Clock, Layers, Trophy, Lock,
   Activity,
+  Radar,
+  Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
@@ -453,6 +455,112 @@ export function AnalyticsPanel({
           })}
         </div>
       </section>
+
+      {/* BIỂU ĐỒ RADAR CÂN BẰNG MÔN HỌC + BÁO CÁO THÁNG */}
+      {(() => {
+        const subList = subjects.slice(0, 6);
+        const totalAllMins = sessions
+          .filter((s) => s.status === "completed")
+          .reduce((a, b) => a + b.actualMinutes, 0);
+        const cx = 110;
+        const cy = 110;
+        const maxR = 78;
+        const points = subList.map((sub, i) => {
+          const mins = sessions
+            .filter((s) => s.status === "completed" && s.subjectId === sub.id)
+            .reduce((a, b) => a + b.actualMinutes, 0);
+          const ratio = Math.min(1, mins / Math.max(1, sub.targetHours * 60));
+          const angle = (Math.PI * 2 * i) / Math.max(3, subList.length) - Math.PI / 2;
+          const r = Math.max(12, ratio * maxR);
+          return {
+            name: sub.name.slice(0, 12),
+            x: cx + r * Math.cos(angle),
+            y: cy + r * Math.sin(angle),
+            lx: cx + (maxR + 18) * Math.cos(angle),
+            ly: cy + (maxR + 14) * Math.sin(angle),
+            pct: Math.round(ratio * 100),
+          };
+        });
+        const poly = points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+        return (
+          <section className="glass-card rounded-2xl p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Radar className="h-4 w-4 text-[var(--accent)]" />
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                  Biểu đồ Radar cân bằng đa môn & Báo cáo tháng
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="no-print inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                In báo cáo tháng (PDF)
+              </button>
+            </div>
+            <div className="mt-4 grid items-center gap-6 md:grid-cols-12">
+              <div className="flex justify-center md:col-span-5">
+                {subList.length >= 3 ? (
+                  <svg viewBox="0 0 220 220" className="h-52 w-52">
+                    {[0.33, 0.66, 1].map((lv) => (
+                      <circle
+                        key={lv}
+                        cx={cx}
+                        cy={cy}
+                        r={maxR * lv}
+                        fill="none"
+                        stroke="var(--border-subtle)"
+                        strokeDasharray="3 3"
+                      />
+                    ))}
+                    <polygon
+                      points={poly}
+                      fill="var(--accent)"
+                      fillOpacity="0.22"
+                      stroke="var(--accent)"
+                      strokeWidth="2"
+                    />
+                    {points.map((p, idx) => (
+                      <g key={idx}>
+                        <circle cx={p.x} cy={p.y} r="3.5" fill="var(--accent)" />
+                        <text
+                          x={p.lx}
+                          y={p.ly}
+                          textAnchor="middle"
+                          fontSize="8.5"
+                          fill="var(--text-secondary)"
+                        >
+                          {p.name}
+                        </text>
+                      </g>
+                    ))}
+                  </svg>
+                ) : (
+                  <p className="text-xs text-[var(--text-muted)]">
+                    Thêm ít nhất 3 môn học để hiển thị biểu đồ Radar cân bằng.
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2 text-xs md:col-span-7">
+                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3.5">
+                  <div className="text-[11px] text-[var(--text-muted)]">Tổng kết nhanh</div>
+                  <div className="mt-1 font-mono text-base font-semibold text-[var(--text-primary)]">
+                    {(totalAllMins / 60).toFixed(1)} giờ tập trung · {totalCards} Flashcards · {totalHabits} Thói quen
+                  </div>
+                </div>
+                {points.map((p, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-[11px]">
+                    <span className="text-[var(--text-secondary)]">{p.name}</span>
+                    <span className="font-mono text-[var(--accent)]">{p.pct}% mục tiêu</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        );
+      })()}
 
       {/* NHỊP SINH HỌC TẬP TRUNG (FOCUS ENERGY TIMELINE) */}
       {(() => {

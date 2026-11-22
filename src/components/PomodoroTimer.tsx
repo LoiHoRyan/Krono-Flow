@@ -23,11 +23,13 @@ import {
   Moon,
   Coffee,
   Zap,
+  Droplets,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { ambientEngine, AmbientChannel, BellStyle } from "@/lib/ambient-audio";
 import { MODE_CONFIG, TimerMode, useTimer } from "./TimerProvider";
 import { BreathingModal } from "./BreathingModal";
+import { playUiTick } from "@/lib/ui-sounds";
 
 export interface SubjectOption {
   id: string;
@@ -72,6 +74,20 @@ export function PomodoroTimer({
   const [zenTheme, setZenTheme] = useState<"aurora" | "sunset" | "ocean" | "minimal">("aurora");
   const [breathOpen, setBreathOpen] = useState(false);
   const [pipOpen, setPipOpen] = useState(false);
+  const [waterNudgeDone, setWaterNudgeDone] = useState(false);
+
+  const todayCompletedCount = sessions.filter(
+    (s) => s.status === "completed" && s.startedAt.slice(0, 10) === new Date().toISOString().slice(0, 10)
+  ).length;
+
+  const logOneWaterCup = () => {
+    const key = `kronoflow-water-${new Date().toISOString().slice(0, 10)}`;
+    const cur = Number(localStorage.getItem(key) || "0");
+    localStorage.setItem(key, String(Math.min(8, (isNaN(cur) ? 0 : cur) + 1)));
+    playUiTick("check");
+    setWaterNudgeDone(true);
+    setTimeout(() => setWaterNudgeDone(false), 3000);
+  };
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const todayFocusedMins = sessions
@@ -412,6 +428,21 @@ export function PomodoroTimer({
           </div>
         )}
 
+        {todayCompletedCount >= 2 && (
+          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-700 dark:text-sky-300">
+            <span className="inline-flex items-center gap-1.5">
+              <Droplets className="h-3.5 w-3.5 shrink-0" />
+              Đã xong {todayCompletedCount} phiên hôm nay — hãy nhìn xa 20 giây & bổ sung nước!
+            </span>
+            <button
+              type="button"
+              onClick={logOneWaterCup}
+              className="rounded-lg bg-sky-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-sky-700"
+            >
+              {waterNudgeDone ? "Đã +1 ly ✓" : "+1 ly nước"}
+            </button>
+          </div>
+        )}
         <BreathingModal open={breathOpen} onClose={() => setBreathOpen(false)} />
 
         {pipOpen && (
@@ -602,7 +633,7 @@ export function PomodoroTimer({
               {!timer.isRunning ? (
                 <button
                   type="button"
-                  onClick={timer.start}
+                  onClick={() => { playUiTick("check"); timer.start(); }}
                   className="btn-primary inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold"
                 >
                   <Play className="h-4 w-4" />
@@ -611,7 +642,7 @@ export function PomodoroTimer({
               ) : (
                 <button
                   type="button"
-                  onClick={timer.pause}
+                  onClick={() => { playUiTick("flip"); timer.pause(); }}
                   className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-6 py-2.5 text-sm font-semibold text-white"
                 >
                   <Pause className="h-4 w-4" />

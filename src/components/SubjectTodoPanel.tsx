@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Plus,
   Trash2,
@@ -14,6 +14,7 @@ import {
   Flame,
   ArrowRight,
   Pencil,
+  GripVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionLogItem } from "./PomodoroTimer";
@@ -81,6 +82,31 @@ export function SubjectTodoPanel({
   const [priority, setPriority] = useState<TodoItem["priority"]>("medium");
   const [filter, setFilter] = useState<"all" | "pending" | "done" | "today" | "week" | "high" | "overdue">("all");
   const [sortBy, setSortBy] = useState<"default" | "due" | "priority" | "subject">("default");
+  const [todoOrder, setTodoOrder] = useState<string[]>([]);
+  const [dragListId, setDragListId] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("kronoflow-todo-order");
+      if (raw) setTodoOrder(JSON.parse(raw));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const reorderListTodos = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    const base = todos.map((t) => t.id);
+    const merged = [...todoOrder.filter((id) => base.includes(id)), ...base.filter((id) => !todoOrder.includes(id))];
+    const fromIdx = merged.indexOf(sourceId);
+    const toIdx = merged.indexOf(targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    merged.splice(fromIdx, 1);
+    merged.splice(toIdx, 0, sourceId);
+    setTodoOrder(merged);
+    localStorage.setItem("kronoflow-todo-order", JSON.stringify(merged));
+    playUiTick("flip");
+  };
   const [todoQuery, setTodoQuery] = useState("");
   const [dragTodoId, setDragTodoId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
@@ -131,6 +157,7 @@ export function SubjectTodoPanel({
   };
 
   const setTodoStatus = async (todo: TodoItem, nextStatus: "todo" | "in_progress" | "done") => {
+    if (nextStatus === "done") playUiTick("check");
     await fetch(`/api/todos/${todo.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -140,7 +167,6 @@ export function SubjectTodoPanel({
   };
 
   const toggleUrgent = async (todo: TodoItem) => {
-    if (!todo.isCompleted) playUiTick("check");
     await fetch(`/api/todos/${todo.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -219,6 +245,11 @@ export function SubjectTodoPanel({
       if (sortBy === "priority") return prioWeight[a.priority] - prioWeight[b.priority];
       if (sortBy === "due") return (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999");
       if (sortBy === "subject") return (a.subjectId ?? "zzz").localeCompare(b.subjectId ?? "zzz");
+      const ia = todoOrder.indexOf(a.id);
+      const ib = todoOrder.indexOf(b.id);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
       return 0;
     });
 
@@ -501,8 +532,18 @@ export function SubjectTodoPanel({
                   return (
                     <li
                       key={todo.id}
+                      draggable={sortBy === "default"}
+                      onDragStart={() => setDragListId(todo.id)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        if (dragListId) reorderListTodos(dragListId, todo.id);
+                        setDragListId(null);
+                      }}
                       className="flex items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2.5"
                     >
+                      {sortBy === "default" && (
+                        <GripVertical className="h-3.5 w-3.5 shrink-0 cursor-grab text-[var(--text-muted)] opacity-60" />
+                      )}
                       <button
                         type="button"
                         onClick={() => setTodoStatus(todo, todo.isCompleted ? "todo" : "done")}

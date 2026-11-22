@@ -316,7 +316,7 @@ export function ScheduleGpaPanel({
 
       <div className="grid gap-6 lg:grid-cols-12">
         {/* SỔ ĐIỂM & TÍNH GPA */}
-        <section className="glass-card card-lift rounded-2xl p-6 lg:col-span-8">
+        <section className="privacy-sensitive glass-card card-lift rounded-2xl p-6 lg:col-span-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <GraduationCap className="h-4 w-4 text-[var(--accent)]" />

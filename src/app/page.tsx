@@ -35,6 +35,7 @@ import {
   Code2,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
+import { playUiTick } from "@/lib/ui-sounds";
 import { applyThemeToDocument, WALLPAPERS } from "@/lib/themes";
 import { LanguageProvider, LanguageToggle, useLang } from "@/lib/i18n";
 import { AuthScreen } from "@/components/AuthScreen";
@@ -177,7 +178,11 @@ interface WorkspaceProps {
 
 function KronoFlowWorkspace(props: WorkspaceProps) {
   const { lang, t } = useLang();
-  const [tab, setTab] = useState<TabId>("dashboard");
+  const [tab, setTabRaw] = useState<TabId>("dashboard");
+  const setTab = useCallback((next: TabId) => {
+    setTabRaw(next);
+    playUiTick("tab");
+  }, []);
   const [sidebarMode, setSidebarMode] = useState<"full" | "compact" | "hidden">("full");
   const [pinnedTabs, setPinnedTabs] = useState<TabId[]>([]);
   const [cmdOpen, setCmdOpen] = useState(false);
@@ -638,9 +643,21 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </button>
             <span
               title="Tiến độ mục tiêu tập trung hôm nay"
-              className="hidden items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 font-mono text-[11px] font-medium text-[var(--accent)] md:inline-flex"
+              className="hidden items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1 font-mono text-[11px] font-medium text-[var(--accent)] md:inline-flex"
             >
-              <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
+              <svg viewBox="0 0 24 24" className="h-4 w-4 -rotate-90">
+                <circle cx="12" cy="12" r="9" fill="none" stroke="var(--border-subtle)" strokeWidth="3" />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                  fill="none"
+                  stroke={headerGoalPct >= 100 ? "#10b981" : "var(--accent)"}
+                  strokeWidth="3"
+                  strokeDasharray={`${Math.round((headerGoalPct / 100) * 56.5)} 56.5`}
+                  strokeLinecap="round"
+                />
+              </svg>
               {headerGoalPct}%
             </span>
             <LanguageToggle />

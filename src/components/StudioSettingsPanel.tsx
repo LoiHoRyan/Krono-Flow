@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Compass,
   Volume2,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -28,7 +29,7 @@ import {
   WALLPAPERS,
 } from "@/lib/themes";
 import type { UserProfile } from "./DashboardBento";
-import { isUiSoundsEnabled, playUiTick, setUiSoundsEnabled } from "@/lib/ui-sounds";
+import { getUiSoundStyle, isUiSoundsEnabled, playUiTick, setUiSoundsEnabled, setUiSoundStyle, UiSoundStyle } from "@/lib/ui-sounds";
 
 export interface ExtendedUserProfile extends UserProfile {
   customAccent?: string | null;
@@ -75,12 +76,18 @@ export function StudioSettingsPanel({
   const [seeding, setSeeding] = useState(false);
   const [celebrationsOn, setCelebrationsOn] = useState(true);
   const [uiSoundsOn, setUiSoundsOn] = useState(false);
+  const [soundStyle, setSoundStyle] = useState<UiSoundStyle>("wood");
+  const [glassOpacity, setGlassOpacity] = useState(92);
+  const [diagText, setDiagText] = useState<string | null>(null);
   const [autoDayNight, setAutoDayNight] = useState(false);
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
 
   useEffect(() => {
     setCelebrationsOn(localStorage.getItem("kronoflow-celebrations") !== "off");
     setUiSoundsOn(isUiSoundsEnabled());
+    setSoundStyle(getUiSoundStyle());
+    const savedGlass = Number(localStorage.getItem("kronoflow-glass-opacity") || "92");
+    if (!isNaN(savedGlass)) setGlassOpacity(savedGlass);
     setAutoDayNight(localStorage.getItem("kronoflow-auto-theme") === "on");
     setLastBackupAt(localStorage.getItem("kronoflow-last-backup"));
   }, []);
@@ -725,7 +732,7 @@ export function StudioSettingsPanel({
                   const next = !uiSoundsOn;
                   setUiSoundsOn(next);
                   setUiSoundsEnabled(next);
-                  if (next) playUiTick("check");
+                  if (next) playUiTick("check", true);
                 }}
                 className={cn(
                   "flex items-center justify-between rounded-xl border px-3 py-2 text-xs font-medium sm:col-span-2",
@@ -740,6 +747,85 @@ export function StudioSettingsPanel({
                 </span>
                 <span>{uiSoundsOn ? "Bật" : "Tắt"}</span>
               </button>
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs sm:col-span-2">
+                <span className="text-[var(--text-secondary)]">Kiểu âm thanh & Nghe thử:</span>
+                <div className="flex items-center gap-1.5">
+                  {(
+                    [
+                      ["wood", "Gỗ nhẹ"],
+                      ["bubble", "Bong bóng"],
+                    ] as const
+                  ).map(([k, lb]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => {
+                        setSoundStyle(k);
+                        setUiSoundStyle(k);
+                        playUiTick("check", true);
+                      }}
+                      className={cn(
+                        "rounded-lg px-2.5 py-1 text-[11px] font-medium",
+                        soundStyle === k
+                          ? "bg-[var(--accent)] text-white"
+                          : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                      )}
+                    >
+                      {lb}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => playUiTick("check", true)}
+                    className="rounded-lg border border-[var(--border-subtle)] px-2.5 py-1 text-[11px] text-[var(--accent)]"
+                  >
+                    Nghe thử
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs sm:col-span-2">
+                <span className="text-[var(--text-secondary)]">
+                  Độ đục thẻ kính (Glass Opacity): <strong className="font-mono">{glassOpacity}%</strong>
+                </span>
+                <input
+                  type="range"
+                  min={65}
+                  max={100}
+                  value={glassOpacity}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setGlassOpacity(v);
+                    localStorage.setItem("kronoflow-glass-opacity", String(v));
+                    document.documentElement.style.setProperty("--glass-opacity", String(v / 100));
+                  }}
+                  className="w-36 accent-[var(--accent)]"
+                />
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs sm:col-span-2">
+                <span className="inline-flex items-center gap-1.5 text-[var(--text-secondary)]">
+                  <Activity className="h-3.5 w-3.5 text-emerald-500" />
+                  {diagText ?? "Chẩn đoán kết nối PostgreSQL & bộ nhớ cục bộ"}
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const t0 = performance.now();
+                    const res = await fetch("/api/health");
+                    const ms = Math.round(performance.now() - t0);
+                    let lsBytes = 0;
+                    for (let i = 0; i < localStorage.length; i++) {
+                      const k = localStorage.key(i);
+                      if (k) lsBytes += k.length + (localStorage.getItem(k)?.length ?? 0);
+                    }
+                    setDiagText(
+                      `PostgreSQL: ${res.ok ? "OK" : "Lỗi"} (${ms}ms) · Bộ nhớ cục bộ: ${(lsBytes / 1024).toFixed(1)} KB`
+                    );
+                  }}
+                  className="rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--accent)]"
+                >
+                  Kiểm tra ngay
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-[11px]">

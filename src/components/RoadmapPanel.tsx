@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Circle, Clock, Download, Map, Plus, Sparkles, Trash2, Upload } from "lucide-react";
+import { CheckCircle2, Circle, Clock, Download, Map, Plus, Sparkles, Trash2, Upload,
+  Maximize2,
+} from "lucide-react";
 import { ROADMAP_TEMPLATES } from "@/lib/roadmap-templates";
+import { playUiTick } from "@/lib/ui-sounds";
 
 export interface RoadmapItemRecord {
   id: string;
@@ -27,6 +30,7 @@ export function RoadmapPanel({
 }) {
   const [title, setTitle] = useState("");
   const [stepsRaw, setStepsRaw] = useState("");
+  const [wideMode, setWideMode] = useState(false);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,6 +67,7 @@ export function RoadmapPanel({
   };
 
   const cycleItemStatus = async (item: RoadmapItemRecord) => {
+    playUiTick("check");
     const order: RoadmapItemRecord["status"][] = ["todo", "in_progress", "done"];
     const next = order[(order.indexOf(item.status) + 1) % order.length] ?? "todo";
     await fetch(`/api/roadmaps/items/${item.id}`, {
@@ -180,7 +185,17 @@ export function RoadmapPanel({
         </form>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setWideMode((v) => !v)}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+        >
+          <Maximize2 className="h-3.5 w-3.5" />
+          {wideMode ? "Thu về 2 cột" : "Chế độ đọc rộng (1 cột)"}
+        </button>
+      </div>
+      <div className={wideMode ? "grid gap-4 grid-cols-1" : "grid gap-4 md:grid-cols-2"}>
         {roadmaps.map((rm) => {
           const doneCount = rm.items.filter((i) => i.status === "done").length;
           const pct = rm.items.length > 0 ? Math.round((doneCount / rm.items.length) * 100) : 0;

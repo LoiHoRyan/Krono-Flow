@@ -14,6 +14,7 @@ import {
   Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { playUiTick } from "@/lib/ui-sounds";
 import type { SubjectOption } from "./PomodoroTimer";
 
 export interface HabitRecord {
@@ -183,7 +184,10 @@ export function HabitsVaultPanel({
     });
     if (res.ok) {
       const json = await res.json();
-      if (json.checked) onNotify("Tuyệt vời! Đã chấm hoàn thành thói quen.");
+      if (json.checked) {
+        playUiTick("check");
+        onNotify("Tuyệt vời! Đã chấm hoàn thành thói quen.");
+      }
       onRefresh();
     }
   };
@@ -532,7 +536,7 @@ export function HabitsVaultPanel({
         </section>
 
         {/* 3. NHẬT KÝ PHẢN TƯ CUỐI NGÀY */}
-        <section className="glass-card card-lift rounded-2xl p-6 lg:col-span-5">
+        <section className="privacy-sensitive glass-card card-lift rounded-2xl p-6 lg:col-span-5">
           <div className="flex items-center gap-2">
             <HeartHandshake className="h-4 w-4 text-[var(--accent)]" />
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">

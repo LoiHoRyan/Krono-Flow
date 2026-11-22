@@ -24,6 +24,7 @@ import {
   Upload,
   Sparkles,
   StickyNote,
+  Gamepad2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarkdownView } from "./MarkdownView";
@@ -73,7 +74,51 @@ export function NotesFlashcardsPanel({
   onUndoableDelete?: (label: string, onUndo: () => Promise<void>) => void;
   onRefresh: () => void;
 }) {
-  const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz" | "typing" | "mistakes" | "feynman">("notes");
+  const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz" | "typing" | "mistakes" | "feynman" | "match">("notes");
+  const [matchTiles, setMatchTiles] = useState<{ id: string; cardId: string; side: "front" | "back"; text: string }[]>([]);
+  const [matchPicked, setMatchPicked] = useState<string | null>(null);
+  const [matchedIds, setMatchedIds] = useState<string[]>([]);
+  const [matchSec, setMatchSec] = useState(60);
+
+  const startMatchGame = () => {
+    const sample = flashcards.slice(0, 6);
+    const tiles: { id: string; cardId: string; side: "front" | "back"; text: string }[] = [];
+    for (const c of sample) {
+      tiles.push({ id: `f-${c.id}`, cardId: c.id, side: "front", text: c.front });
+      tiles.push({ id: `b-${c.id}`, cardId: c.id, side: "back", text: c.back });
+    }
+    tiles.sort(() => Math.random() - 0.5);
+    setMatchTiles(tiles);
+    setMatchedIds([]);
+    setMatchPicked(null);
+    setMatchSec(60);
+    setSubTab("match");
+  };
+
+  useEffect(() => {
+    if (subTab !== "match" || matchTiles.length === 0 || matchedIds.length >= matchTiles.length / 2 || matchSec <= 0) return;
+    const t = setInterval(() => setMatchSec((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [subTab, matchTiles.length, matchedIds.length, matchSec]);
+
+  const pickMatchTile = (tile: { id: string; cardId: string; side: "front" | "back"; text: string }) => {
+    if (matchedIds.includes(tile.cardId) || matchSec <= 0) return;
+    if (!matchPicked) {
+      setMatchPicked(tile.id);
+      playUiTick("flip");
+      return;
+    }
+    if (matchPicked === tile.id) {
+      setMatchPicked(null);
+      return;
+    }
+    const prev = matchTiles.find((x) => x.id === matchPicked);
+    if (prev && prev.cardId === tile.cardId && prev.side !== tile.side) {
+      setMatchedIds((arr) => [...arr, tile.cardId]);
+      playUiTick("check");
+    }
+    setMatchPicked(null);
+  };
   const [pdfOpen, setPdfOpen] = useState(false);
   const [pastelMode, setPastelMode] = useState(false);
   const [noteColors, setNoteColors] = useState<Record<string, string>>({});
@@ -477,6 +522,19 @@ export function NotesFlashcardsPanel({
             <Sparkles className="h-3.5 w-3.5" />
             Feynman AI
           </button>
+          <button
+            type="button"
+            onClick={startMatchGame}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold",
+              subTab === "match"
+                ? "btn-primary"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            )}
+          >
+            <Gamepad2 className="h-3.5 w-3.5" />
+            Ghép cặp 60s
+          </button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -575,6 +633,30 @@ export function NotesFlashcardsPanel({
                 </option>
               ))}
             </select>
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+              <span className="text-[var(--text-muted)]">Mẫu nhanh:</span>
+              {(
+                [
+                  ["Cornell", "## Từ khóa chính\n- ...\n\n## Nội dung chi tiết\n- ...\n\n## Tóm tắt cuối bài\n- ..."],
+                  ["Tóm tắt chương", "## Ý tưởng cốt lõi\n- ...\n\n## Công thức / Khái niệm\n- ...\n\n## Câu hỏi ôn tập\n- [ ] ..."],
+                  ["Case Study", "## Bối cảnh vấn đề\n...\n\n## Phân tích nguyên nhân\n- ...\n\n## Giải pháp & Kết luận\n- ..."],
+                  ["Họp nhóm", "## Mục tiêu buổi họp\n- ...\n\n## Phân công công việc\n- [ ] Thành viên A: ...\n- [ ] Thành viên B: ..."],
+                ] as const
+              ).map(([label, tpl]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => {
+                    setNoteContent(tpl);
+                    if (!noteTitle) setNoteTitle(label);
+                    playUiTick("flip");
+                  }}
+                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-0.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  + {label}
+                </button>
+              ))}
+            </div>
             <div className="flex flex-wrap items-center justify-between gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1.5 text-[11px]">
               <div className="flex flex-wrap gap-1">
                 <button type="button" onClick={() => insertMdSnippet(" **in đậm** ")} className="rounded px-1.5 py-0.5 font-bold hover:bg-[var(--bg-elevated)]">B</button>
@@ -982,6 +1064,63 @@ export function NotesFlashcardsPanel({
               </div>
             );
           })()}
+        </div>
+      ) : subTab === "match" ? (
+        <div className="glass-card rounded-2xl p-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+              <Gamepad2 className="h-4 w-4 text-[var(--accent)]" />
+              Mini-game Ghép cặp Flashcard (60 giây)
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="font-mono font-semibold text-[var(--accent)]">
+                Còn {matchSec}s
+              </span>
+              <span className="text-[var(--text-secondary)]">
+                Đã ghép: {matchedIds.length}/{Math.floor(matchTiles.length / 2)}
+              </span>
+              <button
+                type="button"
+                onClick={startMatchGame}
+                className="btn-primary rounded-lg px-3 py-1 text-[11px] font-medium"
+              >
+                Chơi lại
+              </button>
+            </div>
+          </div>
+          {matchTiles.length < 4 ? (
+            <p className="text-xs text-[var(--text-muted)]">
+              Hãy tạo ít nhất 2 thẻ Flashcard để bắt đầu trò chơi ghép cặp.
+            </p>
+          ) : (
+            <div className="grid gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+              {matchTiles.map((tile) => {
+                const isMatched = matchedIds.includes(tile.cardId);
+                const isSelected = matchPicked === tile.id;
+                return (
+                  <button
+                    key={tile.id}
+                    type="button"
+                    disabled={isMatched || matchSec <= 0}
+                    onClick={() => pickMatchTile(tile)}
+                    className={cn(
+                      "min-h-[78px] rounded-xl border p-3 text-left text-xs transition-all",
+                      isMatched
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 opacity-55"
+                        : isSelected
+                        ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] font-semibold ring-2 ring-[var(--accent)]/40"
+                        : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-primary)] hover:border-[var(--accent)]"
+                    )}
+                  >
+                    <div className="mb-1 text-[9px] uppercase tracking-wider text-[var(--text-muted)]">
+                      {tile.side === "front" ? "Câu hỏi" : "Đáp án"}
+                    </div>
+                    <div className="line-clamp-3">{tile.text}</div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       ) : subTab === "feynman" ? (
         <div className="grid gap-6 lg:grid-cols-12">

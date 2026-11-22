@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2, Wallet, TrendingDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Trash2, Wallet, TrendingDown,
+  AlertTriangle,
+} from "lucide-react";
 import { useLang } from "@/lib/i18n";
 
 export interface ExpenseRecord {
@@ -25,6 +27,21 @@ export function ExpensesPanel({
 }) {
   const { lang } = useLang();
   const [title, setTitle] = useState("");
+  const [monthlyBudget, setMonthlyBudget] = useState(1500000);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("kronoflow-monthly-budget");
+    if (raw) {
+      const n = Number(raw);
+      if (!isNaN(n) && n > 0) setMonthlyBudget(n);
+    }
+  }, []);
+
+  const updateBudget = (val: number) => {
+    const safe = Math.max(100000, val);
+    setMonthlyBudget(safe);
+    localStorage.setItem("kronoflow-monthly-budget", String(safe));
+  };
   const [amount, setAmount] = useState("50000");
   const [category, setCategory] = useState(CATEGORIES[0] ?? "Khác");
   const [spentDate, setSpentDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -90,6 +107,41 @@ export function ExpensesPanel({
           <div className="mt-2 font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">
             {monthTotal.toLocaleString("vi-VN")} ₫
           </div>
+          {(() => {
+            const pct = Math.min(120, Math.round((monthTotal / Math.max(1, monthlyBudget)) * 100));
+            const over80 = pct >= 80;
+            return (
+              <div className="mt-3 space-y-1.5 text-[11px]">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[var(--text-muted)]">
+                    Hạn mức tháng ({pct}%):
+                  </span>
+                  <input
+                    type="number"
+                    step={100000}
+                    min={100000}
+                    value={monthlyBudget}
+                    onChange={(e) => updateBudget(Number(e.target.value))}
+                    className="w-28 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-0.5 text-right font-mono text-[11px] text-[var(--text-primary)]"
+                  />
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      pct >= 100 ? "bg-rose-500" : over80 ? "bg-amber-500" : "bg-emerald-500"
+                    }`}
+                    style={{ width: `${Math.min(100, pct)}%` }}
+                  />
+                </div>
+                {over80 && (
+                  <div className="flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    {pct >= 100 ? "Đã vượt ngân sách học tập tháng!" : "Sắp chạm hạn mức ngân sách tháng (≥80%)."}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
         <div className="glass-card card-lift rounded-2xl p-5">
           <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
