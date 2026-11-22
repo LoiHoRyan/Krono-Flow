@@ -68,6 +68,8 @@ export function SubjectTodoPanel({
   const [priority, setPriority] = useState<TodoItem["priority"]>("medium");
   const [filter, setFilter] = useState<"all" | "pending" | "done">("all");
   const [todoQuery, setTodoQuery] = useState("");
+  const [dragTodoId, setDragTodoId] = useState<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editTodoTitle, setEditTodoTitle] = useState("");
 
@@ -515,7 +517,27 @@ export function SubjectTodoPanel({
                 return (
                   <div
                     key={col.id}
-                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragOverCol(col.id);
+                    }}
+                    onDragLeave={() => setDragOverCol(null)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragOverCol(null);
+                      const id = e.dataTransfer.getData("text/plain") || dragTodoId;
+                      const found = todos.find((x) => x.id === id);
+                      if (found && normalizedStatus(found) !== col.id) {
+                        setTodoStatus(found, col.id);
+                      }
+                      setDragTodoId(null);
+                    }}
+                    className={cn(
+                      "rounded-xl border bg-[var(--bg-canvas)] p-3 transition",
+                      dragOverCol === col.id
+                        ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/30"
+                        : "border-[var(--border-subtle)]"
+                    )}
                   >
                     <div className="flex items-center justify-between text-xs font-semibold text-[var(--text-primary)]">
                       <span>{col.label}</span>
@@ -527,7 +549,16 @@ export function SubjectTodoPanel({
                       {items.map((item) => (
                         <div
                           key={item.id}
-                          className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-xs"
+                          draggable
+                          onDragStart={(e) => {
+                            setDragTodoId(item.id);
+                            e.dataTransfer.setData("text/plain", item.id);
+                          }}
+                          onDragEnd={() => {
+                            setDragTodoId(null);
+                            setDragOverCol(null);
+                          }}
+                          className="cursor-grab rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-xs active:cursor-grabbing"
                         >
                           <div className="font-medium text-[var(--text-primary)]">{item.title}</div>
                           <div className="mt-2.5 flex items-center justify-between">

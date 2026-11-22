@@ -24,7 +24,7 @@ import { SmartCalendar } from "./SmartCalendar";
 import type { SessionLogItem, SubjectOption } from "./PomodoroTimer";
 import type { TodoItem } from "./SubjectTodoPanel";
 import type { RoadmapRecord } from "./RoadmapPanel";
-import type { FlashcardRecord } from "./NotesFlashcardsPanel";
+import type { FlashcardRecord, NoteRecord } from "./NotesFlashcardsPanel";
 import type { TimeBlockRecord } from "./GoalsTimeblockPanel";
 
 export interface UserProfile {
@@ -69,6 +69,7 @@ export function DashboardBento({
   flashcards,
   exams,
   timeBlocks = [],
+  notes = [],
   onJumpFocus,
   onRefresh,
 }: {
@@ -80,6 +81,7 @@ export function DashboardBento({
   flashcards: FlashcardRecord[];
   exams: ExamRecord[];
   timeBlocks?: TimeBlockRecord[];
+  notes?: NoteRecord[];
   onJumpFocus: (taskTitle?: string) => void;
   onRefresh: () => void;
 }) {
@@ -235,6 +237,13 @@ export function DashboardBento({
   const doneRoadmapItems = allRoadmapItems.filter((i) => i.status === "done").length;
   const roadmapPct =
     allRoadmapItems.length > 0 ? Math.round((doneRoadmapItems / allRoadmapItems.length) * 100) : 0;
+
+  const pinnedNotes = notes.filter((n) => n.pinned).slice(0, 3);
+  const dailyQuests = [
+    { label: lang === "vi" ? "Tập trung ít nhất 25 phút hôm nay" : "Focus at least 25m today", done: todayMinutes >= 25 },
+    { label: lang === "vi" ? "Hoàn thành ít nhất 2 công việc" : "Complete at least 2 tasks", done: completedTodos >= 2 },
+    { label: lang === "vi" ? "Uống ít nhất 4 ly nước" : "Drink at least 4 cups of water", done: waterCups >= 4 },
+  ];
 
   const pendingTodos = todos.filter((t) => !t.isCompleted).slice(0, 5);
   const quotes = lang === "vi" ? QUOTES_VI : QUOTES_EN;
@@ -593,6 +602,49 @@ export function DashboardBento({
                   </div>
                 ))}
               </div>
+            </section>
+          )}
+
+          {/* NHIỆM VỤ NGÀY MỚI + GHI CHÚ ĐÃ GHIM */}
+          <section className="glass-card card-lift p-5">
+            <h3 className="text-sm font-medium text-[var(--text-primary)]">
+              {lang === "vi" ? "Nhiệm vụ ngày mới (Daily Quests)" : "Daily Quests"}
+            </h3>
+            <ul className="mt-3 space-y-2 text-xs">
+              {dailyQuests.map((q) => (
+                <li
+                  key={q.label}
+                  className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2"
+                >
+                  <span className={q.done ? "text-[var(--text-muted)] line-through" : "text-[var(--text-primary)]"}>
+                    {q.label}
+                  </span>
+                  <span className={q.done ? "font-semibold text-emerald-500" : "text-[var(--text-muted)]"}>
+                    {q.done ? "✓ Xong" : "+25 XP"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {pinnedNotes.length > 0 && (
+            <section className="glass-card card-lift p-5">
+              <h3 className="text-sm font-medium text-[var(--text-primary)]">
+                {lang === "vi" ? "Ghi chú đã ghim" : "Pinned Notes"}
+              </h3>
+              <ul className="mt-3 space-y-2 text-xs">
+                {pinnedNotes.map((pn) => (
+                  <li
+                    key={pn.id}
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3"
+                  >
+                    <div className="font-semibold text-[var(--text-primary)]">{pn.title}</div>
+                    <p className="mt-1 line-clamp-2 text-[11px] text-[var(--text-secondary)]">
+                      {pn.content}
+                    </p>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
 

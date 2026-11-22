@@ -175,6 +175,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [quickOpen, setQuickOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [confettiKey, setConfettiKey] = useState(0);
   const [focusedTaskTitle, setFocusedTaskTitle] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -254,7 +255,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-v21-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-v23-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     notify("Đã tải xuống tệp sao lưu JSON!");
@@ -492,6 +493,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               flashcards={props.flashcards}
               exams={props.exams}
               timeBlocks={props.timeBlocks}
+              notes={props.notes}
               onJumpFocus={(title) => {
                 if (title) setFocusedTaskTitle(title);
                 setTab("focus");
@@ -689,24 +691,76 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-30 flex overflow-x-auto border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] lg:hidden">
-        {NAV_DEF.map((item) => {
+      {mobileMoreOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/45 backdrop-blur-xs lg:hidden"
+          onClick={() => setMobileMoreOpen(false)}
+        >
+          <div
+            className="animate-tab-in w-full rounded-t-2xl border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between text-xs font-semibold text-[var(--text-secondary)]">
+              <span>Tất cả không gian</span>
+              <button type="button" onClick={() => setMobileMoreOpen(false)}>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {NAV_DEF.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setTab(item.id);
+                      setMobileMoreOpen(false);
+                    }}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 rounded-xl border p-3 text-[11px] font-medium",
+                      tab === item.id
+                        ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                        : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)]"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="truncate">{t(`nav_${item.id}`)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] lg:hidden">
+        {(["dashboard", "focus", "schedule", "planner"] as TabId[]).map((id) => {
+          const item = NAV_DEF.find((n) => n.id === id)!;
           const Icon = item.icon;
           return (
             <button
-              key={item.id}
+              key={id}
               type="button"
-              onClick={() => setTab(item.id)}
+              onClick={() => setTab(id)}
               className={cn(
-                "flex min-w-[66px] flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium",
-                tab === item.id ? "text-[var(--accent)]" : "text-[var(--text-muted)]"
+                "flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium",
+                tab === id ? "text-[var(--accent)]" : "text-[var(--text-muted)]"
               )}
             >
               <Icon className="h-4 w-4" />
-              {t(`nav_${item.id}`)}
+              {t(`nav_${id}`)}
             </button>
           );
         })}
+        <button
+          type="button"
+          onClick={() => setMobileMoreOpen(true)}
+          className="flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium text-[var(--text-muted)]"
+        >
+          <Sliders className="h-4 w-4" />
+          Mở rộng
+        </button>
       </nav>
     </div>
   );
@@ -751,7 +805,11 @@ function AppShell() {
       }
 
       if (uRes.ok) {
-        const u: ExtendedUserProfile = (await uRes.json()).data;
+        const u: ExtendedUserProfile | null = (await uRes.json()).data;
+        if (!u) {
+          setAuthState("guest");
+          return;
+        }
         setUser(u);
         if (u?.theme) setThemeId(u.theme);
         setCustomAccent(u?.customAccent ?? null);

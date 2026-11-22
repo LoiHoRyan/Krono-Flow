@@ -24,7 +24,7 @@ const updateUserSchema = z.object({
 
 export async function GET() {
   const user = await getAuthenticatedUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) return NextResponse.json({ data: null }, { status: 200 });
   const { passwordHash: _pw, ...safeUser } = user;
   return NextResponse.json({ data: safeUser });
 }

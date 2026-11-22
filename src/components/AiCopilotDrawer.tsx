@@ -47,6 +47,11 @@ export function AiCopilotDrawer({
   onRefresh: () => void;
 }) {
   const { lang } = useLang();
+  const [aiTab, setAiTab] = useState<"chat" | "flashcards">("chat");
+  const [fcTopic, setFcTopic] = useState("");
+  const [fcCount, setFcCount] = useState(5);
+  const [fcGenerating, setFcGenerating] = useState(false);
+  const [fcPreview, setFcPreview] = useState<{ front: string; back: string }[]>([]);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -131,6 +136,50 @@ export function AiCopilotDrawer({
     if (res.ok) {
       onNotify(lang === "vi" ? "Đã lưu câu trả lời AI thành Ghi chú!" : "Saved AI reply as Note!");
       onRefresh();
+    }
+  };
+
+  const handleGenerateFlashcards = async (saveNow: boolean) => {
+    if (!fcTopic.trim() || fcGenerating) return;
+    setFcGenerating(true);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (userKey.trim()) headers["x-gemini-key"] = userKey.trim();
+      const res = await fetch("/api/ai/flashcards", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ topic: fcTopic.trim(), count: fcCount, saveImmediately: saveNow }),
+      });
+      const json = await res.json();
+      if (res.ok && Array.isArray(json.data)) {
+        setFcPreview(json.data);
+        if (saveNow) {
+          onNotify(`Đã lưu ${json.data.length} thẻ Flashcards vào PostgreSQL!`);
+          onRefresh();
+        }
+      }
+    } finally {
+      setFcGenerating(false);
+    }
+  };
+
+  const handleSavePreviewCards = async () => {
+    if (fcPreview.length === 0) return;
+    setFcGenerating(true);
+    try {
+      for (const c of fcPreview) {
+        await fetch("/api/flashcards", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ front: c.front, back: c.back }),
+        });
+      }
+      onNotify(`Đã lưu ${fcPreview.length} thẻ Flashcards vào kho!`);
+      setFcPreview([]);
+      setFcTopic("");
+      onRefresh();
+    } finally {
+      setFcGenerating(false);
     }
   };
 
@@ -230,6 +279,97 @@ export function AiCopilotDrawer({
           </div>
         )}
 
+        {/* Mode Switch: Chat vs AI Flashcards */}
+        <div className="flex gap-1 border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-5 py-2 text-xs">
+          <button
+            type="button"
+            onClick={() => setAiTab("chat")}
+            className={cn(
+              "rounded-lg px-3 py-1 font-medium",
+              aiTab === "chat"
+                ? "bg-[var(--accent)] text-white"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            )}
+          >
+            Trò chuyện AI
+          </button>
+          <button
+            type="button"
+            onClick={() => setAiTab("flashcards")}
+            className={cn(
+              "rounded-lg px-3 py-1 font-medium",
+              aiTab === "flashcards"
+                ? "bg-[var(--accent)] text-white"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            )}
+          >
+            ✦ Tạo Flashcards (1-Click)
+          </button>
+        </div>
+
+        {aiTab === "flashcards" ? (
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+            <div className="space-y-2.5">
+              <label className="text-xs font-medium text-[var(--text-primary)]">
+                Nhập tên chủ đề hoặc dán đoạn bài giảng
+              </label>
+              <textarea
+                rows={4}
+                value={fcTopic}
+                onChange={(e) => setFcTopic(e.target.value)}
+                placeholder="VD: Các thuật toán sắp xếp cơ bản (QuickSort, MergeSort, HeapSort)..."
+                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+              />
+              <div className="flex items-center justify-between gap-2">
+                <select
+                  value={fcCount}
+                  onChange={(e) => setFcCount(Number(e.target.value))}
+                  className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
+                >
+                  <option value={5}>5 thẻ Flashcards</option>
+                  <option value={8}>8 thẻ Flashcards</option>
+                  <option value={10}>10 thẻ Flashcards</option>
+                </select>
+                <button
+                  type="button"
+                  disabled={fcGenerating || !fcTopic.trim()}
+                  onClick={() => handleGenerateFlashcards(false)}
+                  className="btn-primary rounded-xl px-4 py-2 text-xs font-medium disabled:opacity-50"
+                >
+                  {fcGenerating ? "Đang tạo..." : "Sinh bộ thẻ"}
+                </button>
+              </div>
+            </div>
+
+            {fcPreview.length > 0 && (
+              <div className="space-y-2.5 border-t border-[var(--border-subtle)] pt-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[var(--text-primary)]">
+                    Xem trước ({fcPreview.length} thẻ)
+                  </span>
+                  <button
+                    type="button"
+                    disabled={fcGenerating}
+                    onClick={handleSavePreviewCards}
+                    className="btn-primary rounded-xl px-3.5 py-1.5 text-xs font-medium"
+                  >
+                    Lưu tất cả vào PostgreSQL
+                  </button>
+                </div>
+                {fcPreview.map((c, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3 text-xs"
+                  >
+                    <div className="font-semibold text-[var(--text-primary)]">Q: {c.front}</div>
+                    <div className="mt-1 text-[var(--text-secondary)]">A: {c.back}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+        <>
         {/* Messages Area */}
         <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
           {messages.length === 0 ? (
@@ -345,6 +485,8 @@ export function AiCopilotDrawer({
             </button>
           </div>
         </form>
+        </>
+        )}
       </aside>
     </div>
   );
