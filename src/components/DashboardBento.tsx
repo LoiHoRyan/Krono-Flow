@@ -1,5 +1,7 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+
 import { useEffect, useState } from "react";
 import {
   Flame,
@@ -580,6 +582,7 @@ export function DashboardBento({
                     ctx.fillStyle = "#f8fafc";
                     ctx.font = "bold 46px sans-serif";
                     const topEx = exams[0];
+                    if (!topEx) return;
                     const dLeft = Math.max(0, Math.ceil((new Date(topEx.examDate).getTime() - Date.now()) / 86400000));
                     ctx.fillText(topEx.title.slice(0, 32), 64, 175);
                     ctx.fillStyle = "#fbbf24";

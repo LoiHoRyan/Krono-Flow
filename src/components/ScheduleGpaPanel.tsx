@@ -1,5 +1,7 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+
 import { useState, useEffect } from "react";
 import { CalendarDays, Calculator, GraduationCap, Plus, Trash2,
   ShieldAlert,

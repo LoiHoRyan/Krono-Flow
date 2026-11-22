@@ -103,6 +103,7 @@ export function NotesFlashcardsPanel({
   const [onlyDue, setOnlyDue] = useState(false);
 
   const [noteTitle, setNoteTitle] = useState("");
+  const [cardSubject, setCardSubject] = useState("");
   const [noteContent, setNoteContent] = useState("");
   const [splitPreview, setSplitPreview] = useState(false);
   const [speechLang, setSpeechLang] = useState<"vi-VN" | "en-US">("vi-VN");
@@ -211,7 +212,6 @@ export function NotesFlashcardsPanel({
 
   const [cardFront, setCardFront] = useState("");
   const [cardBack, setCardBack] = useState("");
-  const [cardSubject, setCardSubject] = useState("");
   const [cardIdx, setCardIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
 
