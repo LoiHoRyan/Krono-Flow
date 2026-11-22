@@ -79,6 +79,7 @@ export function HabitsVaultPanel({
   const [resUrl, setResUrl] = useState("");
   const [resCat, setResCat] = useState("Tài liệu");
   const [resSub, setResSub] = useState("");
+  const [resFilter, setResFilter] = useState("Tất cả");
 
   const todayKey = new Date().toISOString().slice(0, 10);
   const todayRef = reflections.find((r) => r.entryDate === todayKey);
@@ -330,11 +331,30 @@ export function HabitsVaultPanel({
       <div className="grid gap-6 lg:grid-cols-12">
         {/* 2. KHO TÀI LIỆU HỌC TẬP */}
         <section className="glass-card card-lift rounded-2xl p-6 lg:col-span-7">
-          <div className="flex items-center gap-2">
-            <FolderKanban className="h-4 w-4 text-[var(--accent)]" />
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-              Kho Tài liệu & Liên kết học tập ({resources.length})
-            </h3>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <FolderKanban className="h-4 w-4 text-[var(--accent)]" />
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                Kho Tài liệu ({resources.length})
+              </h3>
+            </div>
+            <div className="flex flex-wrap gap-1 text-[11px]">
+              {["Tất cả", "Tài liệu", "Video", "Bài tập", "Công cụ"].map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setResFilter(cat)}
+                  className={cn(
+                    "rounded-lg px-2 py-0.5 font-medium",
+                    resFilter === cat
+                      ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                      : "text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]"
+                  )}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
 
           <form onSubmit={handleAddResource} className="mt-4 grid gap-2.5 sm:grid-cols-2">
@@ -391,7 +411,7 @@ export function HabitsVaultPanel({
                 Chưa có liên kết nào được lưu.
               </li>
             ) : (
-              resources.map((r) => {
+              resources.filter((r) => resFilter === "Tất cả" || r.category === resFilter).map((r) => {
                 const sub = r.subjectId ? subjectMap.get(r.subjectId) : undefined;
                 return (
                   <li

@@ -130,6 +130,64 @@ export function AnalyticsPanel({
     },
   ];
 
+  const handleDownloadStudyCard = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1200;
+    canvas.height = 630;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const grad = ctx.createLinearGradient(0, 0, 1200, 630);
+    grad.addColorStop(0, "#0f172a");
+    grad.addColorStop(1, "#1e293b");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1200, 630);
+
+    ctx.fillStyle = "#38bdf8";
+    ctx.font = "600 22px system-ui, sans-serif";
+    ctx.fillText("KRONOFLOW · STUDY ACHIEVEMENT CARD", 72, 92);
+
+    ctx.fillStyle = "#f8fafc";
+    ctx.font = "700 54px Georgia, serif";
+    ctx.fillText("Hành trình Kỷ luật & Tập trung", 72, 165);
+
+    const unlockedCount = achievements.filter((a) => a.done).length;
+    const stats = [
+      { label: "CHUỖI NGÀY (STREAK)", value: `${streak} ngày` },
+      { label: "TỔNG GIỜ HỌC", value: `${(totalMinutes / 60).toFixed(1)} giờ` },
+      { label: "PHIÊN HOÀN THÀNH", value: `${completed.length} phiên` },
+      { label: "HUY HIỆU MỞ KHÓA", value: `${unlockedCount} / ${achievements.length}` },
+    ];
+
+    stats.forEach((st, idx) => {
+      const col = idx % 2;
+      const row = Math.floor(idx / 2);
+      const x = 72 + col * 540;
+      const y = 225 + row * 155;
+      ctx.fillStyle = "rgba(255,255,255,0.06)";
+      ctx.fillRect(x, y, 500, 125);
+      ctx.strokeStyle = "rgba(255,255,255,0.14)";
+      ctx.strokeRect(x, y, 500, 125);
+
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "600 16px system-ui, sans-serif";
+      ctx.fillText(st.label, x + 28, y + 44);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 40px monospace";
+      ctx.fillText(st.value, x + 28, y + 96);
+    });
+
+    ctx.fillStyle = "#64748b";
+    ctx.font = "500 18px system-ui, sans-serif";
+    ctx.fillText(`Xuất ngày ${new Date().toLocaleDateString("vi-VN")} · kronoflow`, 72, 575);
+
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL("image/png");
+    a.download = `kronoflow-study-card-${new Date().toISOString().slice(0, 10)}.png`;
+    a.click();
+  };
+
   const handleExportJson = () => {
     const blob = new Blob(
       [JSON.stringify({ exportedAt: new Date().toISOString(), subjects, sessions }, null, 2)],
@@ -201,9 +259,17 @@ export function AnalyticsPanel({
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex flex-1 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2.5 py-2 text-xs font-medium text-[var(--text-primary)]"
+              className="inline-flex flex-1 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-2 text-xs font-medium text-[var(--text-primary)]"
             >
-              In PDF
+              PDF
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadStudyCard}
+              title="Tải ảnh Thẻ Thành tích PNG"
+              className="inline-flex flex-1 items-center justify-center rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2 py-2 text-xs font-medium text-[var(--accent)]"
+            >
+              PNG
             </button>
           </div>
         </div>

@@ -119,6 +119,23 @@ export function ScheduleGpaPanel({
     }
   };
 
+  const exportGradesCsv = () => {
+    const header = "Hoc phan,Hoc ky,Tin chi,Diem he 10,Diem chu,GPA he 4\n";
+    const rows = grades
+      .map((g) => {
+        const c = toGpa4(g.score10);
+        return `"${g.courseName.replaceAll('"', '""')}","${g.semester}",${g.credits},${g.score10},${c.letter},${c.gpa4}`;
+      })
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + header + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kronoflow-gpa-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleDeleteGrade = async (id: string) => {
     await fetch(`/api/grades/${id}`, { method: "DELETE" });
     onRefresh();
@@ -275,7 +292,14 @@ export function ScheduleGpaPanel({
               </h3>
             </div>
 
-            <div className="flex flex-wrap gap-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <button
+                type="button"
+                onClick={exportGradesCsv}
+                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--accent)] hover:border-[var(--accent)]"
+              >
+                Xuất CSV
+              </button>
               <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5">
                 Tín chỉ: <strong className="font-mono">{totalCredits}</strong>
               </div>

@@ -61,6 +61,30 @@ export function StudioSettingsPanel({
   );
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const [restoreMsg, setRestoreMsg] = useState<string | null>(null);
+  const [compactUi, setCompactUi] = useState(
+    typeof document !== "undefined" && document.documentElement.classList.contains("compact-ui")
+  );
+  const [seeding, setSeeding] = useState(false);
+
+  const toggleDensity = () => {
+    const next = !compactUi;
+    setCompactUi(next);
+    document.documentElement.classList.toggle("compact-ui", next);
+    localStorage.setItem("kronoflow-density", next ? "compact" : "comfortable");
+  };
+
+  const handleSeedSample = async () => {
+    setSeeding(true);
+    try {
+      const res = await fetch("/api/seed", { method: "POST" });
+      if (res.ok) {
+        setRestoreMsg("Đã nạp bộ dữ liệu mẫu thành công vào PostgreSQL!");
+        onRefresh();
+      }
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   // Change password state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -586,6 +610,21 @@ export function StudioSettingsPanel({
               >
                 <Download className="h-3.5 w-3.5 text-emerald-500" />
                 Xuất JSON
+              </button>
+              <button
+                type="button"
+                onClick={toggleDensity}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs font-medium text-[var(--text-primary)]"
+              >
+                Mật độ: {compactUi ? "Gọn (Compact)" : "Thoải mái"}
+              </button>
+              <button
+                type="button"
+                disabled={seeding}
+                onClick={handleSeedSample}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-3 py-2 text-xs font-medium text-[var(--accent)] disabled:opacity-50"
+              >
+                {seeding ? "Đang nạp..." : "Nạp dữ liệu mẫu (1 click)"}
               </button>
               <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs font-medium text-[var(--text-primary)]">
                 <Upload className="h-3.5 w-3.5 text-[var(--accent)]" />

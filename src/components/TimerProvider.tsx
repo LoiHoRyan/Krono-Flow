@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { ambientEngine, AmbientType } from "@/lib/ambient-audio";
+import { formatDuration } from "@/lib/utils";
 
 export type TimerMode = "pomodoro" | "deep_work" | "short_break" | "long_break";
 
@@ -104,6 +105,15 @@ export function TimerProvider({
       ambientEngine.stop();
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (isRunning) {
+      document.title = `${formatDuration(secondsLeft)} · KronoFlow`;
+    } else {
+      document.title = "KronoFlow — Không gian học tập & quản lý thời gian";
+    }
+  }, [isRunning, secondsLeft]);
 
   const changeMode = (nextMode: TimerMode) => {
     if (isRunning) return;

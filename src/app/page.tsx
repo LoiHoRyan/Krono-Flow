@@ -184,6 +184,8 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
 
   useEffect(() => {
     applyThemeToDocument(props.themeId, props.customAccent, props.fontStyle, props.borderRadius);
+    const savedDensity = localStorage.getItem("kronoflow-density");
+    document.documentElement.classList.toggle("compact-ui", savedDensity === "compact");
   }, [props.themeId, props.customAccent, props.fontStyle, props.borderRadius]);
 
   useEffect(() => {
@@ -245,7 +247,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-v18-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-v19-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     notify("Đã tải xuống tệp sao lưu JSON!");
@@ -310,7 +312,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </span>
             <div>
               <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-              <p className="text-[11px] text-[var(--text-muted)]">Studio v18</p>
+              <p className="text-[11px] text-[var(--text-muted)]">Studio v19</p>
             </div>
           </div>
 
