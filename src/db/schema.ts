@@ -379,3 +379,23 @@ export const expenses = pgTable(
     check("expenses_amount_positive", sql`${table.amount} > 0`),
   ]
 );
+
+export const books = pgTable(
+  "books",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    author: text("author"),
+    currentPage: integer("current_page").notNull().default(0),
+    totalPages: integer("total_pages").notNull().default(200),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("books_user_idx").on(table.userId),
+    check("books_total_positive", sql`${table.totalPages} > 0`),
+    check("books_current_non_neg", sql`${table.currentPage} >= 0`),
+  ]
+);

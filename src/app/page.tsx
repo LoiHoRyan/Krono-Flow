@@ -22,6 +22,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   NotebookPen,
+  Plus,
   X,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
@@ -30,6 +31,7 @@ import { LanguageProvider, LanguageToggle, useLang } from "@/lib/i18n";
 import { AuthScreen } from "@/components/AuthScreen";
 import { ConfettiBurst } from "@/components/ConfettiBurst";
 import { QuickScratchpad } from "@/components/QuickScratchpad";
+import { QuickCaptureModal } from "@/components/QuickCaptureModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -51,6 +53,7 @@ import {
   HabitRecord,
   ResourceRecord,
   ReflectionRecord,
+  BookRecord,
 } from "@/components/HabitsVaultPanel";
 import {
   GoalsTimeblockPanel,
@@ -144,6 +147,7 @@ interface WorkspaceProps {
   resources: ResourceRecord[];
   reflections: ReflectionRecord[];
   expenses: ExpenseRecord[];
+  books: BookRecord[];
   dbStatus: "checking" | "connected" | "disconnected";
   themeId: string;
   customAccent: string | null;
@@ -162,6 +166,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [cmdOpen, setCmdOpen] = useState(false);
   const [cmdQuery, setCmdQuery] = useState("");
   const [padOpen, setPadOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [confettiKey, setConfettiKey] = useState(0);
   const [focusedTaskTitle, setFocusedTaskTitle] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -197,6 +202,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       } else if (e.key.toLowerCase() === "b" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         setSidebarOpen((v) => !v);
+      } else if (e.key.toLowerCase() === "q" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setQuickOpen((v) => !v);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -227,7 +235,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-v16-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-v17-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     notify("Đã tải xuống tệp sao lưu JSON!");
@@ -258,6 +266,22 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     <div className="relative min-h-screen lg:flex" style={bgStyle}>
       <ConfettiBurst triggerKey={confettiKey} />
       <QuickScratchpad open={padOpen} onClose={() => setPadOpen(false)} />
+      <QuickCaptureModal
+        open={quickOpen}
+        onClose={() => setQuickOpen(false)}
+        onSuccess={(m) => {
+          notify(m);
+          props.onRefresh();
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => setQuickOpen(true)}
+        title="Thêm nhanh (Phím Q)"
+        className="btn-primary no-print fixed bottom-20 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full shadow-xl lg:bottom-7 lg:right-7"
+      >
+        <Plus className="h-5 w-5" />
+      </button>
 
       {/* FIXED FULL-HIDE SIDEBAR (0px hoàn toàn khi bấm ẩn) */}
       <aside
@@ -275,7 +299,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </span>
             <div>
               <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-              <p className="text-[11px] text-[var(--text-muted)]">Studio v16</p>
+              <p className="text-[11px] text-[var(--text-muted)]">Studio v17</p>
             </div>
           </div>
 
@@ -475,6 +499,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               habits={props.habits}
               resources={props.resources}
               reflections={props.reflections}
+              books={props.books}
               onNotify={notify}
               onRefresh={props.onRefresh}
             />
@@ -665,6 +690,7 @@ function AppShell() {
   const [resources, setResources] = useState<ResourceRecord[]>([]);
   const [reflections, setReflections] = useState<ReflectionRecord[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
+  const [books, setBooks] = useState<BookRecord[]>([]);
   const [dbStatus, setDbStatus] = useState<"checking" | "connected" | "disconnected">("checking");
 
   const loadAll = useCallback(async () => {
@@ -704,6 +730,7 @@ function AppShell() {
         glRes,
         tbRes,
         exRes,
+        bkRes,
       ] = await Promise.all([
         fetch("/api/subjects"),
         fetch("/api/todos"),
@@ -720,6 +747,7 @@ function AppShell() {
         fetch("/api/goals"),
         fetch("/api/timeblocks"),
         fetch("/api/expenses"),
+        fetch("/api/books"),
       ]);
 
       if (sRes.ok) setSubjects((await sRes.json()).data ?? []);
@@ -737,6 +765,7 @@ function AppShell() {
       if (glRes.ok) setGoals((await glRes.json()).data ?? []);
       if (tbRes.ok) setTimeBlocks((await tbRes.json()).data ?? []);
       if (exRes.ok) setExpenses((await exRes.json()).data ?? []);
+      if (bkRes.ok) setBooks((await bkRes.json()).data ?? []);
     } catch {
       setDbStatus("disconnected");
       setAuthState("guest");
@@ -794,6 +823,7 @@ function AppShell() {
         resources={resources}
         reflections={reflections}
         expenses={expenses}
+        books={books}
         dbStatus={dbStatus}
         themeId={themeId}
         customAccent={customAccent}

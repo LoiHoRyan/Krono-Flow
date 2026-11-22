@@ -48,7 +48,9 @@ export function NotesFlashcardsPanel({
   flashcards: FlashcardRecord[];
   onRefresh: () => void;
 }) {
-  const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz">("notes");
+  const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz" | "typing">("notes");
+  const [typeInput, setTypeInput] = useState("");
+  const [typeResult, setTypeResult] = useState<"idle" | "right" | "wrong">("idle");
   const [quizIdx, setQuizIdx] = useState(0);
   const [quizScore, setQuizScore] = useState(0);
   const [quizPicked, setQuizPicked] = useState<string | null>(null);
@@ -214,6 +216,22 @@ export function NotesFlashcardsPanel({
           >
             Trắc nghiệm Quiz
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSubTab("typing");
+              setTypeInput("");
+              setTypeResult("idle");
+            }}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold",
+              subTab === "typing"
+                ? "btn-primary"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            )}
+          >
+            Tự gõ đáp án
+          </button>
         </div>
 
         {subTab === "notes" ? (
@@ -378,6 +396,73 @@ export function NotesFlashcardsPanel({
               );
             })}
           </div>
+        </div>
+      ) : subTab === "typing" ? (
+        <div className="glass-card mx-auto max-w-xl p-6">
+          {flashcards.length === 0 ? (
+            <p className="py-8 text-center text-xs text-[var(--text-muted)]">
+              Chưa có thẻ Flashcard nào để luyện gõ.
+            </p>
+          ) : (() => {
+            const tCard = flashcards[quizIdx % flashcards.length]!;
+            return (
+              <div>
+                <div className="text-xs text-[var(--text-muted)]">
+                  Thẻ {(quizIdx % flashcards.length) + 1} / {flashcards.length} · Luyện nhớ chủ động (Typing Recall)
+                </div>
+                <h4 className="mt-3 text-lg font-medium text-[var(--text-primary)]">
+                  {tCard.front}
+                </h4>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const ok =
+                      typeInput.trim().toLowerCase() === tCard.back.trim().toLowerCase();
+                    setTypeResult(ok ? "right" : "wrong");
+                  }}
+                  className="mt-4 space-y-3"
+                >
+                  <input
+                    type="text"
+                    value={typeInput}
+                    onChange={(e) => setTypeInput(e.target.value)}
+                    placeholder="Nhập chính xác đáp án..."
+                    className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                  />
+                  <div className="flex gap-2">
+                    <button type="submit" className="btn-primary rounded-xl px-4 py-2 text-xs font-medium">
+                      Kiểm tra
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuizIdx((i) => i + 1);
+                        setTypeInput("");
+                        setTypeResult("idle");
+                      }}
+                      className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2 text-xs text-[var(--text-secondary)]"
+                    >
+                      Thẻ tiếp theo →
+                    </button>
+                  </div>
+                </form>
+                {typeResult !== "idle" && (
+                  <div
+                    className={cn(
+                      "mt-4 rounded-xl p-3 text-xs font-medium",
+                      typeResult === "right"
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                        : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                    )}
+                  >
+                    {typeResult === "right"
+                      ? "Chính xác tuyệt đối!"
+                      : `Chưa khớp — Đáp án đúng là: "${tCard.back}"`}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       ) : subTab === "quiz" ? (
         <div className="glass-card mx-auto max-w-2xl rounded-2xl p-6">

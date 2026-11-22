@@ -14,6 +14,9 @@ import {
   Clock,
   RefreshCw,
   Droplets,
+  Moon,
+  Dices,
+  SlidersHorizontal,
 } from "lucide-react";
 import { computeLevelInfo } from "@/lib/themes";
 import { useLang } from "@/lib/i18n";
@@ -86,6 +89,44 @@ export function DashboardBento({
   const [examTitle, setExamTitle] = useState("");
   const [examDate, setExamDate] = useState("");
   const [waterCups, setWaterCups] = useState(0);
+  const [wakeTime, setWakeTime] = useState("06:30");
+  const [showCust, setShowCust] = useState(false);
+  const [widgets, setWidgets] = useState({
+    kpi: true,
+    calendar: true,
+    hydration: true,
+    sleep: true,
+  });
+
+  useEffect(() => {
+    try {
+      const savedW = localStorage.getItem("kronoflow-dash-widgets");
+      if (savedW) setWidgets((prev) => ({ ...prev, ...JSON.parse(savedW) }));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleWidget = (key: keyof typeof widgets) => {
+    setWidgets((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      localStorage.setItem("kronoflow-dash-widgets", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const calcSleepTimes = (wake: string) => {
+    const [hh, mm] = wake.split(":").map(Number);
+    const totalWake = (hh ?? 6) * 60 + (mm ?? 30);
+    return [6, 5, 4].map((cycles) => {
+      let bedMins = totalWake - cycles * 90 - 15;
+      while (bedMins < 0) bedMins += 1440;
+      const bh = String(Math.floor(bedMins / 60)).padStart(2, "0");
+      const bm = String(bedMins % 60).padStart(2, "0");
+      return { cycles, hours: (cycles * 1.5).toFixed(1), time: `${bh}:${bm}` };
+    });
+  };
+  const sleepOptions = calcSleepTimes(wakeTime);
 
   useEffect(() => {
     const key = `kronoflow-water-${new Date().toISOString().slice(0, 10)}`;
@@ -319,8 +360,46 @@ export function DashboardBento({
         </section>
       )}
 
+      {/* TÙY CHỈNH BỐ CỤC DASHBOARD */}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setShowCust((v) => !v)}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)]"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          Tùy chỉnh Dashboard
+        </button>
+        {showCust && (
+          <div className="flex flex-wrap gap-1.5 text-[11px]">
+            {(
+              [
+                ["kpi", "4 KPI"],
+                ["calendar", "Lịch"],
+                ["hydration", "Uống nước"],
+                ["sleep", "Giấc ngủ 90'"],
+              ] as const
+            ).map(([k, lbl]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => toggleWidget(k)}
+                className={
+                  widgets[k]
+                    ? "rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 font-medium text-[var(--accent)]"
+                    : "rounded-lg border border-[var(--border-subtle)] px-2.5 py-1 text-[var(--text-muted)]"
+                }
+              >
+                {widgets[k] ? "✓ " : "+ "}
+                {lbl}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* 4 KPI CARDS */}
-      <div className="stagger-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {widgets.kpi && <div className="stagger-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="glass-card card-lift p-5">
           <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
             <span>{lang === "vi" ? "Hôm nay / Mục tiêu" : "Today / Goal"}</span>
@@ -373,11 +452,11 @@ export function DashboardBento({
           </div>
           <p className="mt-2 text-[11px] text-[var(--text-muted)]">Mức thuộc ≥ 4/5</p>
         </div>
-      </div>
+      </div>}
 
       {/* SMART ZOOMABLE CALENDAR + EXAMS & PRIORITY TASKS */}
       <div className="grid gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-7">
+        {widgets.calendar && <div className="lg:col-span-7">
           <SmartCalendar
             subjects={subjects}
             sessions={sessions}
@@ -386,7 +465,7 @@ export function DashboardBento({
             frozenDates={frozenDates}
             onRefresh={onRefresh}
           />
-        </div>
+        </div>}
 
         <div className="space-y-6 lg:col-span-5">
           <section className="glass-card card-lift p-5">
@@ -448,7 +527,7 @@ export function DashboardBento({
             </ul>
           </section>
 
-          <section className="glass-card card-lift p-5">
+          {widgets.hydration && <section className="glass-card card-lift p-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Droplets className="h-4 w-4 text-sky-500" />
@@ -477,12 +556,65 @@ export function DashboardBento({
                 </button>
               ))}
             </div>
-          </section>
+          </section>}
+
+          {widgets.sleep && (
+            <section className="glass-card card-lift p-5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Moon className="h-4 w-4 text-indigo-500" />
+                  <h3 className="text-sm font-medium text-[var(--text-primary)]">
+                    Chu kỳ Giấc ngủ 90 phút
+                  </h3>
+                </div>
+                <input
+                  type="time"
+                  value={wakeTime}
+                  onChange={(e) => setWakeTime(e.target.value)}
+                  title="Giờ muốn thức dậy"
+                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 font-mono text-xs"
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-[var(--text-muted)]">
+                Giờ đi ngủ tối ưu (đã trừ 15p vào giấc) để dậy tỉnh táo lúc {wakeTime}:
+              </p>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {sleepOptions.map((opt) => (
+                  <div
+                    key={opt.cycles}
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2 text-center"
+                  >
+                    <div className="font-mono text-sm font-bold text-[var(--accent)]">
+                      {opt.time}
+                    </div>
+                    <div className="text-[10px] text-[var(--text-muted)]">
+                      {opt.cycles} chu kỳ ({opt.hours}h)
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="glass-card card-lift p-5">
-            <h3 className="text-sm font-medium text-[var(--text-primary)]">
-              Việc ưu tiên ({pendingTodos.length})
-            </h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-medium text-[var(--text-primary)]">
+                Việc ưu tiên ({pendingTodos.length})
+              </h3>
+              {pendingTodos.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const pick = pendingTodos[Math.floor(Math.random() * pendingTodos.length)];
+                    if (pick) onJumpFocus(pick.title);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2 py-1 text-[11px] font-medium text-[var(--accent)]"
+                >
+                  <Dices className="h-3.5 w-3.5" />
+                  Chọn giúp 1 việc
+                </button>
+              )}
+            </div>
             <ul className="mt-3 space-y-2">
               {pendingTodos.map((t) => (
                 <li

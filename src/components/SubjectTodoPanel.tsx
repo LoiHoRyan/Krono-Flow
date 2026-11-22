@@ -13,6 +13,7 @@ import {
   Grid2x2,
   Flame,
   ArrowRight,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionLogItem } from "./PomodoroTimer";
@@ -66,6 +67,8 @@ export function SubjectTodoPanel({
   const [todoDue, setTodoDue] = useState("");
   const [priority, setPriority] = useState<TodoItem["priority"]>("medium");
   const [filter, setFilter] = useState<"all" | "pending" | "done">("all");
+  const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
+  const [editTodoTitle, setEditTodoTitle] = useState("");
 
   const handleAddSubject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +128,17 @@ export function SubjectTodoPanel({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isUrgent: !todo.isUrgent }),
     });
+    onRefresh();
+  };
+
+  const saveTodoEdit = async (id: string) => {
+    if (!editTodoTitle.trim()) return;
+    await fetch(`/api/todos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: editTodoTitle.trim() }),
+    });
+    setEditingTodoId(null);
     onRefresh();
   };
 
@@ -402,6 +416,35 @@ export function SubjectTodoPanel({
                       </button>
 
                       <div className="flex shrink-0 items-center gap-1.5">
+                        {editingTodoId === todo.id ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="text"
+                              value={editTodoTitle}
+                              onChange={(e) => setEditTodoTitle(e.target.value)}
+                              className="w-32 rounded border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-0.5 text-xs"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => saveTodoEdit(todo.id)}
+                              className="rounded bg-[var(--accent)] px-2 py-0.5 text-[10px] text-white"
+                            >
+                              Lưu
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingTodoId(todo.id);
+                              setEditTodoTitle(todo.title);
+                            }}
+                            title="Sửa nhanh tên việc"
+                            className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--accent)]"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => toggleUrgent(todo)}
