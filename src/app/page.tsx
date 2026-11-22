@@ -29,6 +29,10 @@ import {
   Pin,
   Undo2,
   Terminal,
+  Sun,
+  Eye,
+  EyeOff,
+  Code2,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { applyThemeToDocument, WALLPAPERS } from "@/lib/themes";
@@ -41,6 +45,7 @@ import { ShortcutsModal } from "@/components/ShortcutsModal";
 import { AiCopilotDrawer } from "@/components/AiCopilotDrawer";
 import { WeeklyReviewModal } from "@/components/WeeklyReviewModal";
 import { OnboardingModal } from "@/components/OnboardingModal";
+import { CheatSheetModal } from "@/components/CheatSheetModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -183,6 +188,29 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [aiOpen, setAiOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [cheatOpen, setCheatOpen] = useState(false);
+  const [privacyMode, setPrivacyMode] = useState(false);
+  const [warmLevel, setWarmLevel] = useState(0);
+
+  useEffect(() => {
+    const syncWarm = () => {
+      const v = Number(localStorage.getItem("kronoflow-warm-filter") || "0");
+      setWarmLevel(isNaN(v) ? 0 : v);
+    };
+    syncWarm();
+    window.addEventListener("kronoflow-warm-change", syncWarm);
+    return () => window.removeEventListener("kronoflow-warm-change", syncWarm);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("privacy-mode", privacyMode);
+  }, [privacyMode]);
+
+  const cycleWarm = () => {
+    const next = warmLevel === 0 ? 20 : warmLevel === 20 ? 40 : 0;
+    setWarmLevel(next);
+    localStorage.setItem("kronoflow-warm-filter", String(next));
+  };
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const [confettiKey, setConfettiKey] = useState(0);
   const [focusedTaskTitle, setFocusedTaskTitle] = useState<string | null>(null);
@@ -273,6 +301,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       } else if (e.key.toLowerCase() === "a" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         setAiOpen((v) => !v);
+      } else if (e.key.toLowerCase() === "p" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setPrivacyMode((v) => !v);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -303,7 +334,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-v25-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-backup-${new Date().toISOString().slice(0, 10)}.json`;
     localStorage.setItem("kronoflow-last-backup", new Date().toISOString());
     a.click();
     URL.revokeObjectURL(url);
@@ -350,6 +381,17 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onRefresh={props.onRefresh}
         onNotify={notify}
       />
+      {warmLevel > 0 && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-[70] transition-opacity duration-300"
+          style={{
+            backgroundColor: `rgba(255, 166, 77, ${warmLevel / 180})`,
+            mixBlendMode: "multiply",
+          }}
+        />
+      )}
+      <CheatSheetModal open={cheatOpen} onClose={() => setCheatOpen(false)} />
       <OnboardingModal
         open={onboardingOpen}
         onClose={() => setOnboardingOpen(false)}
@@ -559,6 +601,41 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               <NotebookPen className="h-3.5 w-3.5" />
               <span className="hidden md:inline">Nháp</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setCheatOpen(true)}
+              title="Kho công thức & đoạn mã tra nhanh"
+              className="hidden items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] md:inline-flex"
+            >
+              <Code2 className="h-3.5 w-3.5" />
+              <span>Công thức</span>
+            </button>
+            <button
+              type="button"
+              onClick={cycleWarm}
+              title={`Lọc ánh sáng xanh êm mắt (${warmLevel}%)`}
+              className={cn(
+                "rounded-xl border p-1.5 text-xs transition-colors",
+                warmLevel > 0
+                  ? "border-amber-500/50 bg-amber-500/15 text-amber-600"
+                  : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)] hover:border-[var(--accent)]"
+              )}
+            >
+              <Sun className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setPrivacyMode((v) => !v)}
+              title="Chế độ riêng tư làm mờ điểm & tài chính (Phím P)"
+              className={cn(
+                "rounded-xl border p-1.5 text-xs transition-colors",
+                privacyMode
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                  : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)] hover:border-[var(--accent)]"
+              )}
+            >
+              {privacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
             <span
               title="Tiến độ mục tiêu tập trung hôm nay"
               className="hidden items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 font-mono text-[11px] font-medium text-[var(--accent)] md:inline-flex"
@@ -699,11 +776,13 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             />
           )}
           {tab === "expenses" && (
+            <div className="privacy-sensitive">
             <ExpensesPanel
               expenses={props.expenses}
               onNotify={notify}
               onRefresh={props.onRefresh}
             />
+            </div>
           )}
           {tab === "analytics" && (
             <AnalyticsPanel
@@ -796,6 +875,10 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                     setReviewOpen(true);
                   } else if (lower.startsWith("ai")) {
                     setAiOpen(true);
+                  } else if (lower.startsWith("cheat")) {
+                    setCheatOpen(true);
+                  } else if (lower.startsWith("privacy")) {
+                    setPrivacyMode((v) => !v);
                   }
                   setCmdOpen(false);
                   setCmdQuery("");

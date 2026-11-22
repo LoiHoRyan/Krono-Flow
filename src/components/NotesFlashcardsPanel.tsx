@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   FileText,
   Layers,
@@ -20,9 +20,15 @@ import {
   X,
   Volume2,
   Columns2,
+  BookOpen,
+  Upload,
+  Sparkles,
+  StickyNote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarkdownView } from "./MarkdownView";
+import { PdfStudyReaderModal } from "./PdfStudyReaderModal";
+import { playUiTick } from "@/lib/ui-sounds";
 import type { SubjectOption } from "./PomodoroTimer";
 
 export interface NoteRecord {
@@ -67,7 +73,22 @@ export function NotesFlashcardsPanel({
   onUndoableDelete?: (label: string, onUndo: () => Promise<void>) => void;
   onRefresh: () => void;
 }) {
-  const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz" | "typing" | "mistakes">("notes");
+  const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz" | "typing" | "mistakes" | "feynman">("notes");
+  const [pdfOpen, setPdfOpen] = useState(false);
+  const [pastelMode, setPastelMode] = useState(false);
+  const [noteColors, setNoteColors] = useState<Record<string, string>>({});
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [feynmanConcept, setFeynmanConcept] = useState("");
+  const [feynmanBody, setFeynmanBody] = useState("");
+  const [feynmanLoading, setFeynmanLoading] = useState(false);
+  const [feynmanRes, setFeynmanRes] = useState<{
+    clarityScore: number;
+    strengths: string[];
+    gaps: string[];
+    analogy: string;
+  } | null>(null);
   const [readingNote, setReadingNote] = useState<NoteRecord | null>(null);
   const [mQuestion, setMQuestion] = useState("");
   const [mReason, setMReason] = useState("");
@@ -86,6 +107,90 @@ export function NotesFlashcardsPanel({
   const [splitPreview, setSplitPreview] = useState(false);
   const [speechLang, setSpeechLang] = useState<"vi-VN" | "en-US">("vi-VN");
   const [autoSpeak, setAutoSpeak] = useState(false);
+
+  useEffect(() => {
+    try {
+      const savedDraft = localStorage.getItem("kronoflow-draft-note");
+      if (savedDraft) {
+        const d = JSON.parse(savedDraft);
+        if (d.title && !noteTitle) setNoteTitle(d.title);
+        if (d.content && !noteContent) setNoteContent(d.content);
+      }
+      const savedCols = localStorage.getItem("kronoflow-note-colors");
+      if (savedCols) setNoteColors(JSON.parse(savedCols));
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (noteTitle || noteContent) {
+      localStorage.setItem("kronoflow-draft-note", JSON.stringify({ title: noteTitle, content: noteContent }));
+    }
+  }, [noteTitle, noteContent]);
+
+  const cycleNotePastel = (id: string) => {
+    const palette = ["", "#fef9c3", "#dcfce7", "#fce7f3", "#ede9fe"];
+    const cur = noteColors[id] ?? "";
+    const next = palette[(palette.indexOf(cur) + 1) % palette.length] ?? "";
+    const updated = { ...noteColors, [id]: next };
+    setNoteColors(updated);
+    localStorage.setItem("kronoflow-note-colors", JSON.stringify(updated));
+  };
+
+  const handleBulkImportCards = async () => {
+    const lines = bulkText
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const pairs = lines
+      .map((l) => {
+        const parts = l.includes("\t") ? l.split("\t") : l.includes(";") ? l.split(";") : l.split(",");
+        return { front: (parts[0] ?? "").trim(), back: parts.slice(1).join(" ").trim() };
+      })
+      .filter((p) => p.front && p.back);
+    if (pairs.length === 0) return;
+    setBulkImporting(true);
+    try {
+      await Promise.all(
+        pairs.slice(0, 40).map((p) =>
+          fetch("/api/flashcards", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ front: p.front, back: p.back, subjectId: cardSubject || null }),
+          })
+        )
+      );
+      setBulkText("");
+      setBulkOpen(false);
+      onRefresh();
+    } finally {
+      setBulkImporting(false);
+    }
+  };
+
+  const runFeynmanCheck = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!feynmanConcept.trim() || feynmanBody.trim().length < 10) return;
+    setFeynmanLoading(true);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const k = localStorage.getItem("kronoflow-gemini-key");
+      if (k) headers["x-gemini-key"] = k;
+      const res = await fetch("/api/ai/feynman", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ concept: feynmanConcept.trim(), explanation: feynmanBody.trim() }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setFeynmanRes(json.data ?? null);
+      }
+    } finally {
+      setFeynmanLoading(false);
+    }
+  };
 
   const speakText = (text: string) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
@@ -127,6 +232,7 @@ export function NotesFlashcardsPanel({
     if (res.ok) {
       setNoteTitle("");
       setNoteContent("");
+      localStorage.removeItem("kronoflow-draft-note");
       onRefresh();
     }
   };
@@ -358,7 +464,58 @@ export function NotesFlashcardsPanel({
             <AlertTriangle className="h-3.5 w-3.5" />
             Sổ Lỗi Sai ({mistakes.length})
           </button>
+          <button
+            type="button"
+            onClick={() => setSubTab("feynman")}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold",
+              subTab === "feynman"
+                ? "btn-primary"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            )}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Feynman AI
+          </button>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPdfOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
+            <BookOpen className="h-3.5 w-3.5" /> Đọc PDF song song
+          </button>
+          {subTab === "notes" && (
+            <button
+              type="button"
+              onClick={() => setPastelMode((v) => !v)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium",
+                pastelMode
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                  : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)]"
+              )}
+            >
+              <StickyNote className="h-3.5 w-3.5" /> {pastelMode ? "Bảng ghim Pastel" : "Lưới chuẩn"}
+            </button>
+          )}
+          {subTab === "flashcards" && (
+            <button
+              type="button"
+              onClick={() => setBulkOpen((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--accent)] hover:border-[var(--accent)]"
+            >
+              <Upload className="h-3.5 w-3.5" /> Nhập hàng loạt CSV/Quizlet
+            </button>
+          )}
+        </div>
+        <PdfStudyReaderModal
+          open={pdfOpen}
+          subjects={subjects}
+          onClose={() => setPdfOpen(false)}
+          onSaved={onRefresh}
+        />
 
         {subTab === "notes" ? (
           <div className="relative w-full sm:w-64">
@@ -471,14 +628,25 @@ export function NotesFlashcardsPanel({
             </button>
           </form>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:col-span-7">
+          <div className={cn("lg:col-span-7", pastelMode ? "columns-1 gap-4 space-y-4 sm:columns-2" : "grid gap-4 sm:grid-cols-2")}>
             {filteredNotes.map((n) => {
               const sub = n.subjectId ? subjectMap.get(n.subjectId) : undefined;
+              const pCol = pastelMode ? noteColors[n.id] : "";
               return (
                 <article
                   key={n.id}
-                  className="glass-card card-lift flex flex-col justify-between rounded-2xl p-4"
+                  style={pCol ? { backgroundColor: pCol, color: "#1e293b" } : undefined}
+                  className="glass-card card-lift break-inside-avoid flex flex-col justify-between rounded-2xl p-4"
                 >
+                  {pastelMode && (
+                    <button
+                      type="button"
+                      onClick={() => cycleNotePastel(n.id)}
+                      className="mb-1.5 self-end rounded-md border border-black/10 bg-white/60 px-1.5 py-0.5 text-[10px] font-medium text-slate-700"
+                    >
+                      Đổi màu giấy
+                    </button>
+                  )}
                   {editingNoteId === n.id ? (
                     <div className="space-y-2">
                       <input
@@ -815,8 +983,111 @@ export function NotesFlashcardsPanel({
             );
           })()}
         </div>
-      ) : (
+      ) : subTab === "feynman" ? (
         <div className="grid gap-6 lg:grid-cols-12">
+          <form onSubmit={runFeynmanCheck} className="glass-card space-y-3 rounded-2xl p-6 lg:col-span-6">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+              <Sparkles className="h-4 w-4 text-[var(--accent)]" />
+              Ôn bài bằng Kỹ thuật Feynman cùng AI
+            </div>
+            <p className="text-xs text-[var(--text-muted)]">
+              Hãy tự giải thích khái niệm bằng ngôn từ đơn giản như đang giảng lại cho người mới — AI sẽ chấm độ rõ ràng và chỉ ra lỗ hổng.
+            </p>
+            <input
+              type="text"
+              value={feynmanConcept}
+              onChange={(e) => setFeynmanConcept(e.target.value)}
+              placeholder="Tên khái niệm (VD: Quy luật giá trị, Đệ quy, Lạm phát...)"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+            />
+            <textarea
+              rows={7}
+              value={feynmanBody}
+              onChange={(e) => setFeynmanBody(e.target.value)}
+              placeholder="Viết lại lời giải thích theo cách hiểu của riêng bạn..."
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+            />
+            <button
+              type="submit"
+              disabled={feynmanLoading || !feynmanConcept.trim() || feynmanBody.trim().length < 10}
+              className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-medium disabled:opacity-50"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {feynmanLoading ? "AI đang chấm độ rõ ràng..." : "Chấm điểm Feynman"}
+            </button>
+          </form>
+          <div className="glass-card rounded-2xl p-6 lg:col-span-6">
+            {feynmanRes ? (
+              <div className="space-y-4 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-[var(--text-primary)]">Điểm dễ hiểu Feynman</span>
+                  <span className="font-mono text-2xl font-bold text-[var(--accent)]">
+                    {feynmanRes.clarityScore}/100
+                  </span>
+                </div>
+                <div>
+                  <div className="font-semibold text-emerald-600 dark:text-emerald-400">Điểm làm tốt</div>
+                  <ul className="mt-1 list-disc space-y-1 pl-4 text-[var(--text-secondary)]">
+                    {feynmanRes.strengths.map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <div className="font-semibold text-amber-600 dark:text-amber-400">Lỗ hổng cần bổ sung</div>
+                  <ul className="mt-1 list-disc space-y-1 pl-4 text-[var(--text-secondary)]">
+                    {feynmanRes.gaps.map((g, i) => (
+                      <li key={i}>{g}</li>
+                    ))}
+                  </ul>
+                </div>
+                {feynmanRes.analogy && (
+                  <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3 text-[var(--text-secondary)]">
+                    <strong>Ví dụ gợi nhớ:</strong> {feynmanRes.analogy}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex h-full items-center justify-center text-center text-xs text-[var(--text-muted)]">
+                Nhập khái niệm và lời giải thích bên trái để nhận phản hồi chi tiết từ AI.
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {bulkOpen && (
+            <div className="glass-card rounded-2xl p-5 space-y-3">
+              <div className="text-xs font-semibold text-[var(--text-primary)]">
+                Nhập nhanh nhiều Flashcards (mỗi dòng 1 thẻ, ngăn cách bởi dấu chấm phẩy <code>;</code> hoặc Tab từ Quizlet/Excel)
+              </div>
+              <textarea
+                rows={4}
+                value={bulkText}
+                onChange={(e) => setBulkText(e.target.value)}
+                placeholder={"Resilient ; Kiên cường, mau phục hồi\nOpportunity cost ; Chi phí cơ hội"}
+                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3 font-mono text-xs text-[var(--text-primary)]"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBulkOpen(false)}
+                  className="rounded-xl border border-[var(--border-subtle)] px-3 py-1.5 text-xs text-[var(--text-secondary)]"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="button"
+                  disabled={bulkImporting || !bulkText.trim()}
+                  onClick={handleBulkImportCards}
+                  className="btn-primary rounded-xl px-4 py-1.5 text-xs font-medium disabled:opacity-50"
+                >
+                  {bulkImporting ? "Đang nhập..." : "Tạo hàng loạt thẻ"}
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="grid gap-6 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-7">
             {activeCard ? (
               <div className="glass-card rounded-2xl p-6">
@@ -877,6 +1148,7 @@ export function NotesFlashcardsPanel({
                   onClick={() => {
                     const nextFlipped = !flipped;
                     setFlipped(nextFlipped);
+                    playUiTick("flip");
                     if (autoSpeak) {
                       speakText(nextFlipped ? activeCard.back : activeCard.front);
                     }
@@ -1036,6 +1308,7 @@ export function NotesFlashcardsPanel({
               <MarkdownView content={readingNote.content} />
             </div>
           </div>
+        </div>
         </div>
       )}
     </div>

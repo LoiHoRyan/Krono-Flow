@@ -184,6 +184,10 @@ export function RoadmapPanel({
         {roadmaps.map((rm) => {
           const doneCount = rm.items.filter((i) => i.status === "done").length;
           const pct = rm.items.length > 0 ? Math.round((doneCount / rm.items.length) * 100) : 0;
+          const remainMins = rm.items
+            .filter((i) => i.status !== "done")
+            .reduce((acc, it) => acc + (it.estimatedMinutes || 45), 0);
+          const etaDays = Math.ceil(remainMins / 60);
           return (
             <div key={rm.id} className="glass-card rounded-2xl p-5">
               <div className="flex items-start justify-between gap-2">
@@ -216,11 +220,19 @@ export function RoadmapPanel({
                 </div>
               </div>
 
-              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+              <div className="mt-3 flex items-center justify-between text-[11px] text-[var(--text-muted)]">
+                <span>
+                  {doneCount}/{rm.items.length} chặng hoàn thành
+                </span>
+                <span>
+                  {remainMins > 0 ? `Dự kiến xong sau ~${etaDays} ngày (60p/ngày)` : "Đã hoàn thành 100%!"}
+                </span>
+              </div>
+              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
                 <div className="accent-gradient h-full rounded-full" style={{ width: `${pct}%` }} />
               </div>
 
-              <ul className="mt-4 space-y-1.5">
+              <ul className="relative mt-4 space-y-1.5 border-l-2 border-[var(--border-subtle)] pl-3 ml-2">
                 {rm.items.map((item) => (
                   <li key={item.id}>
                     <button

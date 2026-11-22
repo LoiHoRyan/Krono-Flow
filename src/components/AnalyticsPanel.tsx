@@ -1,6 +1,8 @@
 "use client";
 
-import { Download, Flame, TrendingUp, Award, Clock, Layers, Trophy, Lock } from "lucide-react";
+import { Download, Flame, TrendingUp, Award, Clock, Layers, Trophy, Lock,
+  Activity,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
 import type { SessionLogItem, SubjectOption } from "./PomodoroTimer";
@@ -451,6 +453,68 @@ export function AnalyticsPanel({
           })}
         </div>
       </section>
+
+      {/* NHỊP SINH HỌC TẬP TRUNG (FOCUS ENERGY TIMELINE) */}
+      {(() => {
+        const blocks = [
+          { id: "morning", label: "Sáng sớm (05–11h)", hours: [5, 6, 7, 8, 9, 10], mins: 0 },
+          { id: "afternoon", label: "Trưa–Chiều (11–17h)", hours: [11, 12, 13, 14, 15, 16], mins: 0 },
+          { id: "evening", label: "Buổi tối (17–22h)", hours: [17, 18, 19, 20, 21], mins: 0 },
+          { id: "night", label: "Đêm khuya (22–05h)", hours: [22, 23, 0, 1, 2, 3, 4], mins: 0 },
+        ];
+        for (const s of sessions) {
+          if (s.status !== "completed") continue;
+          const hr = new Date(s.startedAt).getHours();
+          const b = blocks.find((x) => x.hours.includes(hr));
+          if (b) b.mins += s.actualMinutes;
+        }
+        const maxB = Math.max(1, ...blocks.map((b) => b.mins));
+        const top = [...blocks].sort((a, b) => b.mins - a.mins)[0];
+        const chronotype =
+          top && top.mins > 0
+            ? top.id === "morning"
+              ? "Chim sớm (Sáng tinh mơ hiệu quả nhất)"
+              : top.id === "night"
+              ? "Cú đêm (Tập trung sâu về khuya)"
+              : top.id === "evening"
+              ? "Chiến binh buổi tối"
+              : "Nhịp sinh học cân bằng ban ngày"
+            : "Chưa đủ dữ liệu nhịp sinh học";
+        return (
+          <section className="glass-card rounded-2xl p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-[var(--accent)]" />
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                  Biểu đồ Năng lượng & Nhịp sinh học
+                </h3>
+              </div>
+              <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-[11px] font-medium text-[var(--accent)]">
+                {chronotype}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-4">
+              {blocks.map((b) => (
+                <div
+                  key={b.id}
+                  className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3"
+                >
+                  <div className="text-[11px] text-[var(--text-muted)]">{b.label}</div>
+                  <div className="mt-1 font-mono text-base font-semibold text-[var(--text-primary)]">
+                    {b.mins}p
+                  </div>
+                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                    <div
+                      className="h-full rounded-full bg-[var(--accent)]"
+                      style={{ width: `${Math.round((b.mins / maxB) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* BẢNG HUY HIỆU THÀNH TỰU */}
       <section className="glass-card rounded-2xl p-6">

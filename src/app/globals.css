@@ -263,3 +263,13 @@ button:not(:disabled):active {
   padding-top: 1rem !important;
   padding-bottom: 1rem !important;
 }
+
+/* Privacy Blur Mode (Boss Key P) */
+.privacy-mode .privacy-sensitive {
+  filter: blur(8px);
+  user-select: none;
+  transition: filter 0.2s ease;
+}
+.privacy-mode .privacy-sensitive:hover {
+  filter: blur(0px);
+}

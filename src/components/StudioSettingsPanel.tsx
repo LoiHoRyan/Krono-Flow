@@ -17,6 +17,7 @@ import {
   PartyPopper,
   ShieldCheck,
   Compass,
+  Volume2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -27,6 +28,7 @@ import {
   WALLPAPERS,
 } from "@/lib/themes";
 import type { UserProfile } from "./DashboardBento";
+import { isUiSoundsEnabled, playUiTick, setUiSoundsEnabled } from "@/lib/ui-sounds";
 
 export interface ExtendedUserProfile extends UserProfile {
   customAccent?: string | null;
@@ -72,11 +74,13 @@ export function StudioSettingsPanel({
   );
   const [seeding, setSeeding] = useState(false);
   const [celebrationsOn, setCelebrationsOn] = useState(true);
+  const [uiSoundsOn, setUiSoundsOn] = useState(false);
   const [autoDayNight, setAutoDayNight] = useState(false);
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
 
   useEffect(() => {
     setCelebrationsOn(localStorage.getItem("kronoflow-celebrations") !== "off");
+    setUiSoundsOn(isUiSoundsEnabled());
     setAutoDayNight(localStorage.getItem("kronoflow-auto-theme") === "on");
     setLastBackupAt(localStorage.getItem("kronoflow-last-backup"));
   }, []);
@@ -714,6 +718,27 @@ export function StudioSettingsPanel({
                   Pháo giấy ăn mừng
                 </span>
                 <span>{celebrationsOn ? "Bật" : "Tắt"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !uiSoundsOn;
+                  setUiSoundsOn(next);
+                  setUiSoundsEnabled(next);
+                  if (next) playUiTick("check");
+                }}
+                className={cn(
+                  "flex items-center justify-between rounded-xl border px-3 py-2 text-xs font-medium sm:col-span-2",
+                  uiSoundsOn
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-primary)]"
+                )}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <Volume2 className="h-3.5 w-3.5" />
+                  Âm thanh tích nhẹ khi tương tác (Tactile UI)
+                </span>
+                <span>{uiSoundsOn ? "Bật" : "Tắt"}</span>
               </button>
             </div>
 

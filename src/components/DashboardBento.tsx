@@ -21,6 +21,7 @@ import {
   ExternalLink,
   CalendarCheck2,
   Pin,
+  Download,
 } from "lucide-react";
 import { computeLevelInfo } from "@/lib/themes";
 import { useLang } from "@/lib/i18n";
@@ -343,7 +344,17 @@ export function DashboardBento({
                 <img
                   src={user.avatarUrl}
                   alt="Avatar"
-                  className="h-12 w-12 rounded-full border-2 border-[var(--accent)] object-cover"
+                  className={cn(
+                    "h-12 w-12 rounded-full border-2 object-cover ring-2 ring-offset-2 ring-offset-[var(--bg-surface)]",
+                    levelInfo.level >= 8
+                      ? "border-cyan-400 ring-cyan-400"
+                      : levelInfo.level >= 5
+                      ? "border-emerald-400 ring-emerald-400"
+                      : levelInfo.level >= 3
+                      ? "border-amber-400 ring-amber-400"
+                      : "border-[var(--accent)] ring-[var(--accent)]/40"
+                  )}
+                  title={`Khung hạng Cấp ${levelInfo.level} · ${levelInfo.rank}`}
                 />
               )}
               <h2 className="text-2xl font-medium tracking-tight text-[var(--text-primary)] sm:text-3xl">
@@ -542,11 +553,54 @@ export function DashboardBento({
 
         <div className="space-y-6 lg:col-span-5">
           <section className="glass-card card-lift p-5">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-amber-500" />
-              <h3 className="text-sm font-medium text-[var(--text-primary)]">
-                Đếm ngược Kỳ thi & Deadline
-              </h3>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-amber-500" />
+                <h3 className="text-sm font-medium text-[var(--text-primary)]">
+                  Đếm ngược Kỳ thi & Deadline
+                </h3>
+              </div>
+              {exams.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const c = document.createElement("canvas");
+                    c.width = 1080;
+                    c.height = 600;
+                    const ctx = c.getContext("2d");
+                    if (!ctx) return;
+                    const g = ctx.createLinearGradient(0, 0, 1080, 600);
+                    g.addColorStop(0, "#0f172a");
+                    g.addColorStop(1, "#1e293b");
+                    ctx.fillStyle = g;
+                    ctx.fillRect(0, 0, 1080, 600);
+                    ctx.fillStyle = "#38bdf8";
+                    ctx.font = "bold 24px sans-serif";
+                    ctx.fillText("KRONOFLOW · EXAM COUNTDOWN WALL", 64, 82);
+                    ctx.fillStyle = "#f8fafc";
+                    ctx.font = "bold 46px sans-serif";
+                    const topEx = exams[0];
+                    const dLeft = Math.max(0, Math.ceil((new Date(topEx.examDate).getTime() - Date.now()) / 86400000));
+                    ctx.fillText(topEx.title.slice(0, 32), 64, 175);
+                    ctx.fillStyle = "#fbbf24";
+                    ctx.font = "bold 120px monospace";
+                    ctx.fillText(`Còn ${dLeft} ngày`, 64, 330);
+                    ctx.fillStyle = "#94a3b8";
+                    ctx.font = "24px sans-serif";
+                    ctx.fillText(`Ngày thi: ${topEx.examDate.slice(0, 10)} · Học viên: ${user?.name ?? "KronoFlow"}`, 64, 410);
+                    ctx.fillStyle = "#38bdf8";
+                    ctx.fillText("Giữ vững nhịp Pomodoro mỗi ngày!", 64, 520);
+                    const a = document.createElement("a");
+                    a.href = c.toDataURL("image/png");
+                    a.download = "kronoflow-exam-countdown.png";
+                    a.click();
+                  }}
+                  title="Tải ảnh đếm ngược kỳ thi (PNG)"
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  <Download className="h-3 w-3" /> Tải ảnh
+                </button>
+              )}
             </div>
             <form onSubmit={handleAddExam} className="mt-3 flex flex-wrap gap-2">
               <input

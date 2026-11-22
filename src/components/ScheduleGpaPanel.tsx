@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { CalendarDays, Calculator, GraduationCap, Plus, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { CalendarDays, Calculator, GraduationCap, Plus, Trash2,
+  ShieldAlert,
+} from "lucide-react";
 
 export interface ScheduleSlotRecord {
   id: string;
@@ -67,6 +69,35 @@ export function ScheduleGpaPanel({
   const [processScore, setProcessScore] = useState(8.0);
   const [processWeight, setProcessWeight] = useState(40);
   const [targetFinal, setTargetFinal] = useState(8.5);
+  const [attCourse, setAttCourse] = useState("");
+  const [attTotal, setAttTotal] = useState(15);
+  const [attRecords, setAttRecords] = useState<
+    { id: string; course: string; total: number; absent: number }[]
+  >([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("kronoflow-attendance");
+      if (raw) setAttRecords(JSON.parse(raw));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const saveAttendance = (next: { id: string; course: string; total: number; absent: number }[]) => {
+    setAttRecords(next);
+    localStorage.setItem("kronoflow-attendance", JSON.stringify(next));
+  };
+
+  const addAttCourse = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!attCourse.trim()) return;
+    saveAttendance([
+      ...attRecords,
+      { id: String(Date.now()), course: attCourse.trim(), total: Math.max(1, attTotal), absent: 0 },
+    ]);
+    setAttCourse("");
+  };
 
   const finalWeight = Math.max(10, 100 - processWeight);
   const neededFinalScore = +(
@@ -507,6 +538,115 @@ export function ScheduleGpaPanel({
           </div>
         </section>
       </div>
+
+      {/* THEO DÕI CHUYÊN CẦN & CẢNH BÁO CẤM THI (ATTENDANCE GUARD) */}
+      <section className="glass-card card-lift rounded-2xl p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4 text-rose-500" />
+            <h3 className="text-base font-medium text-[var(--text-primary)]">
+              Theo dõi Chuyên cần & Cảnh báo cấm thi (Ngưỡng 20%)
+            </h3>
+          </div>
+        </div>
+        <form onSubmit={addAttCourse} className="mt-4 flex flex-wrap gap-2">
+          <input
+            type="text"
+            value={attCourse}
+            onChange={(e) => setAttCourse(e.target.value)}
+            placeholder="Tên môn học cần theo dõi buổi vắng..."
+            className="min-w-[180px] flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+          />
+          <input
+            type="number"
+            min={1}
+            max={60}
+            value={attTotal}
+            onChange={(e) => setAttTotal(Number(e.target.value))}
+            title="Tổng số buổi học kỳ"
+            className="w-24 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-2 text-xs text-[var(--text-primary)]"
+          />
+          <button
+            type="submit"
+            className="btn-primary inline-flex items-center gap-1 rounded-xl px-3.5 py-2 text-xs font-medium"
+          >
+            <Plus className="h-3.5 w-3.5" /> Thêm môn
+          </button>
+        </form>
+        {attRecords.length > 0 && (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {attRecords.map((rec) => {
+              const pct = Math.round((rec.absent / Math.max(1, rec.total)) * 100);
+              const danger = pct >= 20;
+              const warn = pct >= 13 && pct < 20;
+              return (
+                <div
+                  key={rec.id}
+                  className={cn(
+                    "rounded-xl border p-3.5 text-xs",
+                    danger
+                      ? "border-rose-500/50 bg-rose-500/10"
+                      : warn
+                      ? "border-amber-500/40 bg-amber-500/10"
+                      : "border-[var(--border-subtle)] bg-[var(--bg-canvas)]"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate font-semibold text-[var(--text-primary)]">
+                      {rec.course}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => saveAttendance(attRecords.filter((x) => x.id !== rec.id))}
+                      className="text-[var(--text-muted)] hover:text-rose-500"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between text-[11px]">
+                    <span className="text-[var(--text-secondary)]">
+                      Vắng: <strong>{rec.absent}/{rec.total}</strong> buổi ({pct}%)
+                    </span>
+                    {danger && (
+                      <span className="rounded bg-rose-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                        Nguy cơ cấm thi
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        saveAttendance(
+                          attRecords.map((x) =>
+                            x.id === rec.id ? { ...x, absent: Math.min(x.total, x.absent + 1) } : x
+                          )
+                        )
+                      }
+                      className="flex-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] py-1 font-medium text-rose-600 hover:bg-rose-500/10"
+                    >
+                      +1 buổi vắng
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        saveAttendance(
+                          attRecords.map((x) =>
+                            x.id === rec.id ? { ...x, absent: Math.max(0, x.absent - 1) } : x
+                          )
+                        )
+                      }
+                      className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 text-[var(--text-muted)]"
+                    >
+                      -1
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

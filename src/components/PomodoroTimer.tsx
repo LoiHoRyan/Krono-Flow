@@ -18,10 +18,16 @@ import {
   ArrowRight,
   Plus,
   Trash2,
+  PictureInPicture2,
+  Wind,
+  Moon,
+  Coffee,
+  Zap,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { ambientEngine, AmbientChannel, BellStyle } from "@/lib/ambient-audio";
 import { MODE_CONFIG, TimerMode, useTimer } from "./TimerProvider";
+import { BreathingModal } from "./BreathingModal";
 
 export interface SubjectOption {
   id: string;
@@ -64,6 +70,34 @@ export function PomodoroTimer({
   const [clockTab, setClockTab] = useState<"pomodoro" | "exam" | "stopwatch">("pomodoro");
   const [zenMode, setZenMode] = useState(false);
   const [zenTheme, setZenTheme] = useState<"aurora" | "sunset" | "ocean" | "minimal">("aurora");
+  const [breathOpen, setBreathOpen] = useState(false);
+  const [pipOpen, setPipOpen] = useState(false);
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayFocusedMins = sessions
+    .filter((s) => s.status === "completed" && s.startedAt.slice(0, 10) === todayIso)
+    .reduce((a, b) => a + b.actualMinutes, 0);
+
+  const applyStudyScene = (scene: "night" | "cafe" | "sprint") => {
+    if (scene === "night") {
+      timer.changeMode("deep_work");
+      timer.changeAmbient("rain");
+      timer.changeVolume(0.4);
+      localStorage.setItem("kronoflow-warm-filter", "35");
+      window.dispatchEvent(new Event("kronoflow-warm-change"));
+    } else if (scene === "cafe") {
+      timer.changeMode("pomodoro");
+      timer.changeAmbient("cafe");
+      timer.changeVolume(0.35);
+      localStorage.setItem("kronoflow-warm-filter", "0");
+      window.dispatchEvent(new Event("kronoflow-warm-change"));
+    } else {
+      timer.changeMode("deep_work");
+      timer.changeAmbient("brown");
+      timer.changeVolume(0.3);
+      setZenMode(true);
+    }
+  };
   const [parkingInput, setParkingInput] = useState("");
   const [parkedItems, setParkedItems] = useState<{ id: string; text: string }[]>([]);
   const [flowQueue, setFlowQueue] = useState<
@@ -318,6 +352,92 @@ export function PomodoroTimer({
             {zenMode ? "Thoát Toàn màn hình" : "Toàn màn hình"}
           </button>
         </div>
+
+        {/* STUDY SCENE PRESETS + PiP + BREATHING 4-7-8 */}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-[11px]">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-medium text-[var(--text-muted)]">Kịch bản nhanh:</span>
+            <button
+              type="button"
+              onClick={() => applyStudyScene("night")}
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              <Moon className="h-3 w-3" /> Ôn thi khuya
+            </button>
+            <button
+              type="button"
+              onClick={() => applyStudyScene("cafe")}
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              <Coffee className="h-3 w-3" /> Cà phê sáng
+            </button>
+            <button
+              type="button"
+              onClick={() => applyStudyScene("sprint")}
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              <Zap className="h-3 w-3" /> Nước rút 50p
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setPipOpen((v) => !v)}
+              className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent-soft)] px-2 py-1 font-medium text-[var(--accent)]"
+            >
+              <PictureInPicture2 className="h-3 w-3" /> {pipOpen ? "Đóng nổi" : "Đồng hồ nổi"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setBreathOpen(true)}
+              className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 font-medium text-emerald-600 dark:text-emerald-400"
+            >
+              <Wind className="h-3 w-3" /> Thở 4-7-8
+            </button>
+          </div>
+        </div>
+
+        {todayFocusedMins >= 180 && (
+          <div className="mt-2.5 flex items-center justify-between gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300">
+            <span>
+              Bạn đã tập trung {todayFocusedMins} phút hôm nay. Hãy nghỉ 5 phút và thử bài tập thở 4-7-8 để tránh quá tải nhé!
+            </span>
+            <button
+              type="button"
+              onClick={() => setBreathOpen(true)}
+              className="shrink-0 rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-medium text-white"
+            >
+              Thở ngay
+            </button>
+          </div>
+        )}
+
+        <BreathingModal open={breathOpen} onClose={() => setBreathOpen(false)} />
+
+        {pipOpen && (
+          <div className="fixed bottom-24 left-5 z-50 flex items-center gap-3 rounded-2xl border border-[var(--accent)]/50 bg-[var(--bg-surface)]/95 px-4 py-2.5 shadow-2xl backdrop-blur-md">
+            <div>
+              <div className="text-[10px] font-medium text-[var(--text-muted)]">Đồng hồ nổi</div>
+              <div className="font-mono text-xl font-bold tabular-nums text-[var(--accent)]">
+                {formatDuration(timer.secondsLeft)}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => (timer.isRunning ? timer.pause() : timer.start())}
+              className="btn-primary rounded-xl p-2"
+            >
+              {timer.isRunning ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPipOpen(false)}
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {focusedTaskTitle && (
           <div className="mt-4 flex items-center justify-between rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3.5 py-2 text-xs">

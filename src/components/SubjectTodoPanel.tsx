@@ -20,6 +20,7 @@ import type { SessionLogItem } from "./PomodoroTimer";
 import type { NoteRecord, FlashcardRecord } from "./NotesFlashcardsPanel";
 import type { ExamRecord } from "./DashboardBento";
 import { SubjectHubDrawer } from "./SubjectHubDrawer";
+import { playUiTick } from "@/lib/ui-sounds";
 
 export interface TodoItem {
   id: string;
@@ -78,7 +79,8 @@ export function SubjectTodoPanel({
   const [todoSubjectId, setTodoSubjectId] = useState("");
   const [todoDue, setTodoDue] = useState("");
   const [priority, setPriority] = useState<TodoItem["priority"]>("medium");
-  const [filter, setFilter] = useState<"all" | "pending" | "done">("all");
+  const [filter, setFilter] = useState<"all" | "pending" | "done" | "today" | "week" | "high" | "overdue">("all");
+  const [sortBy, setSortBy] = useState<"default" | "due" | "priority" | "subject">("default");
   const [todoQuery, setTodoQuery] = useState("");
   const [dragTodoId, setDragTodoId] = useState<string | null>(null);
   const [dragOverCol, setDragOverCol] = useState<string | null>(null);
@@ -138,6 +140,7 @@ export function SubjectTodoPanel({
   };
 
   const toggleUrgent = async (todo: TodoItem) => {
+    if (!todo.isCompleted) playUiTick("check");
     await fetch(`/api/todos/${todo.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -197,12 +200,27 @@ export function SubjectTodoPanel({
   const normalizedStatus = (t: TodoItem): "todo" | "in_progress" | "done" =>
     t.status ?? (t.isCompleted ? "done" : "todo");
 
-  const filteredTodos = todos.filter((t) => {
-    if (todoQuery.trim() && !t.title.toLowerCase().includes(todoQuery.toLowerCase())) return false;
-    if (filter === "pending") return !t.isCompleted;
-    if (filter === "done") return t.isCompleted;
-    return true;
-  });
+  const nowIso = new Date().toISOString().slice(0, 10);
+  const weekIso = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const prioWeight: Record<TodoItem["priority"], number> = { high: 0, medium: 1, low: 2 };
+  const filteredTodos = todos
+    .filter((t) => {
+      if (todoQuery.trim() && !t.title.toLowerCase().includes(todoQuery.toLowerCase())) return false;
+      if (filter === "pending") return !t.isCompleted;
+      if (filter === "done") return t.isCompleted;
+      if (filter === "today") return !t.isCompleted && t.dueDate?.slice(0, 10) === nowIso;
+      if (filter === "week")
+        return !t.isCompleted && Boolean(t.dueDate && t.dueDate.slice(0, 10) >= nowIso && t.dueDate.slice(0, 10) <= weekIso);
+      if (filter === "high") return !t.isCompleted && t.priority === "high";
+      if (filter === "overdue") return !t.isCompleted && Boolean(t.dueDate && t.dueDate.slice(0, 10) < nowIso);
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === "priority") return prioWeight[a.priority] - prioWeight[b.priority];
+      if (sortBy === "due") return (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999");
+      if (sortBy === "subject") return (a.subjectId ?? "zzz").localeCompare(b.subjectId ?? "zzz");
+      return 0;
+    });
 
   const activeTodos = todos.filter((t) => !t.isCompleted);
   const subjectMap = new Map(subjects.map((s) => [s.id, s]));
@@ -438,10 +456,14 @@ export function SubjectTodoPanel({
                   placeholder="Tìm kiếm nhanh công việc..."
                   className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs outline-none focus:border-[var(--accent)] sm:w-56"
                 />
-                <div className="flex gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                 {(
                   [
                     ["all", "Tất cả"],
+                    ["today", "Hôm nay"],
+                    ["week", "7 ngày"],
+                    ["high", "Ưu tiên cao"],
+                    ["overdue", "Quá hạn"],
                     ["pending", "Chưa xong"],
                     ["done", "Đã xong"],
                   ] as const
@@ -451,7 +473,7 @@ export function SubjectTodoPanel({
                     type="button"
                     onClick={() => setFilter(k)}
                     className={cn(
-                      "rounded-lg px-2.5 py-1 font-medium",
+                      "rounded-lg px-2 py-1 font-medium",
                       filter === k
                         ? "bg-[var(--accent-soft)] text-[var(--accent)]"
                         : "text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]"
@@ -460,6 +482,16 @@ export function SubjectTodoPanel({
                     {label}
                   </button>
                 ))}
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as "default" | "due" | "priority" | "subject")}
+                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-[11px] text-[var(--text-secondary)]"
+                >
+                  <option value="default">Sắp xếp: Mặc định</option>
+                  <option value="due">Hạn chót gần nhất</option>
+                  <option value="priority">Ưu tiên cao trước</option>
+                  <option value="subject">Theo môn học</option>
+                </select>
                 </div>
               </div>
 
