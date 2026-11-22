@@ -14,6 +14,10 @@ import {
   Search,
   Clock,
   Pencil,
+  Download,
+  Maximize2,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarkdownView } from "./MarkdownView";
@@ -26,6 +30,15 @@ export interface NoteRecord {
   pinned: boolean;
   subjectId: string | null;
   updatedAt: string;
+}
+
+export interface MistakeRecord {
+  id: string;
+  question: string;
+  reason: string;
+  solution: string;
+  resolved: boolean;
+  subjectId: string | null;
 }
 
 export interface FlashcardRecord {
@@ -41,14 +54,21 @@ export function NotesFlashcardsPanel({
   subjects,
   notes,
   flashcards,
+  mistakes = [],
   onRefresh,
 }: {
   subjects: SubjectOption[];
   notes: NoteRecord[];
   flashcards: FlashcardRecord[];
+  mistakes?: MistakeRecord[];
   onRefresh: () => void;
 }) {
-  const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz" | "typing">("notes");
+  const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz" | "typing" | "mistakes">("notes");
+  const [readingNote, setReadingNote] = useState<NoteRecord | null>(null);
+  const [mQuestion, setMQuestion] = useState("");
+  const [mReason, setMReason] = useState("");
+  const [mSolution, setMSolution] = useState("");
+  const [mSubject, setMSubject] = useState("");
   const [typeInput, setTypeInput] = useState("");
   const [typeResult, setTypeResult] = useState<"idle" | "right" | "wrong">("idle");
   const [quizIdx, setQuizIdx] = useState(0);
@@ -108,6 +128,51 @@ export function NotesFlashcardsPanel({
       body: JSON.stringify({ title: editTitle.trim(), content: editContent.trim() }),
     });
     setEditingNoteId(null);
+    onRefresh();
+  };
+
+  const exportNoteMd = (n: NoteRecord) => {
+    const blob = new Blob([`# ${n.title}\n\n${n.content}`], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${n.title.toLowerCase().replace(/[^a-z0-9]+/gi, "-") || "note"}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleAddMistake = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mQuestion.trim() || !mReason.trim() || !mSolution.trim()) return;
+    const res = await fetch("/api/mistakes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question: mQuestion.trim(),
+        reason: mReason.trim(),
+        solution: mSolution.trim(),
+        subjectId: mSubject || null,
+      }),
+    });
+    if (res.ok) {
+      setMQuestion("");
+      setMReason("");
+      setMSolution("");
+      onRefresh();
+    }
+  };
+
+  const toggleMistake = async (m: MistakeRecord) => {
+    await fetch(`/api/mistakes/${m.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resolved: !m.resolved }),
+    });
+    onRefresh();
+  };
+
+  const deleteMistake = async (id: string) => {
+    await fetch(`/api/mistakes/${id}`, { method: "DELETE" });
     onRefresh();
   };
 
@@ -232,6 +297,19 @@ export function NotesFlashcardsPanel({
           >
             Tự gõ đáp án
           </button>
+          <button
+            type="button"
+            onClick={() => setSubTab("mistakes")}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold",
+              subTab === "mistakes"
+                ? "btn-primary"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            )}
+          >
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Sổ Lỗi Sai ({mistakes.length})
+          </button>
         </div>
 
         {subTab === "notes" ? (
@@ -354,6 +432,22 @@ export function NotesFlashcardsPanel({
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
+                            onClick={() => setReadingNote(n)}
+                            title="Đọc khổ rộng"
+                            className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--accent)]"
+                          >
+                            <Maximize2 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => exportNoteMd(n)}
+                            title="Tải xuống .md"
+                            className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--accent)]"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => {
                               setEditingNoteId(n.id);
                               setEditTitle(n.title);
@@ -395,6 +489,104 @@ export function NotesFlashcardsPanel({
                 </article>
               );
             })}
+          </div>
+        </div>
+      ) : subTab === "mistakes" ? (
+        <div className="grid gap-6 lg:grid-cols-12">
+          <form onSubmit={handleAddMistake} className="glass-card space-y-3 p-5 lg:col-span-5">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+              Ghi nhận Lỗi sai & Rút kinh nghiệm
+            </h3>
+            <select
+              value={mSubject}
+              onChange={(e) => setMSubject(e.target.value)}
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-secondary)]"
+            >
+              <option value="">-- Môn học --</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <textarea
+              rows={2}
+              value={mQuestion}
+              onChange={(e) => setMQuestion(e.target.value)}
+              placeholder="Câu hỏi / Bài tập làm sai..."
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+            />
+            <textarea
+              rows={2}
+              value={mReason}
+              onChange={(e) => setMReason(e.target.value)}
+              placeholder="Nguyên nhân sai (VD: Quên điều kiện biên, nhầm dấu)..."
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+            />
+            <textarea
+              rows={2}
+              value={mSolution}
+              onChange={(e) => setMSolution(e.target.value)}
+              placeholder="Cách giải đúng & Lưu ý cần nhớ..."
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+            />
+            <button type="submit" className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-medium">
+              <Plus className="h-3.5 w-3.5" />
+              Lưu vào Sổ Lỗi Sai
+            </button>
+          </form>
+
+          <div className="space-y-3 lg:col-span-7">
+            {mistakes.length === 0 ? (
+              <div className="glass-card p-8 text-center text-xs text-[var(--text-muted)]">
+                Chưa có ghi nhận lỗi sai nào. Lưu lại những lỗi hay gặp để tránh lặp lại khi đi thi!
+              </div>
+            ) : (
+              mistakes.map((m) => {
+                const sub = m.subjectId ? subjectMap.get(m.subjectId) : undefined;
+                return (
+                  <div key={m.id} className="glass-card card-lift space-y-2 p-4 text-xs">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="font-semibold text-[var(--text-primary)]">
+                        {sub && (
+                          <span className="mr-2 rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] text-[var(--accent)]">
+                            {sub.name}
+                          </span>
+                        )}
+                        {m.question}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleMistake(m)}
+                          className={cn(
+                            "rounded-lg px-2 py-0.5 text-[10px] font-medium",
+                            m.resolved
+                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                              : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                          )}
+                        >
+                          {m.resolved ? "✓ Đã khắc phục" : "Cần ôn lại"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteMistake(m.id)}
+                          className="text-[var(--text-muted)] hover:text-rose-500"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-rose-600 dark:text-rose-400">
+                      <strong>Lỗi:</strong> {m.reason}
+                    </p>
+                    <p className="text-emerald-700 dark:text-emerald-400">
+                      <strong>Cách sửa:</strong> {m.solution}
+                    </p>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       ) : subTab === "typing" ? (
@@ -693,6 +885,38 @@ export function NotesFlashcardsPanel({
               Tạo thẻ ôn tập
             </button>
           </form>
+        </div>
+      )}
+          {readingNote && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
+          onClick={() => setReadingNote(null)}
+        >
+          <div
+            className="animate-pop max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
+              <h3 className="text-xl font-medium text-[var(--text-primary)]">
+                {readingNote.title}
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => exportNoteMd(readingNote)}
+                  className="rounded-lg border border-[var(--border-subtle)] px-2.5 py-1 text-xs text-[var(--text-secondary)]"
+                >
+                  Tải .md
+                </button>
+                <button type="button" onClick={() => setReadingNote(null)}>
+                  <X className="h-4 w-4 text-[var(--text-muted)]" />
+                </button>
+              </div>
+            </div>
+            <div className="mt-4">
+              <MarkdownView content={readingNote.content} />
+            </div>
+          </div>
         </div>
       )}
     </div>

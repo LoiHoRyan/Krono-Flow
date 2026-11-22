@@ -23,6 +23,7 @@ import {
   PanelLeftOpen,
   NotebookPen,
   Plus,
+  HelpCircle,
   X,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
@@ -32,6 +33,7 @@ import { AuthScreen } from "@/components/AuthScreen";
 import { ConfettiBurst } from "@/components/ConfettiBurst";
 import { QuickScratchpad } from "@/components/QuickScratchpad";
 import { QuickCaptureModal } from "@/components/QuickCaptureModal";
+import { ShortcutsModal } from "@/components/ShortcutsModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -42,6 +44,7 @@ import {
   NotesFlashcardsPanel,
   NoteRecord,
   FlashcardRecord,
+  MistakeRecord,
 } from "@/components/NotesFlashcardsPanel";
 import {
   ScheduleGpaPanel,
@@ -148,6 +151,7 @@ interface WorkspaceProps {
   reflections: ReflectionRecord[];
   expenses: ExpenseRecord[];
   books: BookRecord[];
+  mistakes: MistakeRecord[];
   dbStatus: "checking" | "connected" | "disconnected";
   themeId: string;
   customAccent: string | null;
@@ -167,6 +171,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [cmdQuery, setCmdQuery] = useState("");
   const [padOpen, setPadOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [confettiKey, setConfettiKey] = useState(0);
   const [focusedTaskTitle, setFocusedTaskTitle] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -190,6 +195,8 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       if (e.key === "Escape") {
         setCmdOpen(false);
         setPadOpen(false);
+        setQuickOpen(false);
+        setHelpOpen(false);
       }
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
@@ -205,6 +212,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       } else if (e.key.toLowerCase() === "q" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         setQuickOpen((v) => !v);
+      } else if (e.key === "?") {
+        e.preventDefault();
+        setHelpOpen((v) => !v);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -235,7 +245,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-v17-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-v18-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     notify("Đã tải xuống tệp sao lưu JSON!");
@@ -266,6 +276,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     <div className="relative min-h-screen lg:flex" style={bgStyle}>
       <ConfettiBurst triggerKey={confettiKey} />
       <QuickScratchpad open={padOpen} onClose={() => setPadOpen(false)} />
+      <ShortcutsModal open={helpOpen} onClose={() => setHelpOpen(false)} />
       <QuickCaptureModal
         open={quickOpen}
         onClose={() => setQuickOpen(false)}
@@ -299,7 +310,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </span>
             <div>
               <h1 className="text-sm font-semibold text-[var(--text-primary)]">KronoFlow</h1>
-              <p className="text-[11px] text-[var(--text-muted)]">Studio v17</p>
+              <p className="text-[11px] text-[var(--text-muted)]">Studio v18</p>
             </div>
           </div>
 
@@ -417,6 +428,14 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </button>
             <button
               type="button"
+              onClick={() => setHelpOpen(true)}
+              title="Phím tắt (?)"
+              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] sm:inline-flex"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
               onClick={() => setCmdOpen(true)}
               className="hidden items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] sm:inline-flex"
             >
@@ -512,6 +531,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               subjects={props.subjects}
               notes={props.notes}
               flashcards={props.flashcards}
+              mistakes={props.mistakes}
               onRefresh={props.onRefresh}
             />
           )}
@@ -691,6 +711,7 @@ function AppShell() {
   const [reflections, setReflections] = useState<ReflectionRecord[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [books, setBooks] = useState<BookRecord[]>([]);
+  const [mistakes, setMistakes] = useState<MistakeRecord[]>([]);
   const [dbStatus, setDbStatus] = useState<"checking" | "connected" | "disconnected">("checking");
 
   const loadAll = useCallback(async () => {
@@ -731,6 +752,7 @@ function AppShell() {
         tbRes,
         exRes,
         bkRes,
+        mkRes,
       ] = await Promise.all([
         fetch("/api/subjects"),
         fetch("/api/todos"),
@@ -748,6 +770,7 @@ function AppShell() {
         fetch("/api/timeblocks"),
         fetch("/api/expenses"),
         fetch("/api/books"),
+        fetch("/api/mistakes"),
       ]);
 
       if (sRes.ok) setSubjects((await sRes.json()).data ?? []);
@@ -766,6 +789,7 @@ function AppShell() {
       if (tbRes.ok) setTimeBlocks((await tbRes.json()).data ?? []);
       if (exRes.ok) setExpenses((await exRes.json()).data ?? []);
       if (bkRes.ok) setBooks((await bkRes.json()).data ?? []);
+      if (mkRes.ok) setMistakes((await mkRes.json()).data ?? []);
     } catch {
       setDbStatus("disconnected");
       setAuthState("guest");
@@ -824,6 +848,7 @@ function AppShell() {
         reflections={reflections}
         expenses={expenses}
         books={books}
+        mistakes={mistakes}
         dbStatus={dbStatus}
         themeId={themeId}
         customAccent={customAccent}

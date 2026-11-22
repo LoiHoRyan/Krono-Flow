@@ -399,3 +399,22 @@ export const books = pgTable(
     check("books_current_non_neg", sql`${table.currentPage} >= 0`),
   ]
 );
+
+export const mistakes = pgTable(
+  "mistakes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    subjectId: uuid("subject_id").references(() => subjects.id, {
+      onDelete: "set null",
+    }),
+    question: text("question").notNull(),
+    reason: text("reason").notNull(),
+    solution: text("solution").notNull(),
+    resolved: boolean("resolved").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("mistakes_user_idx").on(table.userId)]
+);

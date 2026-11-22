@@ -67,6 +67,7 @@ export function SubjectTodoPanel({
   const [todoDue, setTodoDue] = useState("");
   const [priority, setPriority] = useState<TodoItem["priority"]>("medium");
   const [filter, setFilter] = useState<"all" | "pending" | "done">("all");
+  const [todoQuery, setTodoQuery] = useState("");
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editTodoTitle, setEditTodoTitle] = useState("");
 
@@ -151,6 +152,7 @@ export function SubjectTodoPanel({
     t.status ?? (t.isCompleted ? "done" : "todo");
 
   const filteredTodos = todos.filter((t) => {
+    if (todoQuery.trim() && !t.title.toLowerCase().includes(todoQuery.toLowerCase())) return false;
     if (filter === "pending") return !t.isCompleted;
     if (filter === "done") return t.isCompleted;
     return true;
@@ -353,7 +355,15 @@ export function SubjectTodoPanel({
 
           {view === "list" && (
             <>
-              <div className="mt-4 flex gap-1.5 text-xs">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <input
+                  type="text"
+                  value={todoQuery}
+                  onChange={(e) => setTodoQuery(e.target.value)}
+                  placeholder="Tìm kiếm nhanh công việc..."
+                  className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs outline-none focus:border-[var(--accent)] sm:w-56"
+                />
+                <div className="flex gap-1.5">
                 {(
                   [
                     ["all", "Tất cả"],
@@ -375,6 +385,7 @@ export function SubjectTodoPanel({
                     {label}
                   </button>
                 ))}
+                </div>
               </div>
 
               <ul className="mt-3 space-y-2">

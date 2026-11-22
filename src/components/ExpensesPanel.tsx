@@ -49,6 +49,20 @@ export function ExpensesPanel({
     }
   };
 
+  const exportCsv = () => {
+    const header = "Ngay,Danh muc,Khoan chi,So tien (VND)\n";
+    const rows = expenses
+      .map((e) => `${e.spentDate},"${e.category.replaceAll('"', '""')}","${e.title.replaceAll('"', '""')}",${e.amount}`)
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + header + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kronoflow-expenses-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleDelete = async (id: string) => {
     await fetch(`/api/expenses/${id}`, { method: "DELETE" });
     onRefresh();
@@ -90,9 +104,18 @@ export function ExpensesPanel({
 
       <div className="grid gap-6 lg:grid-cols-12">
         <section className="glass-card card-lift rounded-2xl p-6 lg:col-span-7">
-          <h3 className="text-base font-medium text-[var(--text-primary)]">
-            {lang === "vi" ? "Ghi nhận chi tiêu học tập" : "Add Study Expense"}
-          </h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-base font-medium text-[var(--text-primary)]">
+              {lang === "vi" ? "Ghi nhận chi tiêu học tập" : "Add Study Expense"}
+            </h3>
+            <button
+              type="button"
+              onClick={exportCsv}
+              className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-secondary)] hover:text-[var(--accent)]"
+            >
+              Xuất CSV (Excel)
+            </button>
+          </div>
 
           <form onSubmit={handleAdd} className="mt-4 grid gap-2.5 sm:grid-cols-2">
             <input
