@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { CalendarDays, Calculator, GraduationCap, Plus, Trash2,
   ShieldAlert,
+  Download,
+  Sparkles,
 } from "lucide-react";
 
 export interface ScheduleSlotRecord {
@@ -73,6 +75,45 @@ export function ScheduleGpaPanel({
   const [targetFinal, setTargetFinal] = useState(8.5);
   const [attCourse, setAttCourse] = useState("");
   const [attTotal, setAttTotal] = useState(15);
+  const [whatIfCredits, setWhatIfCredits] = useState(3);
+  const [whatIfScore, setWhatIfScore] = useState(8.5);
+  const [whatIfList, setWhatIfList] = useState<{ id: string; credits: number; score10: number }[]>([]);
+
+  const exportTimetableIcs = () => {
+    const byDayMap: Record<number, string> = {
+      1: "MO",
+      2: "TU",
+      3: "WE",
+      4: "TH",
+      5: "FR",
+      6: "SA",
+      7: "SU",
+    };
+    const now = new Date();
+    const ymd = now.toISOString().slice(0, 10).replaceAll("-", "");
+    const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//KronoFlow//Timetable//VI"];
+    for (const sl of slots) {
+      const st = sl.startTime.replace(":", "") + "00";
+      const et = sl.endTime.replace(":", "") + "00";
+      const byday = byDayMap[sl.dayOfWeek] ?? "MO";
+      lines.push("BEGIN:VEVENT");
+      lines.push(`UID:${sl.id}@kronoflow`);
+      lines.push(`DTSTART:${ymd}T${st}`);
+      lines.push(`DTEND:${ymd}T${et}`);
+      lines.push(`RRULE:FREQ=WEEKLY;BYDAY=${byday}`);
+      lines.push(`SUMMARY:${sl.title}`);
+      if (sl.location) lines.push(`LOCATION:${sl.location}`);
+      lines.push("END:VEVENT");
+    }
+    lines.push("END:VCALENDAR");
+    const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "kronoflow-timetable.ics";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const [attRecords, setAttRecords] = useState<
     { id: string; course: string; total: number; absent: number }[]
   >([]);
@@ -202,11 +243,22 @@ export function ScheduleGpaPanel({
     <div className="space-y-6">
       {/* THỜI KHÓA BIỂU TUẦN */}
       <section className="glass-card card-lift rounded-2xl p-6">
-        <div className="flex items-center gap-2">
-          <CalendarDays className="h-4 w-4 text-[var(--accent)]" />
-          <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-            Thời khóa biểu tuần (Thứ 2 – Chủ nhật)
-          </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-[var(--accent)]" />
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+              Thời khóa biểu tuần (Thứ 2 – Chủ nhật)
+            </h3>
+          </div>
+          {slots.length > 0 && (
+            <button
+              type="button"
+              onClick={exportTimetableIcs}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-medium text-[var(--accent)] hover:border-[var(--accent)]"
+            >
+              <Download className="h-3.5 w-3.5" /> Xuất lịch tuần (.ics)
+            </button>
+          )}
         </div>
 
         <form onSubmit={handleAddSlot} className="mt-4 flex flex-wrap gap-2">
@@ -274,9 +326,21 @@ export function ScheduleGpaPanel({
   return (
               <div
                 key={d.id}
-                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3"
+                className={cn(
+                  "rounded-xl border p-3 transition-colors",
+                  d.id === (new Date().getDay() === 0 ? 7 : new Date().getDay())
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)]/50 ring-1 ring-[var(--accent)]/30"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-canvas)]"
+                )}
               >
-                <div className="text-xs font-semibold text-[var(--text-primary)]">{d.label}</div>
+                <div className="flex items-center justify-between gap-1 text-xs font-semibold text-[var(--text-primary)]">
+                  <span>{d.label}</span>
+                  {d.id === (new Date().getDay() === 0 ? 7 : new Date().getDay()) && (
+                    <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[9px] font-medium text-white">
+                      Hôm nay
+                    </span>
+                  )}
+                </div>
                 <div className="mt-2 space-y-2">
                   {daySlots.length === 0 ? (
                     <p className="text-[11px] text-[var(--text-muted)]">Trống</p>
@@ -540,6 +604,98 @@ export function ScheduleGpaPanel({
           </div>
         </section>
       </div>
+
+      {/* MÔ PHỎNG GPA GIẢ ĐỊNH (WHAT-IF GPA SIMULATOR) */}
+      {(() => {
+        const realW4 = grades.reduce((a, g) => a + toGpa4(g.score10).gpa4 * g.credits, 0);
+        const simCredits = whatIfList.reduce((a, x) => a + x.credits, 0);
+        const simW4 = whatIfList.reduce((a, x) => a + toGpa4(x.score10).gpa4 * x.credits, 0);
+        const totalC = totalCredits + simCredits;
+        const projGpa4 = totalC > 0 ? +((realW4 + simW4) / totalC).toFixed(2) : 0;
+        const delta = +(projGpa4 - Number(avg4)).toFixed(2);
+        return (
+          <section className="privacy-sensitive glass-card card-lift rounded-2xl p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-[var(--accent)]" />
+                <h3 className="text-base font-medium text-[var(--text-primary)]">
+                  Mô phỏng GPA giả định ("Nếu kỳ này đạt...")
+                </h3>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-[var(--text-muted)]">GPA dự kiến:</span>
+                <strong className="font-mono text-base text-[var(--accent)]">{projGpa4.toFixed(2)}</strong>
+                {whatIfList.length > 0 && (
+                  <span className={delta >= 0 ? "font-mono text-emerald-600" : "font-mono text-rose-500"}>
+                    ({delta >= 0 ? `+${delta}` : delta})
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <label className="text-[var(--text-secondary)]">Tín chỉ:</label>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={whatIfCredits}
+                onChange={(e) => setWhatIfCredits(Number(e.target.value))}
+                className="w-16 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs"
+              />
+              <label className="text-[var(--text-secondary)]">Điểm hệ 10 dự kiến:</label>
+              <input
+                type="number"
+                min={0}
+                max={10}
+                step={0.1}
+                value={whatIfScore}
+                onChange={(e) => setWhatIfScore(Number(e.target.value))}
+                className="w-20 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  setWhatIfList((prev) => [
+                    ...prev,
+                    { id: String(Date.now()), credits: Math.max(1, whatIfCredits), score10: Math.min(10, Math.max(0, whatIfScore)) },
+                  ])
+                }
+                className="btn-primary inline-flex items-center gap-1 rounded-xl px-3.5 py-1.5 text-xs font-medium"
+              >
+                <Plus className="h-3.5 w-3.5" /> Thêm môn giả định
+              </button>
+              {whatIfList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setWhatIfList([])}
+                  className="rounded-xl border border-[var(--border-subtle)] px-3 py-1.5 text-xs text-[var(--text-muted)]"
+                >
+                  Xóa nháp
+                </button>
+              )}
+            </div>
+            {whatIfList.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {whatIfList.map((w, idx) => (
+                  <span
+                    key={w.id}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1 text-xs"
+                  >
+                    Môn #{idx + 1}: {w.credits} TC · {w.score10}đ ({toGpa4(w.score10).letter})
+                    <button
+                      type="button"
+                      onClick={() => setWhatIfList((prev) => prev.filter((x) => x.id !== w.id))}
+                      className="text-[var(--text-muted)] hover:text-rose-500"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </section>
+        );
+      })()}
 
       {/* THEO DÕI CHUYÊN CẦN & CẢNH BÁO CẤM THI (ATTENDANCE GUARD) */}
       <section className="glass-card card-lift rounded-2xl p-6">

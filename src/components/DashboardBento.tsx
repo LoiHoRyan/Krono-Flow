@@ -26,6 +26,10 @@ import {
   Download,
   Compass,
   CalendarRange,
+  Copy,
+  Check,
+  Image,
+  Sparkles,
 } from "lucide-react";
 import { computeLevelInfo } from "@/lib/themes";
 import { useLang } from "@/lib/i18n";
@@ -103,6 +107,36 @@ export function DashboardBento({
   const [pinnedResourceIds, setPinnedResourceIds] = useState<string[]>([]);
   const [dismissedGuard, setDismissedGuard] = useState(false);
   const [reverseOpen, setReverseOpen] = useState(false);
+  const [cleanMode, setCleanMode] = useState(false);
+  const [coverPreset, setCoverPreset] = useState("none");
+  const [copiedStandup, setCopiedStandup] = useState(false);
+  const [recallFlipped, setRecallFlipped] = useState(false);
+
+  useEffect(() => {
+    const savedCover = localStorage.getItem("kronoflow-cover-banner");
+    if (savedCover) setCoverPreset(savedCover);
+    setCleanMode(localStorage.getItem("kronoflow-clean-dashboard") === "on");
+  }, []);
+
+  const cycleCover = () => {
+    const order = ["none", "sunrise", "forest", "aurora"];
+    const next = order[(order.indexOf(coverPreset) + 1) % order.length] ?? "none";
+    setCoverPreset(next);
+    localStorage.setItem("kronoflow-cover-banner", next);
+  };
+
+  const toggleCleanMode = () => {
+    const next = !cleanMode;
+    setCleanMode(next);
+    localStorage.setItem("kronoflow-clean-dashboard", next ? "on" : "off");
+  };
+
+  const copyDailyStandup = () => {
+    const summary = `📅 ${todayKey} | ⏱ Tập trung: ${todayMinutes}/${dailyGoal} phút (${goalPct}%) | ✅ Xong ${completedTodos} việc | 🔥 Chuỗi ${streak} ngày`;
+    navigator.clipboard?.writeText(summary).catch(() => {});
+    setCopiedStandup(true);
+    setTimeout(() => setCopiedStandup(false), 1800);
+  };
 
   useEffect(() => {
     try {
@@ -323,6 +357,19 @@ export function DashboardBento({
 
       {/* LIVE HERO BRIEF */}
       <section className="glass-card relative overflow-hidden p-6 sm:p-7">
+        {coverPreset !== "none" && (
+          <div
+            className="-mx-6 -mt-6 mb-5 h-20 sm:-mx-7 sm:-mt-7"
+            style={{
+              backgroundImage:
+                coverPreset === "sunrise"
+                  ? "linear-gradient(120deg, #fde68a 0%, #fca5a5 50%, #c4b5fd 100%)"
+                  : coverPreset === "forest"
+                  ? "linear-gradient(120deg, #064e3b 0%, #0f766e 50%, #34d399 100%)"
+                  : "linear-gradient(120deg, #0f172a 0%, #312e81 55%, #0ea5e9 100%)",
+            }}
+          />
+        )}
         <div className="relative flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -343,6 +390,36 @@ export function DashboardBento({
                   Tổng kết tuần
                 </button>
               )}
+              <button
+                type="button"
+                onClick={copyDailyStandup}
+                title="Sao chép nhanh báo cáo học tập hôm nay"
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                {copiedStandup ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                {copiedStandup ? "Đã chép" : "Chép tóm tắt"}
+              </button>
+              <button
+                type="button"
+                onClick={cycleCover}
+                title="Đổi dải ảnh bìa trang trí"
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <Image className="h-3 w-3" /> Ảnh bìa
+              </button>
+              <button
+                type="button"
+                onClick={toggleCleanMode}
+                title="Ẩn bớt thẻ phụ để tập trung tối giản"
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium",
+                  cleanMode
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)]"
+                )}
+              >
+                {cleanMode ? "Chế độ: Tối giản" : "Chế độ: Đầy đủ"}
+              </button>
             </div>
 
             <div className="flex items-center gap-3">
@@ -489,6 +566,32 @@ export function DashboardBento({
               </div>
             </div>
           </div>
+        );
+      })()}
+
+      {!cleanMode && flashcards.length > 0 && (() => {
+        const daySeed = new Date().getDate() + new Date().getMonth() * 31;
+        const card = flashcards[daySeed % flashcards.length];
+        if (!card) return null;
+        return (
+          <section className="glass-card flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-3.5 text-xs">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--accent)]">
+                <Sparkles className="h-3.5 w-3.5" />
+                Ôn nhanh 10 giây hôm nay (Daily Recall)
+              </div>
+              <div className="mt-1 text-sm font-medium text-[var(--text-primary)]">
+                {recallFlipped ? `Đáp án: ${card.back}` : card.front}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRecallFlipped((f) => !f)}
+              className="shrink-0 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-medium text-[var(--accent)] hover:border-[var(--accent)]"
+            >
+              {recallFlipped ? "Xem câu hỏi" : "Lật đáp án"}
+            </button>
+          </section>
         );
       })()}
 

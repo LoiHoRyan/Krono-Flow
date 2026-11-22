@@ -456,6 +456,71 @@ export function AnalyticsPanel({
         </div>
       </section>
 
+      {/* BẢNG KỶ LỤC CÁ NHÂN (PERSONAL RECORDS HALL) */}
+      {(() => {
+        let bestDayMins = 0;
+        let bestDayDate = "—";
+        for (const [dt, m] of dayMinutes.entries()) {
+          if (m > bestDayMins) {
+            bestDayMins = m;
+            bestDayDate = dt;
+          }
+        }
+        const longestSession = completed.reduce((mx, s) => Math.max(mx, s.actualMinutes), 0);
+        const subTotals = new Map<string, number>();
+        for (const s of completed) {
+          if (s.subjectId) subTotals.set(s.subjectId, (subTotals.get(s.subjectId) ?? 0) + s.actualMinutes);
+        }
+        let topSubName = "Chưa có";
+        let topSubMins = 0;
+        for (const [sid, m] of subTotals.entries()) {
+          if (m > topSubMins) {
+            topSubMins = m;
+            topSubName = subjects.find((x) => x.id === sid)?.name ?? "Môn học";
+          }
+        }
+        return (
+          <section className="glass-card rounded-2xl p-6">
+            <div className="flex items-center gap-2">
+              <Award className="h-4 w-4 text-amber-500" />
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                Bảng Kỷ lục cá nhân (Personal Records)
+              </h3>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3.5">
+                <div className="text-xs text-[var(--text-muted)]">Ngày học kỷ lục</div>
+                <div className="mt-1 font-mono text-lg font-semibold text-[var(--accent)]">
+                  {bestDayMins} phút
+                </div>
+                <div className="text-[11px] text-[var(--text-muted)]">{bestDayDate}</div>
+              </div>
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3.5">
+                <div className="text-xs text-[var(--text-muted)]">Phiên dài nhất</div>
+                <div className="mt-1 font-mono text-lg font-semibold text-[var(--text-primary)]">
+                  {longestSession} phút
+                </div>
+                <div className="text-[11px] text-[var(--text-muted)]">Tập trung liên tục</div>
+              </div>
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3.5">
+                <div className="text-xs text-[var(--text-muted)]">Tổng phiên hoàn thành</div>
+                <div className="mt-1 font-mono text-lg font-semibold text-emerald-600 dark:text-emerald-400">
+                  {completed.length} phiên
+                </div>
+                <div className="text-[11px] text-[var(--text-muted)]">Trung bình {avgSession}p/phiên</div>
+              </div>
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3.5">
+                <div className="text-xs text-[var(--text-muted)]">Môn chăm chỉ nhất</div>
+                <div className="mt-1 truncate text-base font-semibold text-[var(--text-primary)]">
+                  {topSubName}
+                </div>
+                <div className="text-[11px] text-[var(--text-muted)]">{(topSubMins / 60).toFixed(1)} giờ</div>
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
       {/* BIỂU ĐỒ RADAR CÂN BẰNG MÔN HỌC + BÁO CÁO THÁNG */}
       {(() => {
         const subList = subjects.slice(0, 6);

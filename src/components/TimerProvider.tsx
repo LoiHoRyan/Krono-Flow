@@ -115,6 +115,16 @@ export function TimerProvider({
     }
   }, [isRunning, secondsLeft]);
 
+  useEffect(() => {
+    if (!isRunning) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isRunning]);
+
   const changeMode = (nextMode: TimerMode) => {
     if (isRunning) return;
     const mins = MODE_CONFIG[nextMode].minutes;

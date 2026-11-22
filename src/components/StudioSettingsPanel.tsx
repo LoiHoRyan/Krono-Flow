@@ -77,7 +77,8 @@ export function StudioSettingsPanel({
   const [celebrationsOn, setCelebrationsOn] = useState(true);
   const [uiSoundsOn, setUiSoundsOn] = useState(false);
   const [soundStyle, setSoundStyle] = useState<UiSoundStyle>("wood");
-  const [glassOpacity, setGlassOpacity] = useState(92);
+  const [glassOpacity, setGlassOpacity] = useState(96);
+  const [fontScale, setFontScale] = useState<"95%" | "100%" | "108%">("100%");
   const [diagText, setDiagText] = useState<string | null>(null);
   const [autoDayNight, setAutoDayNight] = useState(false);
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
@@ -88,6 +89,8 @@ export function StudioSettingsPanel({
     setSoundStyle(getUiSoundStyle());
     const savedGlass = Number(localStorage.getItem("kronoflow-glass-opacity") || "92");
     if (!isNaN(savedGlass)) setGlassOpacity(savedGlass);
+    const savedScale = localStorage.getItem("kronoflow-font-scale");
+    if (savedScale === "95%" || savedScale === "100%" || savedScale === "108%") setFontScale(savedScale);
     setAutoDayNight(localStorage.getItem("kronoflow-auto-theme") === "on");
     setLastBackupAt(localStorage.getItem("kronoflow-last-backup"));
   }, []);
@@ -784,6 +787,36 @@ export function StudioSettingsPanel({
                 </div>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs sm:col-span-2">
+                <span className="text-[var(--text-secondary)]">Cỡ chữ toàn trang (Font Scale):</span>
+                <div className="flex items-center gap-1.5">
+                  {(
+                    [
+                      ["95%", "Gọn (95%)"],
+                      ["100%", "Vừa / Gốc (100%)"],
+                      ["108%", "Lớn dễ đọc (108%)"],
+                    ] as const
+                  ).map(([val, lb]) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => {
+                        setFontScale(val);
+                        localStorage.setItem("kronoflow-font-scale", val);
+                        document.documentElement.style.fontSize = val;
+                      }}
+                      className={cn(
+                        "rounded-lg px-2.5 py-1 text-[11px] font-medium",
+                        fontScale === val
+                          ? "bg-[var(--accent)] text-white"
+                          : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                      )}
+                    >
+                      {lb}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs sm:col-span-2">
                 <span className="text-[var(--text-secondary)]">
                   Độ đục thẻ kính (Glass Opacity): <strong className="font-mono">{glassOpacity}%</strong>
                 </span>
@@ -826,6 +859,27 @@ export function StudioSettingsPanel({
                   Kiểm tra ngay
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setFontScale("100%");
+                  setGlassOpacity(96);
+                  localStorage.setItem("kronoflow-font-scale", "100%");
+                  localStorage.setItem("kronoflow-glass-opacity", "96");
+                  localStorage.setItem("kronoflow-warm-filter", "0");
+                  localStorage.setItem("kronoflow-auto-theme", "off");
+                  document.documentElement.style.fontSize = "100%";
+                  document.documentElement.style.setProperty("--glass-opacity", "0.96");
+                  document.documentElement.classList.remove("compact-ui");
+                  window.dispatchEvent(new Event("kronoflow-warm-change"));
+                  onApplyLocalTheme("pure-white", "none", null, "editorial", "normal");
+                  setRestoreMsg("Đã khôi phục giao diện mặc định (giữ nguyên 100% dữ liệu học tập).");
+                }}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] sm:col-span-2"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Đặt lại giao diện mặc định (an toàn, không xóa dữ liệu)
+              </button>
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-[11px]">

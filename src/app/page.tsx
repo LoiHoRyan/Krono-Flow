@@ -33,6 +33,7 @@ import {
   Eye,
   EyeOff,
   Code2,
+  BellRing,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -197,6 +198,38 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [privacyMode, setPrivacyMode] = useState(false);
   const [warmLevel, setWarmLevel] = useState(0);
 
+  const [upcomingClass, setUpcomingClass] = useState<{ title: string; startTime: string; location: string | null } | null>(null);
+
+  useEffect(() => {
+    const savedScale = localStorage.getItem("kronoflow-font-scale");
+    if (savedScale === "95%" || savedScale === "100%" || savedScale === "108%") {
+      document.documentElement.style.fontSize = savedScale;
+    }
+    const savedGlass = Number(localStorage.getItem("kronoflow-glass-opacity") || "96");
+    if (!isNaN(savedGlass)) {
+      document.documentElement.style.setProperty("--glass-opacity", String(savedGlass / 100));
+    }
+  }, []);
+
+  useEffect(() => {
+    const checkClass = () => {
+      const now = new Date();
+      const dow = now.getDay() === 0 ? 7 : now.getDay();
+      const nowMins = now.getHours() * 60 + now.getMinutes();
+      const soon = props.slots.find((sl) => {
+        if (sl.dayOfWeek !== dow) return false;
+        const [h, m] = sl.startTime.split(":").map(Number);
+        const startMins = (h ?? 0) * 60 + (m ?? 0);
+        const diff = startMins - nowMins;
+        return diff >= 0 && diff <= 15;
+      });
+      setUpcomingClass(soon ? { title: soon.title, startTime: soon.startTime, location: soon.location } : null);
+    };
+    checkClass();
+    const id = setInterval(checkClass, 60000);
+    return () => clearInterval(id);
+  }, [props.slots]);
+
   useEffect(() => {
     const syncWarm = () => {
       const v = Number(localStorage.getItem("kronoflow-warm-filter") || "0");
@@ -309,6 +342,12 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       } else if (e.key.toLowerCase() === "p" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         setPrivacyMode((v) => !v);
+      } else if (e.altKey && e.key >= "1" && e.key <= "9") {
+        const target = NAV_DEF[Number(e.key) - 1];
+        if (target) {
+          e.preventDefault();
+          setTab(target.id);
+        }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -704,6 +743,24 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
           </div>
         </header>
 
+        {upcomingClass && (
+          <div className="mx-auto mt-3 max-w-6xl px-4 sm:px-8">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:text-amber-300">
+              <span className="inline-flex items-center gap-2 font-medium">
+                <BellRing className="h-4 w-4 shrink-0" />
+                Sắp vào tiết lúc {upcomingClass.startTime}: <strong>{upcomingClass.title}</strong>
+                {upcomingClass.location ? ` · Phòng ${upcomingClass.location}` : ""}
+              </span>
+              <button
+                type="button"
+                onClick={() => setUpcomingClass(null)}
+                className="text-[11px] underline opacity-80 hover:opacity-100"
+              >
+                Đã rõ
+              </button>
+            </div>
+          </div>
+        )}
         <main key={tab} className="animate-tab-in mx-auto max-w-6xl px-4 py-6 sm:px-8">
           {tab === "dashboard" && (
             <DashboardBento
@@ -789,6 +846,10 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               flashcards={props.flashcards}
               mistakes={props.mistakes}
               onUndoableDelete={notifyUndoable}
+              onFocusNote={(title) => {
+                setFocusedTaskTitle(title);
+                setTab("focus");
+              }}
               onRefresh={props.onRefresh}
             />
           )}
@@ -989,6 +1050,60 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                       >
                         <span className="truncate">✎ {x.title}</span>
                         <span className="text-[10px] text-[var(--accent)]">Ghi chú</span>
+                      </button>
+                    ))}
+                  {props.subjects
+                    .filter((x) => x.name.toLowerCase().includes(cmdQuery.toLowerCase()))
+                    .slice(0, 3)
+                    .map((x) => (
+                      <button
+                        key={x.id}
+                        type="button"
+                        onClick={() => {
+                          setTab("planner");
+                          setCmdOpen(false);
+                          setCmdQuery("");
+                        }}
+                        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]"
+                      >
+                        <span className="truncate">📚 {x.name}</span>
+                        <span className="text-[10px] text-[var(--accent)]">Môn học</span>
+                      </button>
+                    ))}
+                  {props.exams
+                    .filter((x) => x.title.toLowerCase().includes(cmdQuery.toLowerCase()))
+                    .slice(0, 3)
+                    .map((x) => (
+                      <button
+                        key={x.id}
+                        type="button"
+                        onClick={() => {
+                          setTab("dashboard");
+                          setCmdOpen(false);
+                          setCmdQuery("");
+                        }}
+                        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]"
+                      >
+                        <span className="truncate">⏳ {x.title} ({x.examDate.slice(0, 10)})</span>
+                        <span className="text-[10px] text-amber-500">Kỳ thi</span>
+                      </button>
+                    ))}
+                  {props.mistakes
+                    .filter((x) => x.question.toLowerCase().includes(cmdQuery.toLowerCase()))
+                    .slice(0, 3)
+                    .map((x) => (
+                      <button
+                        key={x.id}
+                        type="button"
+                        onClick={() => {
+                          setTab("knowledge");
+                          setCmdOpen(false);
+                          setCmdQuery("");
+                        }}
+                        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]"
+                      >
+                        <span className="truncate">⚠ {x.question}</span>
+                        <span className="text-[10px] text-rose-500">Sổ Lỗi Sai</span>
                       </button>
                     ))}
                 </>

@@ -25,6 +25,7 @@ import {
   Sparkles,
   StickyNote,
   Gamepad2,
+  PlayCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarkdownView } from "./MarkdownView";
@@ -65,6 +66,7 @@ export function NotesFlashcardsPanel({
   flashcards,
   mistakes = [],
   onUndoableDelete,
+  onFocusNote,
   onRefresh,
 }: {
   subjects: SubjectOption[];
@@ -72,6 +74,7 @@ export function NotesFlashcardsPanel({
   flashcards: FlashcardRecord[];
   mistakes?: MistakeRecord[];
   onUndoableDelete?: (label: string, onUndo: () => Promise<void>) => void;
+  onFocusNote?: (title: string) => void;
   onRefresh: () => void;
 }) {
   const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz" | "typing" | "mistakes" | "feynman" | "match">("notes");
@@ -121,6 +124,25 @@ export function NotesFlashcardsPanel({
   };
   const [pdfOpen, setPdfOpen] = useState(false);
   const [pastelMode, setPastelMode] = useState(false);
+  const [mistakeLevel, setMistakeLevel] = useState<Record<string, "warn" | "hard" | "exam">>({});
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("kronoflow-mistake-tags");
+      if (raw) setMistakeLevel(JSON.parse(raw));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const cycleMistakeLevel = (id: string) => {
+    const order: ("warn" | "hard" | "exam")[] = ["warn", "hard", "exam"];
+    const cur = mistakeLevel[id] ?? "warn";
+    const next = order[(order.indexOf(cur) + 1) % order.length] ?? "warn";
+    const updated = { ...mistakeLevel, [id]: next };
+    setMistakeLevel(updated);
+    localStorage.setItem("kronoflow-mistake-tags", JSON.stringify(updated));
+  };
   const [noteColors, setNoteColors] = useState<Record<string, string>>({});
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState("");
@@ -773,6 +795,16 @@ export function NotesFlashcardsPanel({
                           >
                             <Maximize2 className="h-3.5 w-3.5" />
                           </button>
+                          {onFocusNote && (
+                            <button
+                              type="button"
+                              onClick={() => onFocusNote(`Ôn ghi chú: ${n.title}`)}
+                              title="Học ghi chú này trong Phòng Tập Trung"
+                              className="text-[var(--text-muted)] hover:text-[var(--accent)]"
+                            >
+                              <PlayCircle className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => exportNoteMd(n)}
