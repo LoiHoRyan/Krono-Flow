@@ -15,7 +15,7 @@ import {
   Save,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
-import { ambientEngine, AmbientChannel } from "@/lib/ambient-audio";
+import { ambientEngine, AmbientChannel, BellStyle } from "@/lib/ambient-audio";
 import { MODE_CONFIG, TimerMode, useTimer } from "./TimerProvider";
 
 export interface SubjectOption {
@@ -59,6 +59,18 @@ export function PomodoroTimer({
   const [clockTab, setClockTab] = useState<"pomodoro" | "exam" | "stopwatch">("pomodoro");
   const [zenMode, setZenMode] = useState(false);
   const [eyeCare, setEyeCare] = useState(true);
+  const [bellStyle, setBellStyle] = useState<BellStyle>("soft");
+
+  useEffect(() => {
+    const saved = localStorage.getItem("kronoflow-bell") as BellStyle | null;
+    if (saved) setBellStyle(saved);
+  }, []);
+
+  const changeBell = (next: BellStyle) => {
+    setBellStyle(next);
+    localStorage.setItem("kronoflow-bell", next);
+    ambientEngine.playBell(next);
+  };
 
   // Stopwatch state
   const [swSeconds, setSwSeconds] = useState(0);
@@ -377,6 +389,32 @@ export function PomodoroTimer({
 
         {/* 4-CHANNEL SOUND MIXER + EYE CARE 20-20-20 */}
         <div className="mt-6 border-t border-[var(--border-subtle)] pt-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-xs">
+            <span className="text-[var(--text-secondary)]">Kiểu chuông hết phiên</span>
+            <div className="flex items-center gap-1.5">
+              {(
+                [
+                  ["soft", "Êm dịu"],
+                  ["zen", "Chuông Thiền"],
+                  ["bright", "Năng lượng"],
+                ] as const
+              ).map(([id, lbl]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => changeBell(id)}
+                  className={cn(
+                    "rounded-lg px-2.5 py-1 text-[11px] font-medium",
+                    bellStyle === id
+                      ? "bg-[var(--accent)] text-white"
+                      : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                  )}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="mb-4 flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-xs">
             <span className="text-[var(--text-secondary)]">
               Nhắc nghỉ mắt 20-20-20 (nhìn xa 6m mỗi 20 phút)

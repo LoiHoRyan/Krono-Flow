@@ -145,6 +145,22 @@ export function SubjectTodoPanel({
     onRefresh();
   };
 
+  const overdueTodos = todos.filter(
+    (t) => !t.isCompleted && t.dueDate && new Date(t.dueDate).getTime() < new Date().setHours(0, 0, 0, 0)
+  );
+
+  const rolloverOverdue = async () => {
+    const todayIso = new Date().toISOString();
+    for (const t of overdueTodos) {
+      await fetch(`/api/todos/${t.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dueDate: todayIso }),
+      });
+    }
+    onRefresh();
+  };
+
   const deleteTodo = async (id: string) => {
     await fetch(`/api/todos/${id}`, { method: "DELETE" });
     onRefresh();
@@ -357,6 +373,20 @@ export function SubjectTodoPanel({
 
           {view === "list" && (
             <>
+              {overdueTodos.length > 0 && (
+                <div className="mt-3 flex items-center justify-between rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs">
+                  <span className="text-amber-700 dark:text-amber-400">
+                    Có <strong>{overdueTodos.length}</strong> công việc đã quá hạn chót.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={rolloverOverdue}
+                    className="rounded-lg bg-amber-600 px-2.5 py-1 text-[11px] font-medium text-white"
+                  >
+                    Dời hết về hôm nay
+                  </button>
+                </div>
+              )}
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs">
                 <input
                   type="text"

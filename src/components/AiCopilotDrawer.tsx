@@ -47,7 +47,10 @@ export function AiCopilotDrawer({
   onRefresh: () => void;
 }) {
   const { lang } = useLang();
-  const [aiTab, setAiTab] = useState<"chat" | "flashcards">("chat");
+  const [aiTab, setAiTab] = useState<"chat" | "flashcards" | "roadmap">("chat");
+  const [rmGoal, setRmGoal] = useState("");
+  const [rmGenerating, setRmGenerating] = useState(false);
+  const [rmPreview, setRmPreview] = useState<{ title: string; category: string; items: { title: string; estimatedMinutes: number }[] } | null>(null);
   const [fcTopic, setFcTopic] = useState("");
   const [fcCount, setFcCount] = useState(5);
   const [fcGenerating, setFcGenerating] = useState(false);
@@ -183,6 +186,44 @@ export function AiCopilotDrawer({
     }
   };
 
+  const handleGenerateRoadmap = async () => {
+    if (!rmGoal.trim() || rmGenerating) return;
+    setRmGenerating(true);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (userKey.trim()) headers["x-gemini-key"] = userKey.trim();
+      const res = await fetch("/api/ai/roadmap", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ goal: rmGoal.trim() }),
+      });
+      const json = await res.json();
+      if (res.ok && json.data) setRmPreview(json.data);
+    } finally {
+      setRmGenerating(false);
+    }
+  };
+
+  const handleSaveRoadmap = async () => {
+    if (!rmPreview) return;
+    setRmGenerating(true);
+    try {
+      const res = await fetch("/api/roadmaps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(rmPreview),
+      });
+      if (res.ok) {
+        onNotify("Đã lưu Lộ trình AI vào Kho Lộ Trình PostgreSQL!");
+        setRmPreview(null);
+        setRmGoal("");
+        onRefresh();
+      }
+    } finally {
+      setRmGenerating(false);
+    }
+  };
+
   const handleClear = async () => {
     await fetch("/api/ai/chat", { method: "DELETE" });
     setMessages([]);
@@ -303,11 +344,77 @@ export function AiCopilotDrawer({
                 : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             )}
           >
-            ✦ Tạo Flashcards (1-Click)
+            ✦ Flashcards AI
+          </button>
+          <button
+            type="button"
+            onClick={() => setAiTab("roadmap")}
+            className={cn(
+              "rounded-lg px-3 py-1 font-medium",
+              aiTab === "roadmap"
+                ? "bg-[var(--accent)] text-white"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            )}
+          >
+            ✦ Lộ trình AI
           </button>
         </div>
 
-        {aiTab === "flashcards" ? (
+        {aiTab === "roadmap" ? (
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+            <div className="space-y-2.5">
+              <label className="text-xs font-medium text-[var(--text-primary)]">
+                Nhập mục tiêu học tập (AI sẽ tự chia chặng & thời lượng)
+              </label>
+              <input
+                type="text"
+                value={rmGoal}
+                onChange={(e) => setRmGoal(e.target.value)}
+                placeholder="VD: Ôn thi C++ & Cấu trúc dữ liệu trong 14 ngày"
+                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+              />
+              <button
+                type="button"
+                disabled={rmGenerating || !rmGoal.trim()}
+                onClick={handleGenerateRoadmap}
+                className="btn-primary rounded-xl px-4 py-2 text-xs font-medium disabled:opacity-50"
+              >
+                {rmGenerating ? "Đang tạo lộ trình..." : "Tạo lộ trình AI"}
+              </button>
+            </div>
+
+            {rmPreview && (
+              <div className="space-y-2.5 border-t border-[var(--border-subtle)] pt-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-[var(--text-primary)]">
+                    {rmPreview.title} ({rmPreview.items.length} chặng)
+                  </span>
+                  <button
+                    type="button"
+                    disabled={rmGenerating}
+                    onClick={handleSaveRoadmap}
+                    className="btn-primary rounded-xl px-3.5 py-1.5 text-xs font-medium"
+                  >
+                    Lưu vào Kho Lộ Trình
+                  </button>
+                </div>
+                {rmPreview.items.map((it, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
+                  >
+                    <span className="text-[var(--text-primary)]">
+                      {idx + 1}. {it.title}
+                    </span>
+                    <span className="font-mono text-[11px] text-[var(--accent)]">
+                      {it.estimatedMinutes}p
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : aiTab === "flashcards" ? (
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
             <div className="space-y-2.5">
               <label className="text-xs font-medium text-[var(--text-primary)]">

@@ -1,5 +1,6 @@
 export type AmbientChannel = "rain" | "brown" | "cafe" | "binaural";
 export type AmbientType = "none" | AmbientChannel;
+export type BellStyle = "soft" | "zen" | "bright";
 
 interface ChannelState {
   gain: GainNode;
@@ -125,20 +126,45 @@ class MultiChannelAmbientEngine {
     }
   }
 
-  playBell() {
+  playBell(styleOverride?: BellStyle) {
     if (typeof window === "undefined") return;
     const ctx = this.ensureContext();
     if (!ctx) return;
+    const saved = (localStorage.getItem("kronoflow-bell") as BellStyle | null) ?? "soft";
+    const style = styleOverride ?? saved;
+
+    const now = ctx.currentTime;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(660, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
-    gain.gain.setValueAtTime(0.25, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.1);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 1.15);
+
+    if (style === "zen") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(432, now);
+      osc.frequency.exponentialRampToValueAtTime(430, now + 1.8);
+      gain.gain.setValueAtTime(0.28, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 2.05);
+    } else if (style === "bright") {
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(784, now);
+      osc.frequency.setValueAtTime(1046, now + 0.14);
+      gain.gain.setValueAtTime(0.24, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.95);
+    } else {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(660, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 1.15);
+    }
   }
 }
 

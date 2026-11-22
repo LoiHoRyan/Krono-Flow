@@ -424,58 +424,76 @@ export function StudioSettingsPanel({
             </div>
           </div>
 
-          <div className="grid gap-4 border-t border-[var(--border-subtle)] pt-5 sm:grid-cols-3">
-            <div>
-              <label className="text-xs font-medium text-[var(--text-primary)]">Màu nhấn riêng</label>
-              <div className="mt-2 flex items-center gap-2">
-                <input
-                  type="color"
-                  value={customAccent || "#2563eb"}
-                  onChange={(e) => selectAccent(e.target.value)}
-                  className="h-9 w-11 cursor-pointer rounded-lg border border-[var(--border-subtle)] bg-transparent p-0.5"
-                />
-                <button
-                  type="button"
-                  onClick={() => selectAccent(null)}
-                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] p-2 text-[var(--text-secondary)]"
-                  title="Về mặc định"
+          <div className="space-y-4 border-t border-[var(--border-subtle)] pt-5">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="flex flex-col">
+                <label className="flex h-5 items-center gap-1.5 text-xs font-medium text-[var(--text-primary)]">
+                  Màu nhấn riêng
+                </label>
+                <div className="mt-2 flex h-9 items-center gap-2">
+                  <input
+                    type="color"
+                    value={customAccent || "#2563eb"}
+                    onChange={(e) => selectAccent(e.target.value)}
+                    className="h-9 w-11 cursor-pointer rounded-lg border border-[var(--border-subtle)] bg-transparent p-0.5"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => selectAccent(null)}
+                    className="inline-flex h-9 items-center justify-center rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-2.5 text-[var(--text-secondary)]"
+                    title="Về mặc định"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col">
+                <label className="flex h-5 items-center gap-1.5 text-xs font-medium text-[var(--text-primary)]">
+                  <Type className="h-3.5 w-3.5 text-[var(--accent)]" />
+                  <span>Cặp phông chữ</span>
+                </label>
+                <select
+                  value={fontStyle}
+                  onChange={(e) => selectFont(e.target.value)}
+                  className="mt-2 h-9 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
                 >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                </button>
+                  {FONT_STYLES.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col">
+                <label className="flex h-5 items-center gap-1.5 text-xs font-medium text-[var(--text-primary)]">
+                  Độ bo góc thẻ
+                </label>
+                <select
+                  value={borderRadius}
+                  onChange={(e) => selectRadius(e.target.value)}
+                  className="mt-2 h-9 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                >
+                  {RADIUS_PRESETS.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            <div>
-              <label className="flex items-center gap-1 text-xs font-medium text-[var(--text-primary)]">
-                <Type className="h-3.5 w-3.5 text-[var(--accent)]" />
-                Cặp phông chữ
-              </label>
-              <select
-                value={fontStyle}
-                onChange={(e) => selectFont(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-2 text-xs text-[var(--text-primary)]"
-              >
-                {FONT_STYLES.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-[var(--text-primary)]">Độ bo góc thẻ</label>
-              <select
-                value={borderRadius}
-                onChange={(e) => selectRadius(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-2 text-xs text-[var(--text-primary)]"
-              >
-                {RADIUS_PRESETS.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-4 py-3">
+              <div className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)]">
+                Xem trước phông chữ hiện tại
+              </div>
+              <h4 className="font-display mt-1 text-base font-medium text-[var(--text-primary)]">
+                Kỷ luật nhỏ mỗi ngày tạo nên kết quả lớn.
+              </h4>
+              <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
+                Nội dung văn bản hiển thị rõ nét, khoảng dòng thoáng giúp học lâu không mỏi mắt.
+              </p>
             </div>
           </div>
 
