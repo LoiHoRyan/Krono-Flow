@@ -77,6 +77,8 @@ export function PomodoroTimer({
   const [waterNudgeDone, setWaterNudgeDone] = useState(false);
   const [focusTag, setFocusTag] = useState("Đang giải đề");
   const [clockStyle, setClockStyle] = useState<"ring" | "flip">("ring");
+  const [logRange, setLogRange] = useState<"all" | "today" | "week">("all");
+  const [examQuestions, setExamQuestions] = useState(50);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -146,7 +148,7 @@ export function PomodoroTimer({
       timer.changeMode("deep_work");
       timer.changeAmbient("brown");
       timer.changeVolume(0.3);
-      setZenMode(true);
+      setClockTab("pomodoro");
     }
   };
   const [parkingInput, setParkingInput] = useState("");
@@ -325,7 +327,7 @@ export function PomodoroTimer({
       className={cn(
         "grid gap-6",
         zenMode
-          ? "fixed inset-0 z-50 flex flex-col items-center justify-center overflow-y-auto p-6 backdrop-blur-xl bg-[var(--bg-canvas)]"
+          ? "fixed inset-0 z-50 flex flex-col items-center justify-start overflow-y-auto px-4 py-8 backdrop-blur-xl bg-[var(--bg-canvas)]"
           : "lg:grid-cols-12"
       )}
       style={zenBackdropStyle}
@@ -358,7 +360,7 @@ export function PomodoroTimer({
       <section
         className={cn(
           "glass-card card-lift rounded-2xl p-6",
-          zenMode ? "mx-auto w-full max-w-2xl shadow-2xl" : "lg:col-span-7"
+          zenMode ? "mx-auto my-auto w-full max-w-2xl shadow-2xl" : "lg:col-span-7"
         )}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -641,6 +643,24 @@ export function PomodoroTimer({
                   ))}
             </div>
 
+            {clockTab === "exam" && (
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs">
+                <label className="flex items-center gap-1.5 text-[var(--text-secondary)]">
+                  Số câu đề thi:
+                  <input
+                    type="number"
+                    min={5}
+                    max={200}
+                    value={examQuestions}
+                    onChange={(e) => setExamQuestions(Math.max(1, Number(e.target.value)))}
+                    className="w-16 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-0.5 font-mono text-xs text-[var(--text-primary)]"
+                  />
+                </label>
+                <span className="font-mono text-[var(--accent)]">
+                  ≈ {Math.round((timer.customMinutes * 60) / Math.max(1, examQuestions))} giây / câu · Mốc 50% ở phút {Math.round(timer.customMinutes / 2)}
+                </span>
+              </div>
+            )}
             <div className="mt-3 flex justify-center">
               <div className="inline-flex rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-0.5 text-[11px]">
                 <button
@@ -699,7 +719,7 @@ export function PomodoroTimer({
                     cy="124"
                     r={radius}
                     fill="none"
-                    stroke="var(--accent)"
+                    stroke={subjectMap.get(timer.selectedSubjectId)?.color ?? "var(--accent)"}
                     strokeWidth="7"
                     strokeLinecap="round"
                     strokeDasharray={circumference}
@@ -1021,8 +1041,44 @@ export function PomodoroTimer({
             </span>
           </div>
 
-          <ul className="mt-4 space-y-2.5">
-            {sessions.slice(0, 8).map((s) => {
+          {(() => {
+            const nowMs = Date.now();
+            const filteredLogs = sessions.filter((s) => {
+              if (logRange === "today") return s.startedAt.slice(0, 10) === todayIso;
+              if (logRange === "week") return nowMs - new Date(s.startedAt).getTime() <= 7 * 86400000;
+              return true;
+            });
+            const rangeMins = filteredLogs.reduce((a, b) => a + b.actualMinutes, 0);
+            return (
+              <>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                  <div className="flex gap-1">
+                    {(
+                      [
+                        ["all", "Tất cả"],
+                        ["today", "Hôm nay"],
+                        ["week", "7 ngày"],
+                      ] as const
+                    ).map(([k, lb]) => (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => setLogRange(k)}
+                        className={cn(
+                          "rounded-lg px-2 py-1 font-medium",
+                          logRange === k
+                            ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                            : "text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]"
+                        )}
+                      >
+                        {lb}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="font-mono text-[var(--text-muted)]">Tổng: {rangeMins}p</span>
+                </div>
+                <ul className="mt-3 space-y-2.5">
+                  {filteredLogs.slice(0, 8).map((s) => {
               const sub = s.subjectId ? subjectMap.get(s.subjectId) : undefined;
               return (
                 <li
@@ -1055,8 +1111,11 @@ export function PomodoroTimer({
                   </span>
                 </li>
               );
-            })}
-          </ul>
+                  })}
+                </ul>
+              </>
+            );
+          })()}
         </section>
       )}
     </div>

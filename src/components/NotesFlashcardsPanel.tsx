@@ -261,7 +261,8 @@ export function NotesFlashcardsPanel({
         const parts = l.includes("\t") ? l.split("\t") : l.includes(";") ? l.split(";") : l.split(",");
         return { front: (parts[0] ?? "").trim(), back: parts.slice(1).join(" ").trim() };
       })
-      .filter((p) => p.front && p.back);
+      .filter((p) => p.front && p.back)
+      .filter((p) => !flashcards.some((ex) => ex.front.trim().toLowerCase() === p.front.toLowerCase()));
     if (pairs.length === 0) return;
     setBulkImporting(true);
     try {
@@ -791,6 +792,11 @@ export function NotesFlashcardsPanel({
                 rows={7}
                 value={noteContent}
                 onChange={(e) => setNoteContent(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                    e.currentTarget.form?.requestSubmit();
+                  }
+                }}
                 placeholder="Hỗ trợ Markdown: # Tiêu đề, **in đậm**, `code`, - [ ] checklist..."
                 className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2.5 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
               />
@@ -1377,6 +1383,29 @@ export function NotesFlashcardsPanel({
               </div>
             </div>
           )}
+          {flashcards.length > 0 && (() => {
+            const fresh = flashcards.filter((c) => c.mastery <= 1).length;
+            const learning = flashcards.filter((c) => c.mastery >= 2 && c.mastery <= 3).length;
+            const mastered = flashcards.filter((c) => c.mastery >= 4).length;
+            const tot = Math.max(1, flashcards.length);
+            return (
+              <div className="glass-card rounded-2xl p-4 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[var(--text-secondary)]">
+                  <span>Phân bố độ thuộc ({flashcards.length} thẻ):</span>
+                  <div className="flex flex-wrap gap-3">
+                    <span className="text-amber-600 dark:text-amber-400">Mới học: {fresh}</span>
+                    <span className="text-sky-600 dark:text-sky-400">Đang nhớ: {learning}</span>
+                    <span className="text-emerald-600 dark:text-emerald-400">Đã thuộc: {mastered}</span>
+                  </div>
+                </div>
+                <div className="mt-2 flex h-2 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                  <div className="bg-amber-400" style={{ width: `${(fresh / tot) * 100}%` }} />
+                  <div className="bg-sky-500" style={{ width: `${(learning / tot) * 100}%` }} />
+                  <div className="bg-emerald-500" style={{ width: `${(mastered / tot) * 100}%` }} />
+                </div>
+              </div>
+            );
+          })()}
           <div className="grid gap-6 lg:grid-cols-12">
           <div className="space-y-4 lg:col-span-7">
             {activeCard ? (

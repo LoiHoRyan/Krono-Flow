@@ -183,6 +183,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const { lang, t } = useLang();
   const [tab, setTabRaw] = useState<TabId>("dashboard");
   const [isOffline, setIsOffline] = useState(false);
+  const [hiddenTabs, setHiddenTabs] = useState<string[]>([]);
 
   const setTab = useCallback((next: TabId) => {
     setTabRaw(next);
@@ -206,9 +207,20 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     setIsOffline(!navigator.onLine);
     window.addEventListener("offline", goOff);
     window.addEventListener("online", goOn);
+    const syncHidden = () => {
+      try {
+        const raw = localStorage.getItem("kronoflow-hidden-tabs");
+        setHiddenTabs(raw ? JSON.parse(raw) : []);
+      } catch {
+        setHiddenTabs([]);
+      }
+    };
+    syncHidden();
+    window.addEventListener("kronoflow-sidebar-change", syncHidden);
     return () => {
       window.removeEventListener("offline", goOff);
       window.removeEventListener("online", goOn);
+      window.removeEventListener("kronoflow-sidebar-change", syncHidden);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -599,6 +611,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                 )}
                 <div className="space-y-0.5">
                   {grp.ids.map((id) => {
+                    if (hiddenTabs.includes(id)) return null;
                     const item = NAV_DEF.find((n) => n.id === id);
                     if (!item) return null;
                     const Icon = item.icon;

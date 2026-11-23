@@ -433,6 +433,22 @@ export function ScheduleGpaPanel({
               )}
             </div>
           </div>
+          {grades.length >= 2 && (() => {
+            const sorted = [...grades].sort((a, b) => b.score10 - a.score10);
+            const best = sorted[0];
+            const low = sorted[sorted.length - 1];
+            if (!best || !low) return null;
+            return (
+              <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+                <span className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-emerald-700 dark:text-emerald-300">
+                  Môn điểm cao nhất: <strong>{best.courseName}</strong> ({best.score10})
+                </span>
+                <span className="rounded-lg bg-amber-500/10 px-2.5 py-1 text-amber-700 dark:text-amber-300">
+                  Cần ưu tiên cải thiện: <strong>{low.courseName}</strong> ({low.score10})
+                </span>
+              </div>
+            );
+          })()}
 
           <form onSubmit={handleAddGrade} className="mt-4 flex flex-wrap gap-2">
             <input

@@ -4,6 +4,7 @@ import { Download, Flame, TrendingUp, Award, Clock, Layers, Trophy, Lock,
   Activity,
   Radar,
   Printer,
+  Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
@@ -621,6 +622,23 @@ export function AnalyticsPanel({
               >
                 <Printer className="h-3.5 w-3.5" />
                 In báo cáo tháng (PDF)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const md = [
+                    `# Báo cáo học tập KronoFlow (${new Date().toISOString().slice(0, 10)})`,
+                    `- **Tổng giờ tập trung:** ${(totalAllMins / 60).toFixed(1)} giờ (${completed.length} phiên)`,
+                    `- **Trung bình mỗi phiên:** ${avgSession} phút`,
+                    `- **Flashcards:** ${totalCards} thẻ · **Thói quen:** ${totalHabits}`,
+                  ].join("\n");
+                  navigator.clipboard?.writeText(md).catch(() => {});
+                  window.alert("Đã sao chép báo cáo Markdown vào bộ nhớ tạm!");
+                }}
+                className="no-print inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-medium text-[var(--accent)] hover:border-[var(--accent)]"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Chép Markdown
               </button>
             </div>
             <div className="mt-4 grid items-center gap-6 md:grid-cols-12">

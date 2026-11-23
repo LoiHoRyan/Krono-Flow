@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Wallet, TrendingDown,
   AlertTriangle,
+  PiggyBank,
 } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 
@@ -28,6 +29,30 @@ export function ExpensesPanel({
   const { lang } = useLang();
   const [title, setTitle] = useState("");
   const [monthlyBudget, setMonthlyBudget] = useState(1500000);
+  const [savingsName, setSavingsName] = useState("Quỹ mua khóa học / sách");
+  const [savingsTarget, setSavingsTarget] = useState(2000000);
+  const [savingsCurrent, setSavingsCurrent] = useState(0);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("kronoflow-savings-goal");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.name) setSavingsName(parsed.name);
+        if (parsed.target) setSavingsTarget(Number(parsed.target));
+        if (parsed.current) setSavingsCurrent(Number(parsed.current));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const persistSavings = (name: string, target: number, current: number) => {
+    setSavingsName(name);
+    setSavingsTarget(target);
+    setSavingsCurrent(current);
+    localStorage.setItem("kronoflow-savings-goal", JSON.stringify({ name, target, current }));
+  };
 
   useEffect(() => {
     const raw = localStorage.getItem("kronoflow-monthly-budget");
@@ -282,6 +307,57 @@ export function ExpensesPanel({
           </ul>
         </section>
       </div>
+
+      {/* MỤC TIÊU TIẾT KIỆM HỌC TẬP (STUDY SAVINGS GOAL) */}
+      <section className="glass-card card-lift rounded-2xl p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <PiggyBank className="h-4 w-4 text-emerald-500" />
+            <h3 className="text-base font-medium text-[var(--text-primary)]">
+              Quỹ tiết kiệm mục tiêu học tập
+            </h3>
+          </div>
+          <span className="font-mono text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+            {savingsCurrent.toLocaleString("vi-VN")} / {savingsTarget.toLocaleString("vi-VN")} ₫ (
+            {Math.min(100, Math.round((savingsCurrent / Math.max(1, savingsTarget)) * 100))}%)
+          </span>
+        </div>
+        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+          <div
+            className="h-full rounded-full bg-emerald-500 transition-all"
+            style={{ width: `${Math.min(100, Math.round((savingsCurrent / Math.max(1, savingsTarget)) * 100))}%` }}
+          />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <input
+            type="text"
+            value={savingsName}
+            onChange={(e) => persistSavings(e.target.value, savingsTarget, savingsCurrent)}
+            className="min-w-[160px] flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-primary)]"
+          />
+          <input
+            type="number"
+            step={100000}
+            value={savingsTarget}
+            onChange={(e) => persistSavings(savingsName, Math.max(100000, Number(e.target.value)), savingsCurrent)}
+            className="w-32 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 font-mono text-xs text-[var(--text-primary)]"
+          />
+          <button
+            type="button"
+            onClick={() => persistSavings(savingsName, savingsTarget, savingsCurrent + 100000)}
+            className="btn-primary rounded-xl px-3 py-1.5 text-xs font-medium"
+          >
+            +100k
+          </button>
+          <button
+            type="button"
+            onClick={() => persistSavings(savingsName, savingsTarget, Math.max(0, savingsCurrent - 100000))}
+            className="rounded-xl border border-[var(--border-subtle)] px-2.5 py-1.5 text-xs text-[var(--text-muted)]"
+          >
+            -100k
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
