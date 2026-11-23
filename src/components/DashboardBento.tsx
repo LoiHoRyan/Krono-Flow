@@ -113,6 +113,24 @@ export function DashboardBento({
   const [cleanMode, setCleanMode] = useState(false);
   const [coverPreset, setCoverPreset] = useState("none");
   const [copiedStandup, setCopiedStandup] = useState(false);
+  const [copiedAgenda, setCopiedAgenda] = useState(false);
+
+  const copyTodayAgenda = () => {
+    const todayBlocks = timeBlocks.filter((b) => b.blockDate === todayKey);
+    const openTodos = todos.filter((t) => !t.isCompleted).slice(0, 6);
+    const lines = [`🗓 Lịch học ngày ${todayKey}`];
+    if (todayBlocks.length > 0) {
+      lines.push("— Khung giờ (Time Blocks):");
+      for (const b of todayBlocks) lines.push(`  • ${b.startTime}-${b.endTime}: ${b.title}`);
+    }
+    if (openTodos.length > 0) {
+      lines.push("— Việc ưu tiên:");
+      for (const td of openTodos) lines.push(`  • [ ] ${td.title}`);
+    }
+    navigator.clipboard?.writeText(lines.join("\n")).catch(() => {});
+    setCopiedAgenda(true);
+    setTimeout(() => setCopiedAgenda(false), 1800);
+  };
   const [recallFlipped, setRecallFlipped] = useState(false);
   const [customQuotes, setCustomQuotes] = useState<string[]>([]);
   const [kickoffBusy, setKickoffBusy] = useState(false);
@@ -555,6 +573,14 @@ export function DashboardBento({
           >
             {copiedStandup ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
             {copiedStandup ? "Đã chép tóm tắt" : "Chép tóm tắt ngày"}
+          </button>
+          <button
+            type="button"
+            onClick={copyTodayAgenda}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
+            {copiedAgenda ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+            {copiedAgenda ? "Đã chép lịch" : "Chép lịch hôm nay"}
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2">

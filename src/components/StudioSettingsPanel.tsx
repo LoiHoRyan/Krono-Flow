@@ -80,6 +80,8 @@ export function StudioSettingsPanel({
   const [glassOpacity, setGlassOpacity] = useState(96);
   const [fontScale, setFontScale] = useState<"95%" | "100%" | "108%">("100%");
   const [bedtime, setBedtime] = useState("23:30");
+  const [highContrast, setHighContrast] = useState(false);
+  const [savedAccents, setSavedAccents] = useState<string[]>(["#2563eb", "#0f766e", "#7c3aed", "#e11d48", "#d97706"]);
   const [diagText, setDiagText] = useState<string | null>(null);
   const [autoDayNight, setAutoDayNight] = useState(false);
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
@@ -94,6 +96,15 @@ export function StudioSettingsPanel({
     if (savedScale === "95%" || savedScale === "100%" || savedScale === "108%") setFontScale(savedScale);
     const savedBed = localStorage.getItem("kronoflow-bedtime");
     if (savedBed) setBedtime(savedBed);
+    const hc = localStorage.getItem("kronoflow-high-contrast") === "on";
+    setHighContrast(hc);
+    document.documentElement.classList.toggle("high-contrast", hc);
+    try {
+      const rawAcc = localStorage.getItem("kronoflow-saved-accents");
+      if (rawAcc) setSavedAccents(JSON.parse(rawAcc));
+    } catch {
+      // ignore
+    }
     setAutoDayNight(localStorage.getItem("kronoflow-auto-theme") === "on");
     setLastBackupAt(localStorage.getItem("kronoflow-last-backup"));
   }, []);
@@ -875,6 +886,61 @@ export function StudioSettingsPanel({
                 >
                   Kiểm tra ngay
                 </button>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs sm:col-span-2">
+                <span className="text-[var(--text-secondary)]">Độ tương phản cao (High-Contrast):</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !highContrast;
+                    setHighContrast(next);
+                    localStorage.setItem("kronoflow-high-contrast", next ? "on" : "off");
+                    document.documentElement.classList.toggle("high-contrast", next);
+                  }}
+                  className={cn(
+                    "rounded-lg px-3 py-1 text-[11px] font-medium",
+                    highContrast ? "bg-[var(--accent)] text-white" : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                  )}
+                >
+                  {highContrast ? "Đang bật" : "Đang tắt"}
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs sm:col-span-2">
+                <span className="text-[var(--text-secondary)]">Màu nhấn yêu thích (1 chạm):</span>
+                <div className="flex items-center gap-1.5">
+                  {savedAccents.map((hex) => (
+                    <button
+                      key={hex}
+                      type="button"
+                      onClick={() => {
+                        setCustomAccent(hex);
+                        onApplyLocalTheme(
+                          user?.theme ?? "pure-white",
+                          user?.wallpaper ?? "none",
+                          hex,
+                          fontStyle,
+                          borderRadius
+                        );
+                      }}
+                      title={hex}
+                      className="h-5 w-5 rounded-full border border-black/15 transition-transform hover:scale-110"
+                      style={{ backgroundColor: hex }}
+                    />
+                  ))}
+                  {customAccent && !savedAccents.includes(customAccent) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = [customAccent, ...savedAccents].slice(0, 5);
+                        setSavedAccents(next);
+                        localStorage.setItem("kronoflow-saved-accents", JSON.stringify(next));
+                      }}
+                      className="rounded-lg border border-[var(--border-subtle)] px-2 py-0.5 text-[10px] text-[var(--accent)]"
+                    >
+                      + Lưu màu này
+                    </button>
+                  )}
+                </div>
               </div>
               <button
                 type="button"

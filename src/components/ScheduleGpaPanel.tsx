@@ -417,6 +417,20 @@ export function ScheduleGpaPanel({
               <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5">
                 GPA 4.0: <strong className="font-mono text-emerald-600 dark:text-emerald-400">{avg4}</strong>
               </div>
+              {totalCredits > 0 && (
+                <div className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 py-1.5 font-medium text-[var(--accent)]">
+                  Xếp loại:{" "}
+                  {Number(avg4) >= 3.6
+                    ? "Xuất sắc"
+                    : Number(avg4) >= 3.2
+                    ? "Giỏi"
+                    : Number(avg4) >= 2.5
+                    ? "Khá"
+                    : Number(avg4) >= 2.0
+                    ? "Trung bình"
+                    : "Cần cải thiện"}
+                </div>
+              )}
             </div>
           </div>
 

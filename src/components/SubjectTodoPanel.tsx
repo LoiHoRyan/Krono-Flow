@@ -16,6 +16,8 @@ import {
   Pencil,
   GripVertical,
   Sparkles,
+  CalendarPlus,
+  ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionLogItem } from "./PomodoroTimer";
@@ -74,6 +76,74 @@ export function SubjectTodoPanel({
   const [hubSubject, setHubSubject] = useState<SubjectRecord | null>(null);
   const [subRingView, setSubRingView] = useState(false);
   const [breakingId, setBreakingId] = useState<string | null>(null);
+  const [ebbTopic, setEbbTopic] = useState("");
+  const [ebbBusy, setEbbBusy] = useState(false);
+  const [subtasksMap, setSubtasksMap] = useState<Record<string, { id: string; text: string; done: boolean }[]>>({});
+  const [openSubTodoId, setOpenSubTodoId] = useState<string | null>(null);
+  const [newSubText, setNewSubText] = useState("");
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("kronoflow-todo-subtasks");
+      if (raw) setSubtasksMap(JSON.parse(raw));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const saveSubtasks = (next: Record<string, { id: string; text: string; done: boolean }[]>) => {
+    setSubtasksMap(next);
+    localStorage.setItem("kronoflow-todo-subtasks", JSON.stringify(next));
+  };
+
+  const addSubtask = (todoId: string) => {
+    if (!newSubText.trim()) return;
+    const cur = subtasksMap[todoId] ?? [];
+    saveSubtasks({
+      ...subtasksMap,
+      [todoId]: [...cur, { id: String(Date.now()), text: newSubText.trim(), done: false }],
+    });
+    setNewSubText("");
+    playUiTick("flip");
+  };
+
+  const toggleSubtask = (todoId: string, subId: string) => {
+    const cur = subtasksMap[todoId] ?? [];
+    saveSubtasks({
+      ...subtasksMap,
+      [todoId]: cur.map((x) => (x.id === subId ? { ...x, done: !x.done } : x)),
+    });
+    playUiTick("check");
+  };
+
+  const handleCreateEbbinghaus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ebbTopic.trim()) return;
+    setEbbBusy(true);
+    try {
+      const offsets = [1, 3, 7, 14];
+      const baseMs = Date.now();
+      await Promise.all(
+        offsets.map((d, idx) => {
+          const due = new Date(baseMs + d * 86400000).toISOString().slice(0, 10);
+          return fetch("/api/todos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: `[Ôn Ebbinghaus #${idx + 1} · +${d} ngày] ${ebbTopic.trim()}`,
+              priority: d <= 3 ? "high" : "medium",
+              dueDate: due,
+            }),
+          });
+        })
+      );
+      setEbbTopic("");
+      playUiTick("check");
+      onRefresh();
+    } finally {
+      setEbbBusy(false);
+    }
+  };
 
   const handleAiBreakdown = async (todo: TodoItem) => {
     setBreakingId(todo.id);
@@ -548,6 +618,26 @@ export function SubjectTodoPanel({
                   </button>
                 </div>
               )}
+              <form
+                onSubmit={handleCreateEbbinghaus}
+                className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
+              >
+                <CalendarPlus className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />
+                <input
+                  type="text"
+                  value={ebbTopic}
+                  onChange={(e) => setEbbTopic(e.target.value)}
+                  placeholder="Tạo 4 mốc ôn Ebbinghaus (+1, +3, +7, +14 ngày) cho bài vừa học..."
+                  className="min-w-[200px] flex-1 bg-transparent text-xs text-[var(--text-primary)] outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={ebbBusy || !ebbTopic.trim()}
+                  className="rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-medium text-[var(--accent)] disabled:opacity-50"
+                >
+                  {ebbBusy ? "Đang tạo..." : "Tạo 4 mốc ôn"}
+                </button>
+              </form>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs">
                 <input
                   type="text"
@@ -708,6 +798,20 @@ export function SubjectTodoPanel({
                           </button>
 </>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => setOpenSubTodoId((cur) => (cur === todo.id ? null : todo.id))}
+                          title="Việc con (Subtasks)"
+                          className="inline-flex items-center gap-0.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-1.5 py-0.5 text-[10px] text-[var(--text-secondary)] hover:text-[var(--accent)]"
+                        >
+                          <ListChecks className="h-3 w-3" />
+                          {(subtasksMap[todo.id] ?? []).length > 0 && (
+                            <span>
+                              {(subtasksMap[todo.id] ?? []).filter((x) => x.done).length}/
+                              {(subtasksMap[todo.id] ?? []).length}
+                            </span>
+                          )}
+                        </button>
                         <span
                           className={cn(
                             "rounded border px-1.5 py-0.5 text-[10px] font-medium",
@@ -728,6 +832,58 @@ export function SubjectTodoPanel({
                   );
                 })}
               </ul>
+              {openSubTodoId && (
+                <div className="mt-3 rounded-xl border border-[var(--accent)]/30 bg-[var(--bg-canvas)] p-3.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-[var(--text-primary)]">
+                      Việc con của: {todos.find((x) => x.id === openSubTodoId)?.title ?? ""}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setOpenSubTodoId(null)}
+                      className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    >
+                      Đóng
+                    </button>
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      type="text"
+                      value={newSubText}
+                      onChange={(e) => setNewSubText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addSubtask(openSubTodoId);
+                        }
+                      }}
+                      placeholder="Thêm bước nhỏ..."
+                      className="flex-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs outline-none focus:border-[var(--accent)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => addSubtask(openSubTodoId)}
+                      className="btn-primary rounded-lg px-3 py-1.5 text-[11px] font-medium"
+                    >
+                      Thêm
+                    </button>
+                  </div>
+                  <div className="mt-2 space-y-1">
+                    {(subtasksMap[openSubTodoId] ?? []).map((st) => (
+                      <label key={st.id} className="flex cursor-pointer items-center gap-2 py-0.5">
+                        <input
+                          type="checkbox"
+                          checked={st.done}
+                          onChange={() => toggleSubtask(openSubTodoId, st.id)}
+                        />
+                        <span className={st.done ? "line-through text-[var(--text-muted)]" : "text-[var(--text-primary)]"}>
+                          {st.text}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
 

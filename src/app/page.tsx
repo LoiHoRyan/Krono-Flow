@@ -35,6 +35,7 @@ import {
   Code2,
   BellRing,
   MoonStar,
+  WifiOff,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -181,9 +182,35 @@ interface WorkspaceProps {
 function KronoFlowWorkspace(props: WorkspaceProps) {
   const { lang, t } = useLang();
   const [tab, setTabRaw] = useState<TabId>("dashboard");
+  const [isOffline, setIsOffline] = useState(false);
+
   const setTab = useCallback((next: TabId) => {
     setTabRaw(next);
+    localStorage.setItem("kronoflow-last-tab", next);
     playUiTick("tab");
+  }, []);
+
+  useEffect(() => {
+    const savedTab = localStorage.getItem("kronoflow-last-tab") as TabId | null;
+    if (savedTab && NAV_DEF.some((n) => n.id === savedTab)) {
+      setTabRaw(savedTab);
+    }
+    if (localStorage.getItem("kronoflow-high-contrast") === "on") {
+      document.documentElement.classList.add("high-contrast");
+    }
+    const goOff = () => setIsOffline(true);
+    const goOn = () => {
+      setIsOffline(false);
+      props.onRefresh();
+    };
+    setIsOffline(!navigator.onLine);
+    window.addEventListener("offline", goOff);
+    window.addEventListener("online", goOn);
+    return () => {
+      window.removeEventListener("offline", goOff);
+      window.removeEventListener("online", goOn);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [sidebarMode, setSidebarMode] = useState<"full" | "compact" | "hidden">("full");
   const [pinnedTabs, setPinnedTabs] = useState<TabId[]>([]);
@@ -592,7 +619,29 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                         >
                           <Icon className="h-4 w-4 shrink-0" />
                           {sidebarMode === "full" && (
-                            <span className="truncate">{t(`nav_${item.id}`)}</span>
+                            <span className="flex flex-1 items-center justify-between gap-1 truncate">
+                              <span className="truncate">{t(`nav_${item.id}`)}</span>
+                              {item.id === "planner" && (() => {
+                                const ov = props.todos.filter(
+                                  (td) => !td.isCompleted && td.dueDate && td.dueDate.slice(0, 10) < todayIso
+                                ).length;
+                                return ov > 0 ? (
+                                  <span className="rounded-full bg-rose-500/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-rose-500">
+                                    {ov}
+                                  </span>
+                                ) : null;
+                              })()}
+                              {item.id === "knowledge" && (() => {
+                                const due = props.flashcards.filter(
+                                  (fc) => !fc.nextReviewAt || new Date(fc.nextReviewAt).getTime() <= Date.now()
+                                ).length;
+                                return due > 0 ? (
+                                  <span className="rounded-full bg-[var(--accent-soft)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[var(--accent)]">
+                                    {due}
+                                  </span>
+                                ) : null;
+                              })()}
+                            </span>
                           )}
                         </button>
                         {sidebarMode === "full" && (
@@ -831,6 +880,14 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               >
                 Ẩn
               </button>
+            </div>
+          </div>
+        )}
+        {isOffline && (
+          <div className="mx-auto mt-3 max-w-6xl px-4 sm:px-8">
+            <div className="flex items-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-xs font-medium text-rose-600 dark:text-rose-400">
+              <WifiOff className="h-4 w-4 shrink-0" />
+              Bạn đang ngoại tuyến — các thao tác lưu lên PostgreSQL sẽ tự đồng bộ lại ngay khi có mạng.
             </div>
           </div>
         )}

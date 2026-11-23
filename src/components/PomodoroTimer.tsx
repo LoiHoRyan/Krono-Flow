@@ -76,6 +76,7 @@ export function PomodoroTimer({
   const [pipOpen, setPipOpen] = useState(false);
   const [waterNudgeDone, setWaterNudgeDone] = useState(false);
   const [focusTag, setFocusTag] = useState("Đang giải đề");
+  const [clockStyle, setClockStyle] = useState<"ring" | "flip">("ring");
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -640,6 +641,48 @@ export function PomodoroTimer({
                   ))}
             </div>
 
+            <div className="mt-3 flex justify-center">
+              <div className="inline-flex rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-0.5 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setClockStyle("ring")}
+                  className={cn(
+                    "rounded-lg px-2.5 py-1 font-medium",
+                    clockStyle === "ring" ? "bg-[var(--accent)] text-white" : "text-[var(--text-muted)]"
+                  )}
+                >
+                  Vòng tròn
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClockStyle("flip")}
+                  className={cn(
+                    "rounded-lg px-2.5 py-1 font-medium",
+                    clockStyle === "flip" ? "bg-[var(--accent)] text-white" : "text-[var(--text-muted)]"
+                  )}
+                >
+                  Lật số (Flip)
+                </button>
+              </div>
+            </div>
+
+            {clockStyle === "flip" ? (
+              <div className="my-8 flex items-center justify-center gap-3">
+                {formatDuration(timer.secondsLeft)
+                  .split(":")
+                  .map((seg, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <div className="relative flex h-28 w-28 items-center justify-center rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] font-mono text-6xl font-bold tabular-nums text-[var(--text-primary)] shadow-inner">
+                        <div className="pointer-events-none absolute inset-x-0 top-1/2 h-[1px] bg-[var(--border-subtle)]" />
+                        {seg}
+                      </div>
+                      {idx === 0 && (
+                        <span className="font-mono text-4xl font-bold text-[var(--accent)]">:</span>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            ) : (
             <div className="my-6 flex flex-col items-center">
               <div className="relative flex h-60 w-60 items-center justify-center">
                 <svg className="h-full w-full -rotate-90" viewBox="0 0 248 248">
@@ -676,6 +719,7 @@ export function PomodoroTimer({
               </div>
             </div>
 
+            )}
             <div className="grid gap-3 sm:grid-cols-2">
               <select
                 value={timer.selectedSubjectId}

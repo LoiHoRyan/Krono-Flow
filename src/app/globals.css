@@ -284,3 +284,12 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
+
+/* High-Contrast Accessibility Mode */
+.high-contrast .glass-card {
+  border-width: 1.5px;
+  border-color: color-mix(in srgb, var(--text-primary) 28%, transparent);
+}
+.high-contrast {
+  --text-muted: var(--text-secondary);
+}

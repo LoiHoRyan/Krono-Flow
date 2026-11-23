@@ -27,6 +27,7 @@ import {
   Gamepad2,
   PlayCircle,
   Printer,
+  Hash,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarkdownView } from "./MarkdownView";
@@ -169,6 +170,29 @@ export function NotesFlashcardsPanel({
   const [quizPicked, setQuizPicked] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [onlyDue, setOnlyDue] = useState(false);
+  const [deckSubject, setDeckSubject] = useState("all");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+
+  const allNoteTags = Array.from(
+    new Set(
+      notes.flatMap((n) => (n.content.match(/#[a-zA-Z0-9_À-ỹ-]+/g) ?? []).slice(0, 6))
+    )
+  ).slice(0, 10);
+
+  const exportStudyBookMd = () => {
+    const toc = filteredNotes.map((n, i) => `${i + 1}. ${n.title}`).join("\n");
+    const body = filteredNotes
+      .map((n, i) => `\n---\n\n# ${i + 1}. ${n.title}\n\n${n.content}`)
+      .join("\n");
+    const full = `# Sổ tay ôn tập KronoFlow (${filteredNotes.length} ghi chú)\n\n## Mục lục\n${toc}${body}`;
+    const blob = new Blob([full], { type: "text/markdown;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kronoflow-study-book-${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const [noteTitle, setNoteTitle] = useState("");
   const [cardSubject, setCardSubject] = useState("");
@@ -432,7 +456,11 @@ export function NotesFlashcardsPanel({
   const dueCards = flashcards.filter(
     (c) => !c.nextReviewAt || new Date(c.nextReviewAt).getTime() <= nowMs
   );
-  const deck = onlyDue ? dueCards : flashcards;
+  const subjectFilteredCards =
+    deckSubject === "all" ? flashcards : flashcards.filter((c) => c.subjectId === deckSubject);
+  const deck = onlyDue
+    ? subjectFilteredCards.filter((c) => !c.nextReviewAt || new Date(c.nextReviewAt).getTime() <= nowMs)
+    : subjectFilteredCards;
 
   const updateMastery = async (card: FlashcardRecord, delta: number) => {
     const next = Math.max(0, Math.min(5, card.mastery + delta));
@@ -467,11 +495,14 @@ export function NotesFlashcardsPanel({
     }
   };
 
-  const filteredNotes = notes.filter(
-    (n) =>
+  const filteredNotes = notes.filter((n) => {
+    const matchSearch =
       n.title.toLowerCase().includes(search.toLowerCase()) ||
-      n.content.toLowerCase().includes(search.toLowerCase())
-  );
+      n.content.toLowerCase().includes(search.toLowerCase());
+    if (!matchSearch) return false;
+    if (activeTag && !n.content.includes(activeTag)) return false;
+    return true;
+  });
 
   const activeCard = deck[cardIdx % Math.max(1, deck.length)];
 
@@ -599,6 +630,33 @@ export function NotesFlashcardsPanel({
             >
               <StickyNote className="h-3.5 w-3.5" /> {pastelMode ? "Bảng ghim Pastel" : "Lưới chuẩn"}
             </button>
+          )}
+          {subTab === "notes" && filteredNotes.length > 0 && (
+            <button
+              type="button"
+              onClick={exportStudyBookMd}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              <Download className="h-3.5 w-3.5" /> Xuất Sổ tay (.md)
+            </button>
+          )}
+          {subTab === "flashcards" && subjects.length > 0 && (
+            <select
+              value={deckSubject}
+              onChange={(e) => {
+                setDeckSubject(e.target.value);
+                setCardIdx(0);
+                setFlipped(false);
+              }}
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs text-[var(--text-primary)]"
+            >
+              <option value="all">Tất cả môn ({flashcards.length})</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
           )}
           {subTab === "flashcards" && (
             <button
@@ -761,6 +819,38 @@ export function NotesFlashcardsPanel({
             </button>
           </form>
 
+          {allNoteTags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] lg:col-span-12">
+              <Hash className="h-3.5 w-3.5 text-[var(--text-muted)]" />
+              <button
+                type="button"
+                onClick={() => setActiveTag(null)}
+                className={cn(
+                  "rounded-full border px-2.5 py-0.5",
+                  !activeTag
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] font-medium"
+                    : "border-[var(--border-subtle)] text-[var(--text-muted)]"
+                )}
+              >
+                Tất cả thẻ
+              </button>
+              {allNoteTags.map((tg) => (
+                <button
+                  key={tg}
+                  type="button"
+                  onClick={() => setActiveTag((cur) => (cur === tg ? null : tg))}
+                  className={cn(
+                    "rounded-full border px-2.5 py-0.5",
+                    activeTag === tg
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] font-medium"
+                      : "border-[var(--border-subtle)] text-[var(--text-muted)]"
+                  )}
+                >
+                  {tg}
+                </button>
+              ))}
+            </div>
+          )}
           <div className={cn("lg:col-span-7", pastelMode ? "columns-1 gap-4 space-y-4 sm:columns-2" : "grid gap-4 sm:grid-cols-2")}>
             {filteredNotes.map((n) => {
               const sub = n.subjectId ? subjectMap.get(n.subjectId) : undefined;
