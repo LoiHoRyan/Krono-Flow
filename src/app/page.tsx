@@ -209,25 +209,6 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   );
 
   useEffect(() => {
-    let timerId: ReturnType<typeof setInterval> | null = null;
-    const setupWellness = () => {
-      if (timerId) clearInterval(timerId);
-      const mins = Number(localStorage.getItem("kronoflow-wellness-mins") || "0");
-      if (mins > 0) {
-        timerId = setInterval(() => {
-          notify(`Đã qua ${mins} phút — hãy đứng dậy vươn vai và uống 1 ngụm nước nhé!`);
-        }, mins * 60 * 1000);
-      }
-    };
-    setupWellness();
-    window.addEventListener("kronoflow-wellness-change", setupWellness);
-    return () => {
-      if (timerId) clearInterval(timerId);
-      window.removeEventListener("kronoflow-wellness-change", setupWellness);
-    };
-  }, [notify]);
-
-  useEffect(() => {
     const savedTab = localStorage.getItem("kronoflow-last-tab") as TabId | null;
     if (savedTab && NAV_DEF.some((n) => n.id === savedTab)) {
       setTabRaw(savedTab);
@@ -363,6 +344,25 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     setConfettiKey((k) => k + 1);
     setTimeout(() => setToast((cur) => (cur?.msg === msg ? null : cur)), 3000);
   }, []);
+
+  useEffect(() => {
+    let timerId: ReturnType<typeof setInterval> | null = null;
+    const setupWellness = () => {
+      if (timerId) clearInterval(timerId);
+      const mins = Number(localStorage.getItem("kronoflow-wellness-mins") || "0");
+      if (mins > 0) {
+        timerId = setInterval(() => {
+          notify(`Đã qua ${mins} phút — hãy đứng dậy vươn vai và uống 1 ngụm nước nhé!`);
+        }, mins * 60 * 1000);
+      }
+    };
+    setupWellness();
+    window.addEventListener("kronoflow-wellness-change", setupWellness);
+    return () => {
+      if (timerId) clearInterval(timerId);
+      window.removeEventListener("kronoflow-wellness-change", setupWellness);
+    };
+  }, [notify]);
 
   const notifyUndoable = useCallback((msg: string, onUndo: () => Promise<void>) => {
     setToast({ msg, onUndo });
