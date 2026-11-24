@@ -470,6 +470,18 @@ export function SubjectTodoPanel({
           </div>
 
           <form onSubmit={handleAddSubject} className="mt-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-1 text-xs">
+              {["📐", "💻", "🌍", "📊", "📖", "⚡"].map((em) => (
+                <button
+                  key={em}
+                  type="button"
+                  onClick={() => setSubjectName((prev) => (prev.startsWith(em) ? prev : `${em} ${prev}`.trim()))}
+                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-1.5 py-0.5 hover:border-[var(--accent)]"
+                >
+                  {em}
+                </button>
+              ))}
+            </div>
             <input
               type="text"
               value={subjectName}
@@ -534,6 +546,10 @@ export function SubjectTodoPanel({
                 .reduce((acc, s) => acc + s.actualMinutes, 0);
               const loggedHours = +(loggedMins / 60).toFixed(1);
               const pct = Math.min(100, Math.round((loggedHours / sub.targetHours) * 100));
+              const lastSubSess = sessions.find((s) => s.status === "completed" && s.subjectId === sub.id);
+              const neglected =
+                !lastSubSess ||
+                Date.now() - new Date(lastSubSess.startedAt).getTime() > 7 * 86400000;
               return (
                 <li
                   key={sub.id}
@@ -551,6 +567,11 @@ export function SubjectTodoPanel({
                         style={{ backgroundColor: sub.color }}
                       />
                       <span className="underline-offset-2 hover:underline">{sub.name}</span>
+                      {neglected && (
+                        <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400">
+                          &gt;7 ngày chưa ôn
+                        </span>
+                      )}
                     </button>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-[11px] text-[var(--text-muted)]">

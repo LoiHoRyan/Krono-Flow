@@ -1728,6 +1728,39 @@ export function NotesFlashcardsPanel({
                   <Download className="h-3 w-3" /> Xuất CSV
                 </button>
               )}
+              {glossary.length > 0 && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const fresh = glossary.filter(
+                      (g) => !flashcards.some((f) => f.front.trim().toLowerCase() === g.term.toLowerCase())
+                    );
+                    if (fresh.length === 0) {
+                      window.alert("Tất cả thuật ngữ đã có trong bộ Flashcards!");
+                      return;
+                    }
+                    await Promise.all(
+                      fresh.slice(0, 25).map((g) =>
+                        fetch("/api/flashcards", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            front: g.term,
+                            back: g.ex ? `${g.def} (VD: ${g.ex})` : g.def,
+                            subjectId: cardSubject || null,
+                          }),
+                        })
+                      )
+                    );
+                    playUiTick("check");
+                    onRefresh();
+                    window.alert(`Đã tạo ${Math.min(25, fresh.length)} thẻ Flashcard từ Sổ tay Thuật ngữ!`);
+                  }}
+                  className="ml-1 inline-flex items-center gap-1 rounded-lg bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]"
+                >
+                  → Sang Flashcards
+                </button>
+              )}
             </div>
             <div className="flex flex-wrap gap-1 text-[10px]">
               {["ALL", ...Array.from(new Set(glossary.map((g) => g.term.charAt(0).toUpperCase()))).sort()].map((lt) => (

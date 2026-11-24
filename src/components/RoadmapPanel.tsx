@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircle2, Circle, Clock, Download, Map, Plus, Sparkles, Trash2, Upload,
   Maximize2,
+  FileText,
 } from "lucide-react";
 import { ROADMAP_TEMPLATES } from "@/lib/roadmap-templates";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -233,6 +234,29 @@ export function RoadmapPanel({
                   <span className="font-mono text-xs font-bold tabular-nums text-[var(--accent)]">
                     {pct}%
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const md = [
+                        `# ${rm.title} (${rm.category})`,
+                        "",
+                        ...rm.items.map(
+                          (it) => `- [${it.status === "done" ? "x" : " "}] ${it.title} (${it.estimatedMinutes}p)`
+                        ),
+                      ].join("\n");
+                      const blob = new Blob([md], { type: "text/markdown;charset=utf-8;" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `${rm.title.toLowerCase().replaceAll(" ", "-")}.md`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    title="Xuất lộ trình ra Markdown checklist (.md)"
+                    className="text-[var(--text-muted)] hover:text-[var(--accent)]"
+                  >
+                    <FileText className="h-4 w-4" />
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleExportSingle(rm)}

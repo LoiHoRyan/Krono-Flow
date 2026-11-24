@@ -56,3 +56,16 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export async function DELETE() {
+  try {
+    const user = await getOrCreateDemoUser();
+    await db.delete(studySessions).where(eq(studySessions.userId, user.id));
+    return NextResponse.json({ data: { cleared: true } });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Lỗi xóa toàn bộ lịch sử phiên" },
+      { status: 500 }
+    );
+  }
+}

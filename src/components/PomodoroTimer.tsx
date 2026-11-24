@@ -28,6 +28,7 @@ import {
   BellOff,
   Bell,
   Presentation,
+  Pencil,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { ambientEngine, AmbientChannel, BellStyle } from "@/lib/ambient-audio";
@@ -145,6 +146,84 @@ export function PomodoroTimer({
   const [focusTag, setFocusTag] = useState("Đang giải đề");
   const [clockStyle, setClockStyle] = useState<"ring" | "flip">("ring");
   const [logRange, setLogRange] = useState<"all" | "today" | "week">("all");
+  const [logSubFilter, setLogSubFilter] = useState("all");
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualMins, setManualMins] = useState(30);
+  const [manualSub, setManualSub] = useState("");
+  const [manualNote, setManualNote] = useState("");
+  const [manualSaving, setManualSaving] = useState(false);
+
+  const handleDeleteSession = async (id: string) => {
+    const res = await fetch(`/api/sessions/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      playUiTick("flip");
+      onSessionSaved?.();
+    }
+  };
+
+  const handleClearAllSessions = async () => {
+    if (!window.confirm(`Xóa toàn bộ ${sessions.length} phiên trong lịch sử học tập? Thao tác này không thể hoàn tác.`)) {
+      return;
+    }
+    const res = await fetch("/api/sessions", { method: "DELETE" });
+    if (res.ok) {
+      playUiTick("flip");
+      onSessionSaved?.();
+    }
+  };
+
+  const handleEditSessionNote = async (s: SessionLogItem) => {
+    const nextNote = window.prompt("Chỉnh sửa ghi chú cho phiên học này:", s.notes ?? "");
+    if (nextNote === null) return;
+    const res = await fetch(`/api/sessions/${s.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: s.status,
+        actualMinutes: s.actualMinutes,
+        notes: nextNote.trim() || undefined,
+      }),
+    });
+    if (res.ok) onSessionSaved?.();
+  };
+
+  const handleAddManualSession = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setManualSaving(true);
+    try {
+      const startRes = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subjectId: manualSub || null,
+          mode: "pomodoro",
+          plannedMinutes: manualMins,
+          notes: manualNote.trim() || "Phiên học ghi nhận thủ công",
+        }),
+      });
+      if (startRes.ok) {
+        const created = await startRes.json();
+        const sid = created.data?.id;
+        if (sid) {
+          await fetch(`/api/sessions/${sid}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              status: "completed",
+              actualMinutes: manualMins,
+              notes: manualNote.trim() || "Phiên học ghi nhận thủ công",
+            }),
+          });
+        }
+        setManualNote("");
+        setManualOpen(false);
+        playUiTick("check");
+        onSessionSaved?.();
+      }
+    } finally {
+      setManualSaving(false);
+    }
+  };
   const [examQuestions, setExamQuestions] = useState(50);
   const [auxTimers, setAuxTimers] = useState<{ id: string; label: string; secs: number; running: boolean }[]>([]);
 
@@ -1337,11 +1416,78 @@ export function PomodoroTimer({
                   <Download className="h-3 w-3" /> CSV
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => setManualOpen((v) => !v)}
+                title="Ghi nhận thêm phiên học thủ công ngoài máy"
+                className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <Plus className="h-3 w-3" /> Cộng tay
+              </button>
+              {sessions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAllSessions}
+                  title="Xóa toàn bộ lịch sử phiên học"
+                  className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] font-medium text-rose-500 hover:bg-rose-500/20"
+                >
+                  <Trash2 className="h-3 w-3" /> Xóa hết
+                </button>
+              )}
               <span className="rounded-lg bg-[var(--bg-elevated)] px-2.5 py-1 font-mono text-[11px] text-[var(--text-secondary)]">
                 {sessions.length} phiên
               </span>
             </div>
           </div>
+          {manualOpen && (
+            <form
+              onSubmit={handleAddManualSession}
+              className="mt-3 space-y-2 rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)]/40 p-3 text-xs"
+            >
+              <div className="font-semibold text-[var(--text-primary)]">
+                Ghi nhận phiên học thủ công (lưu PostgreSQL)
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  min={5}
+                  max={360}
+                  value={manualMins}
+                  onChange={(e) => setManualMins(Math.max(5, Number(e.target.value)))}
+                  placeholder="Số phút"
+                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs"
+                />
+                <select
+                  value={manualSub}
+                  onChange={(e) => setManualSub(e.target.value)}
+                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1.5 text-xs"
+                >
+                  <option value="">-- Môn học --</option>
+                  {subjects.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={manualNote}
+                  onChange={(e) => setManualNote(e.target.value)}
+                  placeholder="Nội dung đã học (VD: Học nhóm thư viện)..."
+                  className="flex-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs"
+                />
+                <button
+                  type="submit"
+                  disabled={manualSaving}
+                  className="btn-primary rounded-lg px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                >
+                  {manualSaving ? "..." : "Lưu"}
+                </button>
+              </div>
+            </form>
+          )}
           <div className="mt-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2.5 text-[11px]">
             <div className="flex flex-wrap items-center justify-between gap-1.5">
               <span className="font-medium text-[var(--text-secondary)]">Hẹn giờ phụ song song:</span>
@@ -1385,6 +1531,7 @@ export function PomodoroTimer({
           {(() => {
             const nowMs = Date.now();
             const filteredLogs = sessions.filter((s) => {
+              if (logSubFilter !== "all" && s.subjectId !== logSubFilter) return false;
               if (logRange === "today") return s.startedAt.slice(0, 10) === todayIso;
               if (logRange === "week") return nowMs - new Date(s.startedAt).getTime() <= 7 * 86400000;
               return true;
@@ -1416,7 +1563,23 @@ export function PomodoroTimer({
                       </button>
                     ))}
                   </div>
-                  <span className="font-mono text-[var(--text-muted)]">Tổng: {rangeMins}p</span>
+                  <div className="flex items-center gap-1.5">
+                    {subjects.length > 0 && (
+                      <select
+                        value={logSubFilter}
+                        onChange={(e) => setLogSubFilter(e.target.value)}
+                        className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-1.5 py-0.5 text-[10px] text-[var(--text-secondary)]"
+                      >
+                        <option value="all">Mọi môn</option>
+                        {subjects.map((sub) => (
+                          <option key={sub.id} value={sub.id}>
+                            {sub.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <span className="font-mono text-[var(--text-muted)]">Tổng: {rangeMins}p</span>
+                  </div>
                 </div>
                 <ul className="mt-3 space-y-2.5">
                   {filteredLogs.slice(0, 8).map((s) => {
@@ -1447,9 +1610,27 @@ export function PomodoroTimer({
                       })}
                     </span>
                   </div>
-                  <span className="font-mono text-xs font-semibold tabular-nums text-[var(--text-primary)]">
-                    {s.actualMinutes}p
-                  </span>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <span className="font-mono text-xs font-semibold tabular-nums text-[var(--text-primary)]">
+                      {s.actualMinutes}p
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleEditSessionNote(s)}
+                      title="Sửa ghi chú phiên"
+                      className="text-[var(--text-muted)] hover:text-[var(--accent)]"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSession(s.id)}
+                      title="Xóa phiên học này"
+                      className="text-[var(--text-muted)] hover:text-rose-500"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </li>
               );
                   })}

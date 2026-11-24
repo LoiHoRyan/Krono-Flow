@@ -47,3 +47,27 @@ export async function PATCH(
     );
   }
 }
+
+export async function DELETE(
+  _req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+    const user = await getOrCreateDemoUser();
+    const [deleted] = await db
+      .delete(studySessions)
+      .where(and(eq(studySessions.id, id), eq(studySessions.userId, user.id)))
+      .returning();
+
+    if (!deleted) {
+      return NextResponse.json({ error: "Không tìm thấy phiên học" }, { status: 404 });
+    }
+    return NextResponse.json({ data: { id: deleted.id } });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Lỗi xóa phiên học" },
+      { status: 500 }
+    );
+  }
+}
