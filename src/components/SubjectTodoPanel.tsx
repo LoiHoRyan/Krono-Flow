@@ -18,6 +18,7 @@ import {
   Sparkles,
   CalendarPlus,
   ListChecks,
+  Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionLogItem } from "./PomodoroTimer";
@@ -83,6 +84,29 @@ export function SubjectTodoPanel({
   const [newSubText, setNewSubText] = useState("");
   const [selectedTodoIds, setSelectedTodoIds] = useState<string[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("kronoflow-todo-view", view);
+  }, [view]);
+
+  useEffect(() => {
+    localStorage.setItem("kronoflow-todo-filter", filter);
+  }, [filter]);
+
+  const duplicateTodo = async (todo: TodoItem) => {
+    await fetch("/api/todos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: `${todo.title} (bản sao)`,
+        priority: todo.priority,
+        subjectId: todo.subjectId ?? undefined,
+        dueDate: todo.dueDate ?? undefined,
+      }),
+    });
+    playUiTick("flip");
+    onRefresh();
+  };
 
   const toggleSelectTodo = (id: string) => {
     setSelectedTodoIds((prev) =>
@@ -235,6 +259,12 @@ export function SubjectTodoPanel({
     try {
       const raw = localStorage.getItem("kronoflow-todo-order");
       if (raw) setTodoOrder(JSON.parse(raw));
+      const sv = localStorage.getItem("kronoflow-todo-view");
+      if (sv === "list" || sv === "kanban" || sv === "eisenhower") setView(sv);
+      const sf = localStorage.getItem("kronoflow-todo-filter");
+      if (sf === "all" || sf === "pending" || sf === "done" || sf === "today" || sf === "week" || sf === "high" || sf === "overdue") {
+        setFilter(sf);
+      }
     } catch {
       // ignore
     }
@@ -909,6 +939,14 @@ export function SubjectTodoPanel({
                         >
                           {todo.priority}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => duplicateTodo(todo)}
+                          title="Nhân bản công việc này"
+                          className="text-[var(--text-muted)] hover:text-[var(--accent)]"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
                         <button
                           type="button"
                           onClick={() => deleteTodo(todo.id)}

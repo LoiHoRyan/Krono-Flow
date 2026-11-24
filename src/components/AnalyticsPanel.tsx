@@ -9,17 +9,20 @@ import { Download, Flame, TrendingUp, Award, Clock, Layers, Trophy, Lock,
 import { cn } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
 import type { SessionLogItem, SubjectOption } from "./PomodoroTimer";
+import type { TodoItem } from "./SubjectTodoPanel";
 
 export function AnalyticsPanel({
   sessions,
   subjects,
   totalHabits = 0,
   totalCards = 0,
+  todos = [],
 }: {
   sessions: SessionLogItem[];
   subjects: (SubjectOption & { targetHours?: number })[];
   totalHabits?: number;
   totalCards?: number;
+  todos?: TodoItem[];
 }) {
   const { lang, t } = useLang();
   const completed = sessions.filter((s) => s.status === "completed");
@@ -566,7 +569,16 @@ export function AnalyticsPanel({
                 <div className="mt-1 font-mono text-lg font-semibold text-emerald-600 dark:text-emerald-400">
                   {completed.length} phiên
                 </div>
-                <div className="text-[11px] text-[var(--text-muted)]">Trung bình {avgSession}p/phiên</div>
+                <div className="text-[11px] text-[var(--text-muted)]">
+                  TB {avgSession}p/phiên
+                  {todos.length > 0 && (() => {
+                    const doneCnt = todos.filter((t) => t.isCompleted).length;
+                    const todayStr = new Date().toISOString().slice(0, 10);
+                    const overdueCnt = todos.filter((t) => !t.isCompleted && t.dueDate && t.dueDate.slice(0, 10) < todayStr).length;
+                    const rate = Math.round((doneCnt / Math.max(1, doneCnt + overdueCnt)) * 100);
+                    return ` · Đúng hạn ${rate}%`;
+                  })()}
+                </div>
               </div>
               <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3.5">
                 <div className="text-xs text-[var(--text-muted)]">Môn chăm chỉ nhất</div>

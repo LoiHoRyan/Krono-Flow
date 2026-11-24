@@ -35,6 +35,7 @@ import {
   GraduationCap,
   RotateCcw,
   CalendarDays,
+  ListChecks,
 } from "lucide-react";
 import { computeLevelInfo } from "@/lib/themes";
 import { useLang } from "@/lib/i18n";
@@ -142,6 +143,26 @@ export function DashboardBento({
   const [customQuotes, setCustomQuotes] = useState<string[]>([]);
   const [kickoffBusy, setKickoffBusy] = useState(false);
   const [lastContextTab, setLastContextTab] = useState<string | null>(null);
+  const [openExamCheckId, setOpenExamCheckId] = useState<string | null>(null);
+  const [examChecks, setExamChecks] = useState<Record<string, string[]>>({});
+  const EXAM_PREP_STEPS = ["In đề cương", "Ôn công thức", "Xem Sổ Lỗi Sai", "Làm đề bấm giờ"];
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("kronoflow-exam-checklists");
+      if (raw) setExamChecks(JSON.parse(raw));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleExamStep = (examId: string, step: string) => {
+    const cur = examChecks[examId] ?? [];
+    const nextSteps = cur.includes(step) ? cur.filter((x) => x !== step) : [...cur, step];
+    const updated = { ...examChecks, [examId]: nextSteps };
+    setExamChecks(updated);
+    localStorage.setItem("kronoflow-exam-checklists", JSON.stringify(updated));
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem("kronoflow-last-context");
@@ -755,6 +776,67 @@ export function DashboardBento({
         onRefresh={onRefresh}
       />
 
+      {/* LỊCH TUẦN THU GỌN (MINI WEEK STRIP) + GỢI Ý MỤC TIÊU NGÀY */}
+      {!cleanMode && (() => {
+        const now = new Date();
+        const dow = now.getDay() === 0 ? 7 : now.getDay();
+        const mondayMs = now.getTime() - (dow - 1) * 86400000;
+        const weekDays = Array.from({ length: 7 }, (_, i) => {
+          const d = new Date(mondayMs + i * 86400000);
+          const iso = d.toISOString().slice(0, 10);
+          const studied = (dayMap.get(iso) ?? 0) > 0;
+          const hasExam = exams.some((e) => e.examDate.slice(0, 10) === iso);
+          const hasDue = todos.some((t) => !t.isCompleted && t.dueDate?.slice(0, 10) === iso);
+          return {
+            iso,
+            label: i === 6 ? "CN" : `T${i + 2}`,
+            dayNum: d.getDate(),
+            isToday: iso === todayKey,
+            studied,
+            hasExam,
+            hasDue,
+          };
+        });
+        const avg7 = Math.round(
+          Array.from({ length: 7 }, (_, i) => {
+            const iso = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+            return dayMap.get(iso) ?? 0;
+          }).reduce((a, b) => a + b, 0) / 7
+        );
+        return (
+          <section className="glass-card rounded-2xl px-4 py-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="grid flex-1 grid-cols-7 gap-1.5">
+                {weekDays.map((wd) => (
+                  <div
+                    key={wd.iso}
+                    className={cn(
+                      "flex flex-col items-center rounded-xl border py-1.5",
+                      wd.isToday
+                        ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] font-semibold"
+                        : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)]"
+                    )}
+                  >
+                    <span className="text-[10px] opacity-80">{wd.label}</span>
+                    <span className="font-mono text-xs">{wd.dayNum}</span>
+                    <div className="mt-1 flex gap-0.5">
+                      {wd.studied && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" title="Đã học" />}
+                      {wd.hasExam && <span className="h-1.5 w-1.5 rounded-full bg-rose-500" title="Kỳ thi" />}
+                      {wd.hasDue && <span className="h-1.5 w-1.5 rounded-full bg-amber-400" title="Việc đến hạn" />}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {avg7 > 0 && dailyGoal > avg7 * 1.6 && (
+                <div className="max-w-xs text-[11px] text-amber-600 dark:text-amber-400">
+                  💡 TB 7 ngày của bạn là {avg7}p/ngày — có thể hạ nhẹ mục tiêu ({dailyGoal}p) xuống ~{Math.max(30, Math.round((avg7 + 20) / 10) * 10)}p để dễ giữ chuỗi hơn.
+                </div>
+              )}
+            </div>
+          </section>
+        );
+      })()}
+
       {nextClassToday && (
         <section className="glass-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border-l-4 border-l-[var(--accent)] px-5 py-3 text-xs">
           <div className="flex items-center gap-2.5">
@@ -1048,8 +1130,16 @@ export function DashboardBento({
                 return (
                   <li
                     key={ex.id}
-                    className="flex items-center justify-between rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
+                    className={cn(
+                      "rounded-xl border bg-[var(--bg-canvas)] px-3 py-2 text-xs transition-colors",
+                      diffDays >= 0 && diffDays <= 3
+                        ? "border-rose-500/60 bg-rose-500/5"
+                        : diffDays > 3 && diffDays <= 14
+                        ? "border-amber-500/50 bg-amber-500/5"
+                        : "border-[var(--border-subtle)]"
+                    )}
                   >
+                    <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <div className="truncate font-medium text-[var(--text-primary)]">{ex.title}</div>
                       <div className="text-[10px] text-[var(--text-muted)]">
@@ -1077,7 +1167,38 @@ export function DashboardBento({
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setOpenExamCheckId((cur) => (cur === ex.id ? null : ex.id))}
+                        title="Checklist chuẩn bị thi"
+                        className="text-[var(--text-muted)] hover:text-[var(--accent)]"
+                      >
+                        <ListChecks className="h-3.5 w-3.5" />
+                      </button>
                     </div>
+                    </div>
+                    {openExamCheckId === ex.id && (
+                      <div className="mt-2 flex flex-wrap gap-1.5 border-t border-[var(--border-subtle)] pt-2">
+                        {EXAM_PREP_STEPS.map((st) => {
+                          const checked = (examChecks[ex.id] ?? []).includes(st);
+                          return (
+                            <button
+                              key={st}
+                              type="button"
+                              onClick={() => toggleExamStep(ex.id, st)}
+                              className={cn(
+                                "rounded-lg border px-2 py-0.5 text-[10px]",
+                                checked
+                                  ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 line-through"
+                                  : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)]"
+                              )}
+                            >
+                              {checked ? "✓ " : ""}{st}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </li>
                 );
               })}

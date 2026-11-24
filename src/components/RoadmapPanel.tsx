@@ -31,6 +31,7 @@ export function RoadmapPanel({
   const [title, setTitle] = useState("");
   const [stepsRaw, setStepsRaw] = useState("");
   const [wideMode, setWideMode] = useState(false);
+  const [catFilter, setCatFilter] = useState("Tất cả");
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,7 +186,23 @@ export function RoadmapPanel({
         </form>
       </section>
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-1.5 text-xs">
+          {["Tất cả", ...Array.from(new Set(roadmaps.map((r) => r.category)))].map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setCatFilter(cat)}
+              className={
+                catFilter === cat
+                  ? "rounded-xl bg-[var(--accent-soft)] px-3 py-1 font-medium text-[var(--accent)]"
+                  : "rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1 text-[var(--text-secondary)]"
+              }
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           onClick={() => setWideMode((v) => !v)}
@@ -196,7 +213,7 @@ export function RoadmapPanel({
         </button>
       </div>
       <div className={wideMode ? "grid gap-4 grid-cols-1" : "grid gap-4 md:grid-cols-2"}>
-        {roadmaps.map((rm) => {
+        {roadmaps.filter((r) => catFilter === "Tất cả" || r.category === catFilter).map((rm) => {
           const doneCount = rm.items.filter((i) => i.status === "done").length;
           const pct = rm.items.length > 0 ? Math.round((doneCount / rm.items.length) * 100) : 0;
           const remainMins = rm.items

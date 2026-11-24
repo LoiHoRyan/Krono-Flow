@@ -84,6 +84,8 @@ export function HabitsVaultPanel({
   const [resSub, setResSub] = useState("");
   const [resFilter, setResFilter] = useState("Tất cả");
   const [resTagFilter, setResTagFilter] = useState("Tất cả");
+  const [vaultQuery, setVaultQuery] = useState("");
+  const [bookQuery, setBookQuery] = useState("");
   const [vaultMeta, setVaultMeta] = useState<Record<string, { tags: string[]; pinned?: boolean }>>({});
   const VAULT_TAGS = ["Slide", "Đề cũ", "Video", "PDF", "Tóm tắt"];
 
@@ -462,6 +464,13 @@ export function HabitsVaultPanel({
             </div>
           </form>
 
+          <input
+            type="text"
+            value={vaultQuery}
+            onChange={(e) => setVaultQuery(e.target.value)}
+            placeholder="Tìm nhanh tên tài liệu hoặc liên kết..."
+            className="mt-3 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+          />
           <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
             <Tag className="h-3 w-3 text-[var(--text-muted)]" />
             {["Tất cả", ...VAULT_TAGS].map((tg) => (
@@ -489,6 +498,7 @@ export function HabitsVaultPanel({
               resources
                 .filter((r) => resFilter === "Tất cả" || r.category === resFilter)
                 .filter((r) => resTagFilter === "Tất cả" || (vaultMeta[r.id]?.tags ?? []).includes(resTagFilter))
+                .filter((r) => !vaultQuery.trim() || r.title.toLowerCase().includes(vaultQuery.toLowerCase()) || r.url.toLowerCase().includes(vaultQuery.toLowerCase()))
                 .map((r) => {
                 const meta = vaultMeta[r.id] ?? { tags: [], pinned: false };
                 const sub = r.subjectId ? subjectMap.get(r.subjectId) : undefined;
@@ -667,8 +677,17 @@ export function HabitsVaultPanel({
           </button>
         </form>
 
+        {books.length > 0 && (
+          <input
+            type="text"
+            value={bookQuery}
+            onChange={(e) => setBookQuery(e.target.value)}
+            placeholder="Tìm nhanh sách trên kệ..."
+            className="mt-3 w-full max-w-xs rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+          />
+        )}
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {books.map((b) => {
+          {books.filter((b) => !bookQuery.trim() || b.title.toLowerCase().includes(bookQuery.toLowerCase())).map((b) => {
             const pct = Math.min(100, Math.round((b.currentPage / Math.max(1, b.totalPages)) * 100));
             return (
               <div

@@ -78,6 +78,11 @@ export function ScheduleGpaPanel({
   const [attTotal, setAttTotal] = useState(15);
   const [whatIfCredits, setWhatIfCredits] = useState(3);
   const [whatIfScore, setWhatIfScore] = useState(8.5);
+  const [ccScore, setCcScore] = useState(9.0);
+  const [gkScore, setGkScore] = useState(8.0);
+  const [ckScore, setCkScore] = useState(8.0);
+  const [ccW, setCcW] = useState(10);
+  const [gkW, setGkW] = useState(30);
   const [whatIfList, setWhatIfList] = useState<{ id: string; credits: number; score10: number }[]>([]);
 
   const exportTimetableIcs = () => {
@@ -699,6 +704,84 @@ export function ScheduleGpaPanel({
                   : neededFinalScore > 10
                   ? `${neededFinalScore} (Vượt 10)`
                   : neededFinalScore}
+              </div>
+            </div>
+
+            <div className="space-y-2 border-t border-[var(--border-subtle)] pt-3">
+              <div className="font-semibold text-[var(--text-primary)]">
+                Tính nhanh 3 cột điểm (CC {ccW}% · GK {gkW}% · CK {Math.max(0, 100 - ccW - gkW)}%)
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <label className="text-[10px] text-[var(--text-muted)]">
+                  Chuyên cần
+                  <input
+                    type="number"
+                    min={0}
+                    max={10}
+                    step={0.5}
+                    value={ccScore}
+                    onChange={(e) => setCcScore(Number(e.target.value))}
+                    className="mt-0.5 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-xs text-[var(--text-primary)]"
+                  />
+                </label>
+                <label className="text-[10px] text-[var(--text-muted)]">
+                  Giữa kỳ
+                  <input
+                    type="number"
+                    min={0}
+                    max={10}
+                    step={0.5}
+                    value={gkScore}
+                    onChange={(e) => setGkScore(Number(e.target.value))}
+                    className="mt-0.5 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-xs text-[var(--text-primary)]"
+                  />
+                </label>
+                <label className="text-[10px] text-[var(--text-muted)]">
+                  Cuối kỳ
+                  <input
+                    type="number"
+                    min={0}
+                    max={10}
+                    step={0.5}
+                    value={ckScore}
+                    onChange={(e) => setCkScore(Number(e.target.value))}
+                    className="mt-0.5 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-xs text-[var(--text-primary)]"
+                  />
+                </label>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[11px]">
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => { setCcW(10); setGkW(30); }}
+                    className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 text-[10px]"
+                  >
+                    10-30-60
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setCcW(10); setGkW(20); }}
+                    className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 text-[10px]"
+                  >
+                    10-20-70
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setCcW(20); setGkW(30); }}
+                    className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 text-[10px]"
+                  >
+                    20-30-50
+                  </button>
+                </div>
+                {(() => {
+                  const ckW = Math.max(0, 100 - ccW - gkW);
+                  const total = +((ccScore * ccW + gkScore * gkW + ckScore * ckW) / 100).toFixed(2);
+                  return (
+                    <span className="font-mono font-semibold text-[var(--accent)]">
+                      Tổng: {total} ({toGpa4(total).letter})
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </div>

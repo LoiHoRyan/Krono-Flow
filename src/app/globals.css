@@ -297,3 +297,21 @@ body {
 .high-contrast {
   --text-muted: var(--text-secondary);
 }
+
+/* E-Ink Paper Mode (Kindle-like matte reading) */
+.eink-mode {
+  filter: grayscale(1) contrast(1.06);
+}
+.eink-mode .glass-card {
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Reduce Motion Mode */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}

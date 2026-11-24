@@ -123,6 +123,21 @@ const NAV_GROUPS: { titleVi: string; titleEn: string; ids: TabId[] }[] = [
   { titleVi: "Tài chính & Hệ thống", titleEn: "Insights", ids: ["expenses", "analytics", "settings"] },
 ];
 
+function TopFocusBar() {
+  const timer = useTimer();
+  if (!timer.isRunning) return null;
+  const total = Math.max(1, timer.customMinutes * 60);
+  const pct = Math.min(100, Math.round(((total - timer.secondsLeft) / total) * 100));
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[80] h-[3px] bg-transparent">
+      <div
+        className="h-full bg-[var(--accent)] transition-all duration-500"
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
 function MiniTimerBadge({ onOpenFocus }: { onOpenFocus: () => void }) {
   const timer = useTimer();
   if (!timer.isRunning && !timer.activeSessionId) return null;
@@ -218,6 +233,15 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     if (localStorage.getItem("kronoflow-high-contrast") === "on") {
       document.documentElement.classList.add("high-contrast");
     }
+    if (localStorage.getItem("kronoflow-eink") === "on") {
+      document.documentElement.classList.add("eink-mode");
+    }
+    if (localStorage.getItem("kronoflow-reduce-motion") === "on") {
+      document.documentElement.classList.add("reduce-motion");
+    }
+    if (localStorage.getItem("kronoflow-hide-hints") === "1") {
+      setShowHints(false);
+    }
     const goOff = () => setIsOffline(true);
     const goOn = () => {
       setIsOffline(false);
@@ -257,6 +281,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [privacyMode, setPrivacyMode] = useState(false);
   const [dndMode, setDndMode] = useState(false);
   const [fabLeft, setFabLeft] = useState(false);
+  const [showHints, setShowHints] = useState(true);
   const [warmLevel, setWarmLevel] = useState(0);
   const [fontScale, setFontScale] = useState<"95%" | "100%" | "108%">("100%");
   const [bedtimeWarning, setBedtimeWarning] = useState<string | null>(null);
@@ -518,6 +543,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
 
   return (
     <div className="relative min-h-screen lg:flex" style={bgStyle}>
+      <TopFocusBar />
       <ConfettiBurst triggerKey={confettiKey} />
       <QuickScratchpad open={padOpen} onClose={() => setPadOpen(false)} />
       <ShortcutsModal open={helpOpen} onClose={() => setHelpOpen(false)} />
@@ -1102,6 +1128,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               subjects={props.subjects}
               totalHabits={props.habits.length}
               totalCards={props.flashcards.length}
+              todos={props.todos}
             />
           )}
           {tab === "settings" && (
@@ -1114,6 +1141,28 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             />
           )}
         </main>
+        {showHints && (
+          <div className="no-print mx-auto mt-2 hidden max-w-6xl items-center justify-between px-8 pb-4 text-[11px] text-[var(--text-muted)] lg:flex">
+            <span>
+              Phím tắt nhanh:{" "}
+              {tab === "focus"
+                ? "Space (Chạy/Dừng) · R (Đặt lại) · A (AI Copilot)"
+                : tab === "knowledge"
+                ? "Ctrl+Enter (Lưu ghi chú) · Ctrl+K (Tìm nhanh) · N (Nháp)"
+                : "Ctrl+K (Bảng lệnh) · Q (Thêm nhanh) · P (Làm mờ riêng tư) · Alt+1..9 (Chuyển tab)"}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setShowHints(false);
+                localStorage.setItem("kronoflow-hide-hints", "1");
+              }}
+              className="hover:text-[var(--text-primary)]"
+            >
+              Ẩn gợi ý
+            </button>
+          </div>
+        )}
       </div>
 
       {toast && (

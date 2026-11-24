@@ -83,6 +83,8 @@ export function StudioSettingsPanel({
   const [highContrast, setHighContrast] = useState(false);
   const [hiddenTabs, setHiddenTabs] = useState<string[]>([]);
   const [wellnessMins, setWellnessMins] = useState(0);
+  const [einkMode, setEinkMode] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const [savedAccents, setSavedAccents] = useState<string[]>(["#2563eb", "#0f766e", "#7c3aed", "#e11d48", "#d97706"]);
   const [diagText, setDiagText] = useState<string | null>(null);
   const [autoDayNight, setAutoDayNight] = useState(false);
@@ -106,6 +108,8 @@ export function StudioSettingsPanel({
       if (rawH) setHiddenTabs(JSON.parse(rawH));
       const wM = Number(localStorage.getItem("kronoflow-wellness-mins") || "0");
       if (!isNaN(wM)) setWellnessMins(wM);
+      setEinkMode(localStorage.getItem("kronoflow-eink") === "on");
+      setReduceMotion(localStorage.getItem("kronoflow-reduce-motion") === "on");
     } catch {
       // ignore
     }
@@ -916,6 +920,41 @@ export function StudioSettingsPanel({
                 >
                   {highContrast ? "Đang bật" : "Đang tắt"}
                 </button>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs sm:col-span-2">
+                <span className="text-[var(--text-secondary)]">Chế độ đọc E-Ink & Giảm chuyển động:</span>
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !einkMode;
+                      setEinkMode(next);
+                      localStorage.setItem("kronoflow-eink", next ? "on" : "off");
+                      document.documentElement.classList.toggle("eink-mode", next);
+                    }}
+                    className={cn(
+                      "rounded-lg px-2.5 py-1 text-[11px] font-medium",
+                      einkMode ? "bg-[var(--accent)] text-white" : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                    )}
+                  >
+                    E-Ink: {einkMode ? "Bật" : "Tắt"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !reduceMotion;
+                      setReduceMotion(next);
+                      localStorage.setItem("kronoflow-reduce-motion", next ? "on" : "off");
+                      document.documentElement.classList.toggle("reduce-motion", next);
+                    }}
+                    className={cn(
+                      "rounded-lg px-2.5 py-1 text-[11px] font-medium",
+                      reduceMotion ? "bg-[var(--accent)] text-white" : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                    )}
+                  >
+                    Giảm chuyển động: {reduceMotion ? "Bật" : "Tắt"}
+                  </button>
+                </div>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs sm:col-span-2">
                 <span className="text-[var(--text-secondary)]">Màu nhấn yêu thích (1 chạm):</span>

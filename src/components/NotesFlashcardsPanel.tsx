@@ -28,6 +28,7 @@ import {
   PlayCircle,
   Printer,
   Hash,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MarkdownView } from "./MarkdownView";
@@ -79,7 +80,53 @@ export function NotesFlashcardsPanel({
   onFocusNote?: (title: string) => void;
   onRefresh: () => void;
 }) {
-  const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz" | "typing" | "mistakes" | "feynman" | "match">("notes");
+  const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz" | "typing" | "mistakes" | "feynman" | "match" | "tf">("notes");
+  const [tfSec, setTfSec] = useState(30);
+  const [tfScore, setTfScore] = useState(0);
+  const [tfRound, setTfRound] = useState<{ front: string; shownBack: string; isTrue: boolean } | null>(null);
+
+  const nextTfRound = () => {
+    if (flashcards.length < 2) {
+      setTfRound(null);
+      return;
+    }
+    const card = flashcards[Math.floor(Math.random() * flashcards.length)];
+    if (!card) return;
+    const makeTrue = Math.random() >= 0.5;
+    if (makeTrue) {
+      setTfRound({ front: card.front, shownBack: card.back, isTrue: true });
+    } else {
+      const others = flashcards.filter((c) => c.id !== card.id);
+      const fake = others[Math.floor(Math.random() * others.length)] ?? card;
+      setTfRound({ front: card.front, shownBack: fake.back, isTrue: fake.back === card.back });
+    }
+  };
+
+  const startTfDrill = () => {
+    setTfScore(0);
+    setTfSec(30);
+    setSubTab("tf");
+    nextTfRound();
+  };
+
+  useEffect(() => {
+    if (subTab !== "tf" || tfSec <= 0) return;
+    const id = setInterval(() => setTfSec((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(id);
+  }, [subTab, tfSec]);
+
+  const exportFlashcardsCsv = () => {
+    const rows = flashcards
+      .map((c) => `"${c.front.replaceAll('"', '""')}","${c.back.replaceAll('"', '""')}"`)
+      .join("\n");
+    const blob = new Blob(["\uFEFFFront,Back\n" + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kronoflow-flashcards-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const [matchTiles, setMatchTiles] = useState<{ id: string; cardId: string; side: "front" | "back"; text: string }[]>([]);
   const [matchPicked, setMatchPicked] = useState<string | null>(null);
   const [matchedIds, setMatchedIds] = useState<string[]>([]);
@@ -680,6 +727,19 @@ export function NotesFlashcardsPanel({
             <Gamepad2 className="h-3.5 w-3.5" />
             Ghép cặp 60s
           </button>
+          <button
+            type="button"
+            onClick={startTfDrill}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold",
+              subTab === "tf"
+                ? "btn-primary"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            )}
+          >
+            <Zap className="h-3.5 w-3.5" />
+            Đúng/Sai 30s
+          </button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -746,6 +806,15 @@ export function NotesFlashcardsPanel({
               className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               <Printer className="h-3.5 w-3.5" /> In thẻ A4
+            </button>
+          )}
+          {subTab === "flashcards" && flashcards.length > 0 && (
+            <button
+              type="button"
+              onClick={exportFlashcardsCsv}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              <Download className="h-3.5 w-3.5" /> Xuất CSV (Anki)
             </button>
           )}
         </div>
@@ -931,6 +1000,27 @@ export function NotesFlashcardsPanel({
             </button>
           </form>
 
+          {notes.some((n) => n.pinned) && (
+            <div className="glass-card rounded-2xl p-4 lg:col-span-12">
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                <Pin className="h-3.5 w-3.5" /> Ghi chú đã ghim (Mở nhanh)
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {notes
+                  .filter((n) => n.pinned)
+                  .map((pn) => (
+                    <button
+                      key={`pin-shelf-${pn.id}`}
+                      type="button"
+                      onClick={() => setReadingNote(pn)}
+                      className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:border-amber-500"
+                    >
+                      {pn.title}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
           {allNoteTags.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 text-[11px] lg:col-span-12">
               <Hash className="h-3.5 w-3.5 text-[var(--text-muted)]" />
@@ -1399,7 +1489,81 @@ export function NotesFlashcardsPanel({
             );
           })()}
         </div>
-      ) : subTab === "match" ? (
+      ) : subTab === "tf" ? (
+        <div className="glass-card rounded-2xl p-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+              <Zap className="h-4 w-4 text-amber-500" />
+              Phản xạ Đúng / Sai 30 giây
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="font-mono font-semibold text-[var(--accent)]">Còn {tfSec}s</span>
+              <span className="font-mono font-semibold text-emerald-600">Điểm: {tfScore}</span>
+              <button
+                type="button"
+                onClick={startTfDrill}
+                className="btn-primary rounded-lg px-3 py-1 text-[11px] font-medium"
+              >
+                Chơi lại
+              </button>
+            </div>
+          </div>
+          {!tfRound ? (
+            <p className="text-xs text-[var(--text-muted)]">
+              Cần ít nhất 2 thẻ Flashcard để chơi chế độ phản xạ Đúng / Sai.
+            </p>
+          ) : tfSec <= 0 ? (
+            <div className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)] p-5 text-center">
+              <div className="text-base font-semibold text-[var(--accent)]">
+                Hết giờ! Bạn ghi được {tfScore} điểm
+              </div>
+              <button
+                type="button"
+                onClick={startTfDrill}
+                className="btn-primary mt-3 rounded-xl px-4 py-2 text-xs font-medium"
+              >
+                Thử lại 30 giây mới
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-5 text-center">
+              <div className="text-xs text-[var(--text-muted)]">Cặp câu hỏi & đáp án sau ĐÚNG hay SAI?</div>
+              <div className="text-base font-semibold text-[var(--text-primary)]">{tfRound.front}</div>
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-3 text-sm text-[var(--text-secondary)]">
+                {tfRound.shownBack}
+              </div>
+              <div className="flex justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (tfRound.isTrue) {
+                      setTfScore((s) => s + 1);
+                      playUiTick("check");
+                    }
+                    nextTfRound();
+                  }}
+                  className="rounded-xl bg-emerald-600 px-6 py-2.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                >
+                  ✓ ĐÚNG
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!tfRound.isTrue) {
+                      setTfScore((s) => s + 1);
+                      playUiTick("check");
+                    }
+                    nextTfRound();
+                  }}
+                  className="rounded-xl bg-rose-600 px-6 py-2.5 text-xs font-semibold text-white hover:bg-rose-700"
+                >
+                  ✕ SAI
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+            ) : subTab === "match" ? (
         <div className="glass-card rounded-2xl p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
