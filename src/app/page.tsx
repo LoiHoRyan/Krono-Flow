@@ -41,7 +41,7 @@ import {
   BellOff,
   Bell,
 } from "lucide-react";
-import { cn, formatDuration } from "@/lib/utils";
+import { cn, formatDuration, normalizeVi } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
 import { applyThemeToDocument, WALLPAPERS } from "@/lib/themes";
 import { LanguageProvider, LanguageToggle, useLang } from "@/lib/i18n";
@@ -260,10 +260,14 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     };
     syncHidden();
     window.addEventListener("kronoflow-sidebar-change", syncHidden);
+    const syncLayout = () => setWideLayout(localStorage.getItem("kronoflow-wide-layout") === "on");
+    syncLayout();
+    window.addEventListener("kronoflow-layout-change", syncLayout);
     return () => {
       window.removeEventListener("offline", goOff);
       window.removeEventListener("online", goOn);
       window.removeEventListener("kronoflow-sidebar-change", syncHidden);
+      window.removeEventListener("kronoflow-layout-change", syncLayout);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -282,6 +286,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [dndMode, setDndMode] = useState(false);
   const [fabLeft, setFabLeft] = useState(false);
   const [showHints, setShowHints] = useState(true);
+  const [wideLayout, setWideLayout] = useState(false);
   const [warmLevel, setWarmLevel] = useState(0);
   const [fontScale, setFontScale] = useState<"95%" | "100%" | "108%">("100%");
   const [bedtimeWarning, setBedtimeWarning] = useState<string | null>(null);
@@ -1014,7 +1019,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </div>
           </div>
         )}
-        <main key={tab} className="animate-tab-in mx-auto max-w-6xl px-4 py-6 sm:px-8">
+        <main key={tab} className={cn("animate-tab-in mx-auto px-4 py-6 sm:px-8", wideLayout ? "max-w-[1440px]" : "max-w-6xl")}>
           {tab === "dashboard" && (
             <DashboardBento
               user={props.user}
@@ -1300,7 +1305,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               {cmdQuery.trim().length > 0 && (
                 <>
                   {props.todos
-                    .filter((x) => x.title.toLowerCase().includes(cmdQuery.toLowerCase()))
+                    .filter((x) => normalizeVi(x.title).includes(normalizeVi(cmdQuery)))
                     .slice(0, 4)
                     .map((x) => (
                       <button
@@ -1318,7 +1323,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                       </button>
                     ))}
                   {props.notes
-                    .filter((x) => x.title.toLowerCase().includes(cmdQuery.toLowerCase()))
+                    .filter((x) => normalizeVi(x.title).includes(normalizeVi(cmdQuery)))
                     .slice(0, 4)
                     .map((x) => (
                       <button
@@ -1336,7 +1341,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                       </button>
                     ))}
                   {props.subjects
-                    .filter((x) => x.name.toLowerCase().includes(cmdQuery.toLowerCase()))
+                    .filter((x) => normalizeVi(x.name).includes(normalizeVi(cmdQuery)))
                     .slice(0, 3)
                     .map((x) => (
                       <button
@@ -1354,7 +1359,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                       </button>
                     ))}
                   {props.exams
-                    .filter((x) => x.title.toLowerCase().includes(cmdQuery.toLowerCase()))
+                    .filter((x) => normalizeVi(x.title).includes(normalizeVi(cmdQuery)))
                     .slice(0, 3)
                     .map((x) => (
                       <button
@@ -1372,7 +1377,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                       </button>
                     ))}
                   {props.mistakes
-                    .filter((x) => x.question.toLowerCase().includes(cmdQuery.toLowerCase()))
+                    .filter((x) => normalizeVi(x.question).includes(normalizeVi(cmdQuery)))
                     .slice(0, 3)
                     .map((x) => (
                       <button
@@ -1423,7 +1428,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                 </>
               )}
               {NAV_DEF.filter((item) =>
-                t(`nav_${item.id}`).toLowerCase().includes(cmdQuery.toLowerCase())
+                normalizeVi(t(`nav_${item.id}`)).includes(normalizeVi(cmdQuery))
               ).map((item) => {
                 const Icon = item.icon;
                 return (

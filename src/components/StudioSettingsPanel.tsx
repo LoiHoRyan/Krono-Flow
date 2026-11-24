@@ -85,6 +85,7 @@ export function StudioSettingsPanel({
   const [wellnessMins, setWellnessMins] = useState(0);
   const [einkMode, setEinkMode] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [wideLayout, setWideLayout] = useState(false);
   const [savedAccents, setSavedAccents] = useState<string[]>(["#2563eb", "#0f766e", "#7c3aed", "#e11d48", "#d97706"]);
   const [diagText, setDiagText] = useState<string | null>(null);
   const [autoDayNight, setAutoDayNight] = useState(false);
@@ -110,6 +111,7 @@ export function StudioSettingsPanel({
       if (!isNaN(wM)) setWellnessMins(wM);
       setEinkMode(localStorage.getItem("kronoflow-eink") === "on");
       setReduceMotion(localStorage.getItem("kronoflow-reduce-motion") === "on");
+      setWideLayout(localStorage.getItem("kronoflow-wide-layout") === "on");
     } catch {
       // ignore
     }
@@ -953,6 +955,21 @@ export function StudioSettingsPanel({
                     )}
                   >
                     Giảm chuyển động: {reduceMotion ? "Bật" : "Tắt"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !wideLayout;
+                      setWideLayout(next);
+                      localStorage.setItem("kronoflow-wide-layout", next ? "on" : "off");
+                      window.dispatchEvent(new Event("kronoflow-layout-change"));
+                    }}
+                    className={cn(
+                      "rounded-lg px-2.5 py-1 text-[11px] font-medium",
+                      wideLayout ? "bg-[var(--accent)] text-white" : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                    )}
+                  >
+                    Khung rộng: {wideLayout ? "Bật" : "Tắt"}
                   </button>
                 </div>
               </div>

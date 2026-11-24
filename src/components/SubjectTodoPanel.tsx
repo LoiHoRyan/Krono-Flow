@@ -20,7 +20,7 @@ import {
   ListChecks,
   Copy,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, normalizeVi } from "@/lib/utils";
 import type { SessionLogItem } from "./PomodoroTimer";
 import type { NoteRecord, FlashcardRecord } from "./NotesFlashcardsPanel";
 import type { ExamRecord } from "./DashboardBento";
@@ -292,6 +292,8 @@ export function SubjectTodoPanel({
   const handleAddSubject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subjectName.trim()) return;
+    const dupSub = subjects.find((s) => normalizeVi(s.name) === normalizeVi(subjectName.trim()));
+    if (dupSub && !window.confirm(`Môn "${dupSub.name}" đã tồn tại. Bạn vẫn muốn tạo thêm?`)) return;
     const res = await fetch("/api/subjects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -412,7 +414,7 @@ export function SubjectTodoPanel({
   const prioWeight: Record<TodoItem["priority"], number> = { high: 0, medium: 1, low: 2 };
   const filteredTodos = todos
     .filter((t) => {
-      if (todoQuery.trim() && !t.title.toLowerCase().includes(todoQuery.toLowerCase())) return false;
+      if (todoQuery.trim() && !normalizeVi(t.title).includes(normalizeVi(todoQuery))) return false;
       if (filter === "pending") return !t.isCompleted;
       if (filter === "done") return t.isCompleted;
       if (filter === "today") return !t.isCompleted && t.dueDate?.slice(0, 10) === nowIso;
@@ -744,6 +746,20 @@ export function SubjectTodoPanel({
                     {label}
                   </button>
                 ))}
+                {todos.some((t) => t.isCompleted) && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const doneList = todos.filter((t) => t.isCompleted);
+                      if (!window.confirm(`Dọn sạch ${doneList.length} công việc đã hoàn thành?`)) return;
+                      await Promise.all(doneList.map((d) => fetch(`/api/todos/${d.id}`, { method: "DELETE" })));
+                      onRefresh();
+                    }}
+                    className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] font-medium text-rose-600 dark:text-rose-400"
+                  >
+                    Dọn việc đã xong
+                  </button>
+                )}
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as "default" | "due" | "priority" | "subject")}
@@ -797,7 +813,7 @@ export function SubjectTodoPanel({
                   </div>
                 </div>
               )}
-              <ul className="mt-3 space-y-2">
+              <ul className="zebra-list mt-3 space-y-2">
                 {filteredTodos.map((todo) => {
                   const sub = todo.subjectId ? subjectMap.get(todo.subjectId) : undefined;
                   return (

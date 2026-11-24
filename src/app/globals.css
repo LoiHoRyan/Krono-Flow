@@ -315,3 +315,8 @@ body {
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
 }
+
+/* Subtle Zebra Row Highlight for long lists */
+.zebra-list > li:nth-child(even) {
+  background-color: color-mix(in srgb, var(--bg-elevated) 55%, var(--bg-canvas));
+}

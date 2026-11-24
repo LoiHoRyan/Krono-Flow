@@ -758,6 +758,41 @@ export function PomodoroTimer({
             </div>
 
             )}
+            {clockTab === "pomodoro" && (() => {
+              const cyclePos = todayCompletedCount % 4;
+              const isCycleComplete = todayCompletedCount > 0 && cyclePos === 0;
+              return (
+                <div className="mb-4 flex flex-wrap items-center justify-center gap-2 text-[11px] text-[var(--text-muted)]">
+                  <span>Chu kỳ Pomodoro:</span>
+                  <div className="flex items-center gap-1.5">
+                    {[1, 2, 3, 4].map((dot) => {
+                      const filled = isCycleComplete ? true : dot <= cyclePos;
+                      return (
+                        <span
+                          key={dot}
+                          className={cn(
+                            "h-2.5 w-2.5 rounded-full transition-colors",
+                            filled ? "bg-[var(--accent)]" : "bg-[var(--bg-elevated)] border border-[var(--border-subtle)]"
+                          )}
+                        />
+                      );
+                    })}
+                  </div>
+                  <span className="font-mono text-[var(--text-primary)]">
+                    {isCycleComplete ? "4/4" : `${cyclePos}/4`}
+                  </span>
+                  {isCycleComplete && (
+                    <button
+                      type="button"
+                      onClick={() => timer.changeMode("long_break")}
+                      className="rounded-lg bg-emerald-500/15 px-2 py-0.5 font-medium text-emerald-600 dark:text-emerald-400"
+                    >
+                      Đủ 4 phiên · Nghỉ dài 15p →
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
             <div className="grid gap-3 sm:grid-cols-2">
               <select
                 value={timer.selectedSubjectId}

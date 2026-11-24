@@ -112,10 +112,20 @@ export function ExpensesPanel({
     onRefresh();
   };
 
-  const thisMonthPrefix = new Date().toISOString().slice(0, 7);
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const prevMonthPrefix = (() => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const d = new Date((y ?? 2026), (m ?? 1) - 2, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  })();
   const monthTotal = expenses
-    .filter((e) => e.spentDate.startsWith(thisMonthPrefix))
+    .filter((e) => e.spentDate.startsWith(selectedMonth))
     .reduce((a, b) => a + b.amount, 0);
+  const prevMonthTotal = expenses
+    .filter((e) => e.spentDate.startsWith(prevMonthPrefix))
+    .reduce((a, b) => a + b.amount, 0);
+  const momPct =
+    prevMonthTotal > 0 ? Math.round(((monthTotal - prevMonthTotal) / prevMonthTotal) * 100) : null;
   const allTotal = expenses.reduce((a, b) => a + b.amount, 0);
 
   const byCat = CATEGORIES.map((cat) => {
@@ -127,10 +137,26 @@ export function ExpensesPanel({
     <div className="space-y-6">
       <div className="stagger-grid grid gap-4 sm:grid-cols-2">
         <div className="glass-card card-lift rounded-2xl p-5">
-          <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-            <Wallet className="h-4 w-4 text-[var(--accent)]" />
-            {lang === "vi" ? "Chi tiêu tháng này" : "This Month Spent"}
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-muted)]">
+            <span className="flex items-center gap-2">
+              <Wallet className="h-4 w-4 text-[var(--accent)]" />
+              {lang === "vi" ? "Chi tiêu theo tháng" : "Monthly Spent"}
+            </span>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-primary)]"
+            />
           </div>
+          {momPct !== null && (
+            <div className="mt-1 text-[11px] text-[var(--text-muted)]">
+              So với tháng trước ({prevMonthPrefix}):{" "}
+              <strong className={momPct <= 0 ? "text-emerald-600" : "text-rose-500"}>
+                {momPct > 0 ? `+${momPct}%` : `${momPct}%`}
+              </strong>
+            </div>
+          )}
           <div className="mt-2 font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">
             {monthTotal.toLocaleString("vi-VN")} ₫
           </div>

@@ -29,8 +29,11 @@ import {
   Printer,
   Hash,
   Zap,
+  Mic,
+  MicOff,
+  Shuffle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, normalizeVi } from "@/lib/utils";
 import { MarkdownView } from "./MarkdownView";
 import { PdfStudyReaderModal } from "./PdfStudyReaderModal";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -227,6 +230,43 @@ export function NotesFlashcardsPanel({
   const [findText, setFindText] = useState("");
   const [replaceText, setReplaceText] = useState("");
   const [showFindBar, setShowFindBar] = useState(false);
+  const [voiceListening, setVoiceListening] = useState(false);
+  const [quizOrderSeed, setQuizOrderSeed] = useState(0);
+
+  const toggleVoiceNote = () => {
+    if (typeof window === "undefined") return;
+    const w = window as unknown as {
+      SpeechRecognition?: new () => {
+        lang: string;
+        interimResults: boolean;
+        onresult: ((ev: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+        onend: (() => void) | null;
+        start: () => void;
+      };
+      webkitSpeechRecognition?: new () => {
+        lang: string;
+        interimResults: boolean;
+        onresult: ((ev: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+        onend: (() => void) | null;
+        start: () => void;
+      };
+    };
+    const Rec = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!Rec) {
+      window.alert("Trình duyệt hiện tại chưa hỗ trợ nhận diện giọng nói (hãy dùng Chrome/Edge).");
+      return;
+    }
+    const rec = new Rec();
+    rec.lang = "vi-VN";
+    rec.interimResults = false;
+    setVoiceListening(true);
+    rec.onresult = (ev) => {
+      const spoken = ev.results[0]?.[0]?.transcript ?? "";
+      if (spoken) setNoteContent((prev) => (prev ? `${prev} ${spoken}` : spoken));
+    };
+    rec.onend = () => setVoiceListening(false);
+    rec.start();
+  };
   const [guideLoading, setGuideLoading] = useState(false);
   const [guideData, setGuideData] = useState<{ keyPoints: string[]; questions: string[] } | null>(null);
 
@@ -615,9 +655,10 @@ export function NotesFlashcardsPanel({
   };
 
   const filteredNotes = notes.filter((n) => {
+    const qNorm = normalizeVi(search);
     const matchSearch =
-      n.title.toLowerCase().includes(search.toLowerCase()) ||
-      n.content.toLowerCase().includes(search.toLowerCase());
+      normalizeVi(n.title).includes(qNorm) ||
+      normalizeVi(n.content).includes(qNorm);
     if (!matchSearch) return false;
     if (activeTag && !n.content.includes(activeTag)) return false;
     return true;
@@ -932,6 +973,20 @@ export function NotesFlashcardsPanel({
                 className="rounded-lg px-2 py-0.5 text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]"
               >
                 Tìm & Thay
+              </button>
+              <button
+                type="button"
+                onClick={toggleVoiceNote}
+                title="Đọc giọng nói tiếng Việt chuyển thành ghi chú"
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-lg px-2 py-0.5 font-medium",
+                  voiceListening
+                    ? "bg-rose-500 text-white animate-pulse"
+                    : "text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]"
+                )}
+              >
+                {voiceListening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                {voiceListening ? "Đang nghe..." : "Giọng nói"}
               </button>
             </div>
             {showFindBar && (
@@ -1473,6 +1528,17 @@ export function NotesFlashcardsPanel({
                 </div>
                 {quizPicked !== null && (
                   <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuizOrderSeed((s) => s + 1);
+                        setQuizIdx(0);
+                        setQuizPicked(null);
+                      }}
+                      className="mr-2 inline-flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)]"
+                    >
+                      <Shuffle className="h-3.5 w-3.5" /> Đảo đề
+                    </button>
                     <button
                       type="button"
                       onClick={() => {

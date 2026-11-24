@@ -12,6 +12,18 @@ interface SnippetItem {
 
 const DEFAULT_SNIPPETS: SnippetItem[] = [
   {
+    id: "acad-1",
+    title: "Email xin phép / hỏi bài Giảng viên chuẩn mực",
+    category: "Học thuật",
+    body: "Kính gửi Thầy/Cô [Tên],\nEm là [Họ tên] - MSSV [Mã SV], lớp [Tên lớp]. Em viết email này xin phép được hỏi về [Nội dung]. Em rất mong nhận được phản hồi từ Thầy/Cô. Em xin trân trọng cảm ơn!",
+  },
+  {
+    id: "acad-2",
+    title: "Mẫu câu chuyển ý & kết luận Tiểu luận (EN)",
+    category: "Học thuật",
+    body: "Furthermore, empirical evidence suggests that... | In contrast to prior studies,... | Taken together, these findings highlight the critical role of...",
+  },
+  {
     id: "def-1",
     title: "Lãi kép & Giá trị tương lai (FV)",
     category: "Tài chính",

@@ -8,6 +8,7 @@ import { CalendarDays, Calculator, GraduationCap, Plus, Trash2,
   Download,
   Sparkles,
   Copy,
+  Award,
 } from "lucide-react";
 
 export interface ScheduleSlotRecord {
@@ -83,6 +84,23 @@ export function ScheduleGpaPanel({
   const [ckScore, setCkScore] = useState(8.0);
   const [ccW, setCcW] = useState(10);
   const [gkW, setGkW] = useState(30);
+  const [drlTitle, setDrlTitle] = useState("");
+  const [drlPoints, setDrlPoints] = useState(5);
+  const [drlItems, setDrlItems] = useState<{ id: string; title: string; points: number; date: string }[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("kronoflow-drl");
+      if (raw) setDrlItems(JSON.parse(raw));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const saveDrl = (next: { id: string; title: string; points: number; date: string }[]) => {
+    setDrlItems(next);
+    localStorage.setItem("kronoflow-drl", JSON.stringify(next));
+  };
   const [whatIfList, setWhatIfList] = useState<{ id: string; credits: number; score10: number }[]>([]);
 
   const exportTimetableIcs = () => {
@@ -986,6 +1004,77 @@ export function ScheduleGpaPanel({
               );
             })}
           </div>
+        )}
+      </section>
+
+      {/* ĐIỂM RÈN LUYỆN & HOẠT ĐỘNG NGOẠI KHÓA */}
+      <section className="glass-card card-lift rounded-2xl p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Award className="h-4 w-4 text-amber-500" />
+            <h3 className="text-base font-medium text-[var(--text-primary)]">
+              Điểm rèn luyện & Hoạt động ngoại khóa
+            </h3>
+          </div>
+          <span className="rounded-xl bg-[var(--accent-soft)] px-3 py-1 font-mono text-xs font-semibold text-[var(--accent)]">
+            Tổng cộng: {Math.min(100, 65 + drlItems.reduce((a, b) => a + b.points, 0))} / 100 điểm (nền 65đ)
+          </span>
+        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!drlTitle.trim()) return;
+            saveDrl([
+              { id: String(Date.now()), title: drlTitle.trim(), points: drlPoints, date: new Date().toISOString().slice(0, 10) },
+              ...drlItems,
+            ]);
+            setDrlTitle("");
+          }}
+          className="mt-4 flex flex-wrap gap-2"
+        >
+          <input
+            type="text"
+            value={drlTitle}
+            onChange={(e) => setDrlTitle(e.target.value)}
+            placeholder="VD: Tham gia Hội thảo AI, Hiến máu, CLB Tin học..."
+            className="min-w-[200px] flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+          />
+          <input
+            type="number"
+            min={1}
+            max={35}
+            value={drlPoints}
+            onChange={(e) => setDrlPoints(Number(e.target.value))}
+            title="Điểm cộng"
+            className="w-20 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-2 text-xs text-[var(--text-primary)]"
+          />
+          <button type="submit" className="btn-primary inline-flex items-center gap-1 rounded-xl px-3.5 py-2 text-xs font-medium">
+            <Plus className="h-3.5 w-3.5" /> Ghi nhận
+          </button>
+        </form>
+        {drlItems.length > 0 && (
+          <ul className="zebra-list mt-3 space-y-1.5">
+            {drlItems.map((it) => (
+              <li
+                key={it.id}
+                className="flex items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"
+              >
+                <span className="truncate text-[var(--text-primary)]">
+                  {it.title} <span className="text-[10px] text-[var(--text-muted)]">({it.date})</span>
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-semibold text-emerald-600">+{it.points}đ</span>
+                  <button
+                    type="button"
+                    onClick={() => saveDrl(drlItems.filter((x) => x.id !== it.id))}
+                    className="text-[var(--text-muted)] hover:text-rose-500"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </div>

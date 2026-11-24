@@ -460,6 +460,44 @@ export function AnalyticsPanel({
         </div>
       </section>
 
+      {/* TỐC ĐỘ HỌC TẬP (FOCUS VELOCITY GAUGE) */}
+      {(() => {
+        const last7Mins = days.slice(-7).reduce((a, b) => a + b.minutes, 0);
+        const weeklyTarget = 600;
+        const pct = Math.min(100, Math.round((last7Mins / weeklyTarget) * 100));
+        const statusLabel = pct >= 85 ? "Bứt phá 🚀" : pct >= 45 ? "Ổn định ✓" : "Cần tăng tốc";
+        const arcLen = 157;
+        return (
+          <section className="glass-card flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5">
+            <div>
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                Nhịp độ tập trung 7 ngày (Focus Velocity)
+              </h3>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                Đạt <strong className="font-mono text-[var(--accent)]">{last7Mins}</strong> / {weeklyTarget} phút tuần này · Trạng thái:{" "}
+                <strong className="text-[var(--text-primary)]">{statusLabel}</strong>
+              </p>
+            </div>
+            <div className="relative flex items-center justify-center">
+              <svg viewBox="0 0 120 70" className="h-16 w-28">
+                <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke="var(--bg-elevated)" strokeWidth="10" strokeLinecap="round" />
+                <path
+                  d="M 10 60 A 50 50 0 0 1 110 60"
+                  fill="none"
+                  stroke="var(--accent)"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  strokeDasharray={`${Math.round((pct / 100) * arcLen)} ${arcLen}`}
+                />
+              </svg>
+              <span className="absolute bottom-1 font-mono text-sm font-bold text-[var(--text-primary)]">
+                {pct}%
+              </span>
+            </div>
+          </section>
+        );
+      })()}
+
       {/* SO SÁNH TUẦN NÀY VS TUẦN TRƯỚC (DUAL-BAR CHART) */}
       {(() => {
         const msDay = 86400000;
