@@ -33,6 +33,8 @@ import {
   Sunrise,
   History,
   GraduationCap,
+  RotateCcw,
+  CalendarDays,
 } from "lucide-react";
 import { computeLevelInfo } from "@/lib/themes";
 import { useLang } from "@/lib/i18n";
@@ -43,6 +45,7 @@ import type { RoadmapRecord } from "./RoadmapPanel";
 import type { FlashcardRecord, NoteRecord } from "./NotesFlashcardsPanel";
 import type { TimeBlockRecord } from "./GoalsTimeblockPanel";
 import type { ResourceRecord } from "./HabitsVaultPanel";
+import type { ScheduleSlotRecord } from "./ScheduleGpaPanel";
 import { ReverseExamPlannerModal } from "./ReverseExamPlannerModal";
 
 export interface UserProfile {
@@ -89,8 +92,10 @@ export function DashboardBento({
   timeBlocks = [],
   notes = [],
   resources = [],
+  slots = [],
   onJumpFocus,
   onOpenWeeklyReview,
+  onResumeTab,
   onRefresh,
 }: {
   user: UserProfile | null;
@@ -103,8 +108,10 @@ export function DashboardBento({
   timeBlocks?: TimeBlockRecord[];
   notes?: NoteRecord[];
   resources?: ResourceRecord[];
+  slots?: ScheduleSlotRecord[];
   onJumpFocus: (taskTitle?: string) => void;
   onOpenWeeklyReview?: () => void;
+  onResumeTab?: (tabId: string) => void;
   onRefresh: () => void;
 }) {
   const [pinnedResourceIds, setPinnedResourceIds] = useState<string[]>([]);
@@ -134,6 +141,28 @@ export function DashboardBento({
   const [recallFlipped, setRecallFlipped] = useState(false);
   const [customQuotes, setCustomQuotes] = useState<string[]>([]);
   const [kickoffBusy, setKickoffBusy] = useState(false);
+  const [lastContextTab, setLastContextTab] = useState<string | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("kronoflow-last-context");
+    if (saved && saved !== "dashboard") setLastContextTab(saved);
+  }, []);
+
+  const nextClassToday = (() => {
+    const now = new Date();
+    const dow = now.getDay() === 0 ? 7 : now.getDay();
+    const nowM = now.getHours() * 60 + now.getMinutes();
+    const todaySlots = slots
+      .filter((s) => s.dayOfWeek === dow)
+      .map((s) => {
+        const [h, m] = s.startTime.split(":").map(Number);
+        const startM = (h ?? 0) * 60 + (m ?? 0);
+        return { ...s, startM, diffM: startM - nowM };
+      })
+      .filter((s) => s.diffM >= -15)
+      .sort((a, b) => a.startM - b.startM);
+    return todaySlots[0] ?? null;
+  })();
 
   useEffect(() => {
     try {
@@ -556,6 +585,16 @@ export function DashboardBento({
             <Sunrise className="h-3.5 w-3.5" />
             {kickoffBusy ? "Đang dọn lịch..." : "Khởi động ngày mới"}
           </button>
+          {lastContextTab && onResumeTab && (
+            <button
+              type="button"
+              onClick={() => onResumeTab(lastContextTab)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--accent)] hover:border-[var(--accent)]"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Học tiếp chỗ dở
+            </button>
+          )}
           {onOpenWeeklyReview && (
             <button
               type="button"
@@ -712,6 +751,32 @@ export function DashboardBento({
         onClose={() => setReverseOpen(false)}
         onRefresh={onRefresh}
       />
+
+      {nextClassToday && (
+        <section className="glass-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border-l-4 border-l-[var(--accent)] px-5 py-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <CalendarDays className="h-4 w-4 shrink-0 text-[var(--accent)]" />
+            <div>
+              <span className="font-semibold text-[var(--text-primary)]">
+                Tiết học tiếp theo hôm nay: {nextClassToday.title}
+              </span>
+              <span className="ml-2 font-mono text-[var(--accent)]">
+                {nextClassToday.startTime}–{nextClassToday.endTime}
+              </span>
+              {nextClassToday.location && (
+                <span className="ml-2 text-[var(--text-muted)]">· Phòng {nextClassToday.location}</span>
+              )}
+            </div>
+          </div>
+          <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-0.5 font-mono text-[11px] font-medium text-[var(--accent)]">
+            {nextClassToday.diffM <= 0
+              ? "Đang diễn ra"
+              : nextClassToday.diffM < 60
+              ? `Còn ${nextClassToday.diffM} phút`
+              : `Còn ${Math.floor(nextClassToday.diffM / 60)}h ${nextClassToday.diffM % 60}p`}
+          </span>
+        </section>
+      )}
 
       {pinnedVault.length > 0 && (
         <section className="glass-card rounded-2xl p-4">

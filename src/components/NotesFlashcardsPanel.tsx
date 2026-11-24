@@ -172,6 +172,11 @@ export function NotesFlashcardsPanel({
   const [onlyDue, setOnlyDue] = useState(false);
   const [deckSubject, setDeckSubject] = useState("all");
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [bookPaperMode, setBookPaperMode] = useState(false);
+  const [readProgress, setReadProgress] = useState(0);
+  const [drillMode, setDrillMode] = useState(false);
+  const [drillIdx, setDrillIdx] = useState(0);
+  const [drillShowSol, setDrillShowSol] = useState(false);
 
   const allNoteTags = Array.from(
     new Set(
@@ -984,6 +989,76 @@ export function NotesFlashcardsPanel({
           </div>
         </div>
       ) : subTab === "mistakes" ? (
+        <div className="space-y-4">
+          {mistakes.filter((m) => !m.resolved).length > 0 && (
+            <div className="glass-card flex flex-wrap items-center justify-between gap-2 rounded-2xl px-5 py-3 text-xs">
+              <span className="font-medium text-[var(--text-primary)]">
+                Còn <strong>{mistakes.filter((m) => !m.resolved).length}</strong> lỗi sai chưa nắm vững — ôn lại bằng chế độ thẻ lật nhanh?
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setDrillMode((v) => !v);
+                  setDrillIdx(0);
+                  setDrillShowSol(false);
+                }}
+                className="btn-primary rounded-xl px-3.5 py-1.5 text-xs font-medium"
+              >
+                {drillMode ? "Quay về danh sách" : "Luyện đề lỗi sai (Drill)"}
+              </button>
+            </div>
+          )}
+          {drillMode && (() => {
+            const unresolved = mistakes.filter((m) => !m.resolved);
+            const cur = unresolved[drillIdx % Math.max(1, unresolved.length)];
+            if (!cur) return null;
+            return (
+              <div className="glass-card rounded-2xl p-6 space-y-4">
+                <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
+                  <span>Câu lỗi sai #{(drillIdx % unresolved.length) + 1} / {unresolved.length}</span>
+                  <span>Che lời giải → Tự nhớ lại</span>
+                </div>
+                <div className="text-base font-semibold text-[var(--text-primary)]">{cur.question}</div>
+                <div className="text-xs text-rose-500">Nguyên nhân từng sai: {cur.reason}</div>
+                {drillShowSol ? (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs text-[var(--text-primary)]">
+                    <strong>Cách giải chuẩn:</strong> {cur.solution}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setDrillShowSol(true)}
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-4 py-2 text-xs font-medium text-[var(--accent)]"
+                  >
+                    Hiện lời giải & kiểm tra
+                  </button>
+                )}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await toggleMistake(cur);
+                      playUiTick("check");
+                      setDrillShowSol(false);
+                    }}
+                    className="btn-primary rounded-xl px-4 py-2 text-xs font-medium"
+                  >
+                    Đã hiểu vững (Đánh dấu xong)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDrillIdx((i) => i + 1);
+                      setDrillShowSol(false);
+                    }}
+                    className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-xs text-[var(--text-secondary)]"
+                  >
+                    Câu tiếp theo →
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         <div className="grid gap-6 lg:grid-cols-12">
           <form onSubmit={handleAddMistake} className="glass-card space-y-3 p-5 lg:col-span-5">
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">
@@ -1080,6 +1155,7 @@ export function NotesFlashcardsPanel({
               })
             )}
           </div>
+        </div>
         </div>
       ) : subTab === "typing" ? (
         <div className="glass-card mx-auto max-w-xl p-6">
@@ -1604,29 +1680,77 @@ export function NotesFlashcardsPanel({
           onClick={() => setReadingNote(null)}
         >
           <div
-            className="animate-pop max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl"
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              const max = Math.max(1, el.scrollHeight - el.clientHeight);
+              setReadProgress(Math.min(100, Math.round((el.scrollTop / max) * 100)));
+            }}
+            style={bookPaperMode ? { backgroundColor: "#faf6ee", color: "#1c1917" } : undefined}
+            className="animate-pop relative max-h-[88vh] w-full max-w-[680px] overflow-y-auto rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="sticky -top-6 -mx-6 mb-4 h-1 bg-[var(--bg-elevated)]">
+              <div className="h-full bg-[var(--accent)] transition-all" style={{ width: `${readProgress}%` }} />
+            </div>
             <div className="flex items-start justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
-              <h3 className="text-xl font-medium text-[var(--text-primary)]">
+              <h3 className="text-xl font-medium">
                 {readingNote.title}
               </h3>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={() => setBookPaperMode((v) => !v)}
+                  className="rounded-lg border border-[var(--border-subtle)] px-2.5 py-1 text-xs"
+                >
+                  {bookPaperMode ? "Nền chuẩn" : "Giấy sách"}
+                </button>
+                <button
+                  type="button"
                   onClick={() => exportNoteMd(readingNote)}
-                  className="rounded-lg border border-[var(--border-subtle)] px-2.5 py-1 text-xs text-[var(--text-secondary)]"
+                  className="rounded-lg border border-[var(--border-subtle)] px-2.5 py-1 text-xs"
                 >
                   Tải .md
                 </button>
                 <button type="button" onClick={() => setReadingNote(null)}>
-                  <X className="h-4 w-4 text-[var(--text-muted)]" />
+                  <X className="h-4 w-4 opacity-70" />
                 </button>
               </div>
             </div>
-            <div className="mt-4">
+            <div className="mt-4 leading-relaxed">
               <MarkdownView content={readingNote.content} />
             </div>
+            {(() => {
+              const wikiRefs = Array.from(readingNote.content.matchAll(/\[\[([^\]]+)\]\]/g)).map((m) =>
+                (m[1] ?? "").trim().toLowerCase()
+              );
+              const linked = notes.filter(
+                (other) =>
+                  other.id !== readingNote.id &&
+                  (wikiRefs.some((r) => other.title.toLowerCase().includes(r)) ||
+                    other.content.toLowerCase().includes(`[[${readingNote.title.toLowerCase()}]]`))
+              );
+              if (linked.length === 0) return null;
+              return (
+                <div className="mt-6 border-t border-[var(--border-subtle)] pt-3 text-xs">
+                  <div className="mb-2 font-semibold opacity-80">Liên kết ghi chú liên quan (Backlinks):</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {linked.map((ln) => (
+                      <button
+                        key={ln.id}
+                        type="button"
+                        onClick={() => {
+                          setReadingNote(ln);
+                          setReadProgress(0);
+                        }}
+                        className="rounded-lg border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2.5 py-1 font-medium text-[var(--accent)]"
+                      >
+                        ↗ {ln.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

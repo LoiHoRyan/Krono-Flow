@@ -81,6 +81,43 @@ export function SubjectTodoPanel({
   const [subtasksMap, setSubtasksMap] = useState<Record<string, { id: string; text: string; done: boolean }[]>>({});
   const [openSubTodoId, setOpenSubTodoId] = useState<string | null>(null);
   const [newSubText, setNewSubText] = useState("");
+  const [selectedTodoIds, setSelectedTodoIds] = useState<string[]>([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const toggleSelectTodo = (id: string) => {
+    setSelectedTodoIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const runBulkTodos = async (action: "done" | "tomorrow" | "delete") => {
+    if (selectedTodoIds.length === 0) return;
+    setBulkBusy(true);
+    try {
+      const tomorrowIso = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      await Promise.all(
+        selectedTodoIds.map((id) => {
+          if (action === "delete") return fetch(`/api/todos/${id}`, { method: "DELETE" });
+          if (action === "done")
+            return fetch(`/api/todos/${id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: "done", isCompleted: true }),
+            });
+          return fetch(`/api/todos/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dueDate: tomorrowIso }),
+          });
+        })
+      );
+      setSelectedTodoIds([]);
+      playUiTick("check");
+      onRefresh();
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -241,6 +278,11 @@ export function SubjectTodoPanel({
   };
 
   const handleDeleteSubject = async (id: string) => {
+    const sub = subjects.find((s) => s.id === id);
+    const relTodos = todos.filter((t) => t.subjectId === id).length;
+    const relSess = sessions.filter((s) => s.subjectId === id).length;
+    const msg = `Xóa môn "${sub?.name ?? ""}"? Hiện có ${relTodos} công việc và ${relSess} phiên học gắn với môn này.`;
+    if (!window.confirm(msg)) return;
     await fetch(`/api/subjects/${id}`, { method: "DELETE" });
     onRefresh();
   };
@@ -685,6 +727,46 @@ export function SubjectTodoPanel({
                 </div>
               </div>
 
+              {selectedTodoIds.length > 0 && (
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-3 py-2 text-xs">
+                  <span className="font-semibold text-[var(--accent)]">
+                    Đang chọn {selectedTodoIds.length} việc
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      disabled={bulkBusy}
+                      onClick={() => runBulkTodos("done")}
+                      className="btn-primary rounded-lg px-2.5 py-1 text-[11px] font-medium disabled:opacity-50"
+                    >
+                      Xong hết
+                    </button>
+                    <button
+                      type="button"
+                      disabled={bulkBusy}
+                      onClick={() => runBulkTodos("tomorrow")}
+                      className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-primary)]"
+                    >
+                      Dời ngày mai
+                    </button>
+                    <button
+                      type="button"
+                      disabled={bulkBusy}
+                      onClick={() => runBulkTodos("delete")}
+                      className="rounded-lg bg-rose-600 px-2.5 py-1 text-[11px] font-medium text-white"
+                    >
+                      Xóa đã chọn
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTodoIds([])}
+                      className="px-2 py-1 text-[11px] text-[var(--text-muted)]"
+                    >
+                      Bỏ chọn
+                    </button>
+                  </div>
+                </div>
+              )}
               <ul className="mt-3 space-y-2">
                 {filteredTodos.map((todo) => {
                   const sub = todo.subjectId ? subjectMap.get(todo.subjectId) : undefined;
@@ -703,6 +785,13 @@ export function SubjectTodoPanel({
                       {sortBy === "default" && (
                         <GripVertical className="h-3.5 w-3.5 shrink-0 cursor-grab text-[var(--text-muted)] opacity-60" />
                       )}
+                      <input
+                        type="checkbox"
+                        checked={selectedTodoIds.includes(todo.id)}
+                        onChange={() => toggleSelectTodo(todo.id)}
+                        title="Chọn nhiều việc"
+                        className="h-3.5 w-3.5 shrink-0 accent-[var(--accent)]"
+                      />
                       <button
                         type="button"
                         onClick={() => setTodoStatus(todo, todo.isCompleted ? "todo" : "done")}

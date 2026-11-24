@@ -36,6 +36,8 @@ import {
   BellRing,
   MoonStar,
   WifiOff,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -184,12 +186,46 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [tab, setTabRaw] = useState<TabId>("dashboard");
   const [isOffline, setIsOffline] = useState(false);
   const [hiddenTabs, setHiddenTabs] = useState<string[]>([]);
+  const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
+  const [scrollMap, setScrollMap] = useState<Record<string, number>>({});
 
-  const setTab = useCallback((next: TabId) => {
-    setTabRaw(next);
-    localStorage.setItem("kronoflow-last-tab", next);
-    playUiTick("tab");
-  }, []);
+  const setTab = useCallback(
+    (next: TabId) => {
+      if (typeof window !== "undefined") {
+        setScrollMap((prev) => ({ ...prev, [tab]: window.scrollY }));
+      }
+      if (next !== "dashboard") {
+        localStorage.setItem("kronoflow-last-context", next);
+      }
+      setTabRaw(next);
+      localStorage.setItem("kronoflow-last-tab", next);
+      playUiTick("tab");
+      setTimeout(() => {
+        const y = scrollMap[next] ?? 0;
+        if (typeof window !== "undefined") window.scrollTo({ top: y, behavior: "instant" as ScrollBehavior });
+      }, 40);
+    },
+    [tab, scrollMap]
+  );
+
+  useEffect(() => {
+    let timerId: ReturnType<typeof setInterval> | null = null;
+    const setupWellness = () => {
+      if (timerId) clearInterval(timerId);
+      const mins = Number(localStorage.getItem("kronoflow-wellness-mins") || "0");
+      if (mins > 0) {
+        timerId = setInterval(() => {
+          notify(`Đã qua ${mins} phút — hãy đứng dậy vươn vai và uống 1 ngụm nước nhé!`);
+        }, mins * 60 * 1000);
+      }
+    };
+    setupWellness();
+    window.addEventListener("kronoflow-wellness-change", setupWellness);
+    return () => {
+      if (timerId) clearInterval(timerId);
+      window.removeEventListener("kronoflow-wellness-change", setupWellness);
+    };
+  }, [notify]);
 
   useEffect(() => {
     const savedTab = localStorage.getItem("kronoflow-last-tab") as TabId | null;
@@ -605,10 +641,26 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             {NAV_GROUPS.map((grp) => (
               <div key={grp.titleEn}>
                 {sidebarMode === "full" && (
-                  <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                    {lang === "vi" ? grp.titleVi : grp.titleEn}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCollapsedGroups((prev) =>
+                        prev.includes(grp.titleEn)
+                          ? prev.filter((x) => x !== grp.titleEn)
+                          : [...prev, grp.titleEn]
+                      )
+                    }
+                    className="mb-1 flex w-full items-center justify-between px-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  >
+                    <span>{lang === "vi" ? grp.titleVi : grp.titleEn}</span>
+                    {collapsedGroups.includes(grp.titleEn) ? (
+                      <ChevronRight className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                  </button>
                 )}
+                {!(sidebarMode === "full" && collapsedGroups.includes(grp.titleEn)) && (
                 <div className="space-y-0.5">
                   {grp.ids.map((id) => {
                     if (hiddenTabs.includes(id)) return null;
@@ -674,6 +726,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                     );
                   })}
                 </div>
+                )}
               </div>
             ))}
           </nav>
@@ -917,7 +970,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               timeBlocks={props.timeBlocks}
               notes={props.notes}
               resources={props.resources}
+              slots={props.slots}
               onOpenWeeklyReview={() => setReviewOpen(true)}
+              onResumeTab={(id) => setTab(id as TabId)}
               onJumpFocus={(title) => {
                 if (title) setFocusedTaskTitle(title);
                 setTab("focus");
@@ -1249,6 +1304,37 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                         <span className="text-[10px] text-rose-500">Sổ Lỗi Sai</span>
                       </button>
                     ))}
+                  {(() => {
+                    try {
+                      const raw = localStorage.getItem("kronoflow-cheatsheets");
+                      const arr = raw ? (JSON.parse(raw) as { id: string; title: string; body: string }[]) : [];
+                      return arr
+                        .filter(
+                          (c) =>
+                            c.title.toLowerCase().includes(cmdQuery.toLowerCase()) ||
+                            c.body.toLowerCase().includes(cmdQuery.toLowerCase())
+                        )
+                        .slice(0, 3)
+                        .map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard?.writeText(c.body).catch(() => {});
+                              notify(`Đã chép nhanh: ${c.title}`);
+                              setCmdOpen(false);
+                              setCmdQuery("");
+                            }}
+                            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]"
+                          >
+                            <span className="truncate">📋 {c.title}</span>
+                            <span className="text-[10px] text-emerald-500">Chép công thức</span>
+                          </button>
+                        ));
+                    } catch {
+                      return null;
+                    }
+                  })()}
                 </>
               )}
               {NAV_DEF.filter((item) =>

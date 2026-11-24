@@ -82,6 +82,7 @@ export function StudioSettingsPanel({
   const [bedtime, setBedtime] = useState("23:30");
   const [highContrast, setHighContrast] = useState(false);
   const [hiddenTabs, setHiddenTabs] = useState<string[]>([]);
+  const [wellnessMins, setWellnessMins] = useState(0);
   const [savedAccents, setSavedAccents] = useState<string[]>(["#2563eb", "#0f766e", "#7c3aed", "#e11d48", "#d97706"]);
   const [diagText, setDiagText] = useState<string | null>(null);
   const [autoDayNight, setAutoDayNight] = useState(false);
@@ -103,6 +104,8 @@ export function StudioSettingsPanel({
     try {
       const rawH = localStorage.getItem("kronoflow-hidden-tabs");
       if (rawH) setHiddenTabs(JSON.parse(rawH));
+      const wM = Number(localStorage.getItem("kronoflow-wellness-mins") || "0");
+      if (!isNaN(wM)) setWellnessMins(wM);
     } catch {
       // ignore
     }
@@ -950,6 +953,30 @@ export function StudioSettingsPanel({
                 </div>
               </div>
               <div className="space-y-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2.5 text-xs sm:col-span-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
+                  <span className="text-[var(--text-secondary)]">Nhắc đứng dậy vận động & uống nước định kỳ:</span>
+                  <div className="flex gap-1.5">
+                    {([0, 45, 60] as const).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => {
+                          setWellnessMins(m);
+                          localStorage.setItem("kronoflow-wellness-mins", String(m));
+                          window.dispatchEvent(new Event("kronoflow-wellness-change"));
+                        }}
+                        className={cn(
+                          "rounded-lg px-2.5 py-1 text-[11px] font-medium",
+                          wellnessMins === m
+                            ? "bg-[var(--accent)] text-white"
+                            : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                        )}
+                      >
+                        {m === 0 ? "Tắt" : `Mỗi ${m}p`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="text-[var(--text-secondary)]">Ẩn/Hiện các mục phụ trên Sidebar:</div>
                 <div className="flex flex-wrap gap-1.5">
                   {(

@@ -662,8 +662,13 @@ export function HabitsVaultPanel({
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <div className="mt-1 font-mono text-[11px] text-[var(--text-muted)]">
-                  Trang {b.currentPage} / {b.totalPages} ({pct}%)
+                <div className="mt-1 flex items-center justify-between font-mono text-[11px] text-[var(--text-muted)]">
+                  <span>Trang {b.currentPage} / {b.totalPages} ({pct}%)</span>
+                  <span>
+                    {b.currentPage >= b.totalPages
+                      ? "Đã đọc xong ✓"
+                      : `~${Math.max(1, Math.ceil((b.totalPages - b.currentPage) / 15))} ngày (15tr/ngày)`}
+                  </span>
                 </div>
                 <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
                   <div className="progress-sheen h-full rounded-full bg-[var(--accent)]" style={{ width: `${pct}%` }} />

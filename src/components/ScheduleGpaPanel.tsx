@@ -449,6 +449,47 @@ export function ScheduleGpaPanel({
               </div>
             );
           })()}
+          {grades.length > 0 && (() => {
+            const buckets: Record<string, number> = { "A+/A": 0, "B+/B": 0, "C+/C": 0, "D/F": 0 };
+            for (const g of grades) {
+              const lt = toGpa4(g.score10).letter;
+              if (lt.startsWith("A")) buckets["A+/A"] = (buckets["A+/A"] ?? 0) + g.credits;
+              else if (lt.startsWith("B")) buckets["B+/B"] = (buckets["B+/B"] ?? 0) + g.credits;
+              else if (lt.startsWith("C")) buckets["C+/C"] = (buckets["C+/C"] ?? 0) + g.credits;
+              else buckets["D/F"] = (buckets["D/F"] ?? 0) + g.credits;
+            }
+            const tot = Math.max(1, totalCredits);
+            const colors: Record<string, string> = {
+              "A+/A": "bg-emerald-500",
+              "B+/B": "bg-sky-500",
+              "C+/C": "bg-amber-400",
+              "D/F": "bg-rose-500",
+            };
+            return (
+              <div className="mt-3 space-y-1.5 text-[11px]">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[var(--text-muted)]">
+                  <span>Phân bố điểm chữ theo tín chỉ:</span>
+                  <div className="flex flex-wrap gap-3">
+                    {Object.entries(buckets).map(([k, v]) => (
+                      <span key={k}>
+                        {k}: <strong className="font-mono text-[var(--text-primary)]">{Math.round((v / tot) * 100)}%</strong>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex h-2 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                  {Object.entries(buckets).map(([k, v]) => (
+                    <div
+                      key={k}
+                      className={colors[k] ?? "bg-[var(--accent)]"}
+                      style={{ width: `${(v / tot) * 100}%` }}
+                      title={`${k}: ${v} tín chỉ`}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           <form onSubmit={handleAddGrade} className="mt-4 flex flex-wrap gap-2">
             <input
