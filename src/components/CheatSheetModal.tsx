@@ -12,6 +12,12 @@ interface SnippetItem {
 
 const DEFAULT_SNIPPETS: SnippetItem[] = [
   {
+    id: "lang-ref-1",
+    title: "Quy đổi nhanh IELTS · TOEIC · VSTEP · CEFR",
+    category: "Ngoại ngữ",
+    body: "B1 (VSTEP 4.0-5.5) ≈ IELTS 4.5-5.0 ≈ TOEIC 550+ | B2 (VSTEP 6.0-8.0) ≈ IELTS 5.5-6.5 ≈ TOEIC 785+ | C1 (VSTEP 8.5+) ≈ IELTS 7.0-8.0 ≈ TOEIC 945+",
+  },
+  {
     id: "acad-1",
     title: "Email xin phép / hỏi bài Giảng viên chuẩn mực",
     category: "Học thuật",

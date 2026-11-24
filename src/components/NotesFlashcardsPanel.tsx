@@ -257,6 +257,10 @@ export function NotesFlashcardsPanel({
   const [reverseCard, setReverseCard] = useState(false);
   const [compactNotes, setCompactNotes] = useState(false);
   const [noteAiFcBusy, setNoteAiFcBusy] = useState(false);
+  const [slideMode, setSlideMode] = useState(false);
+  const [slideIdx, setSlideIdx] = useState(0);
+  const [blindRecall, setBlindRecall] = useState(false);
+  const [blindText, setBlindText] = useState("");
 
   const printMistakesA4 = () => {
     const win = window.open("", "_blank");
@@ -466,6 +470,10 @@ ${note.content}`, count: 5 }),
       }
       const savedCols = localStorage.getItem("kronoflow-note-colors");
       if (savedCols) setNoteColors(JSON.parse(savedCols));
+      const nv = localStorage.getItem("kronoflow-notes-view");
+      if (nv === "pastel") setPastelMode(true);
+      else if (nv === "timeline") setNotesTimeline(true);
+      else if (nv === "compact") setCompactNotes(true);
     } catch {
       // ignore
     }
@@ -974,6 +982,29 @@ ${note.content}`, count: 5 }),
               className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               <Printer className="h-3.5 w-3.5" /> In Sổ Lỗi Sai A4
+            </button>
+          )}
+          {subTab === "mistakes" && mistakes.some((m) => !m.resolved) && (
+            <button
+              type="button"
+              onClick={async () => {
+                const open = mistakes.filter((m) => !m.resolved);
+                if (!window.confirm(`Đánh dấu đã hiểu vững toàn bộ ${open.length} lỗi sai hiện tại?`)) return;
+                await Promise.all(
+                  open.map((m) =>
+                    fetch(`/api/mistakes/${m.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ resolved: true }),
+                    })
+                  )
+                );
+                playUiTick("check");
+                onRefresh();
+              }}
+              className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"
+            >
+              ✓ Đánh dấu vững hết
             </button>
           )}
           {subTab === "notes" && filteredNotes.length > 0 && (
@@ -2421,6 +2452,29 @@ ${note.content}`, count: 5 }),
                 </button>
                 <button
                   type="button"
+                  onClick={() => {
+                    setSlideMode((v) => !v);
+                    setSlideIdx(0);
+                  }}
+                  className={cn(
+                    "rounded-lg border px-2 py-1 text-[11px]",
+                    slideMode ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]" : "border-[var(--border-subtle)]"
+                  )}
+                >
+                  {slideMode ? "Thoát Slide" : "Trình chiếu"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBlindRecall((v) => !v)}
+                  className={cn(
+                    "rounded-lg border px-2 py-1 text-[11px]",
+                    blindRecall ? "border-amber-500 bg-amber-500/15 text-amber-600" : "border-[var(--border-subtle)]"
+                  )}
+                >
+                  {blindRecall ? "Tắt tự viết" : "Tự viết lại"}
+                </button>
+                <button
+                  type="button"
                   disabled={guideLoading}
                   onClick={() => handleGenerateStudyGuide(readingNote)}
                   className="rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-medium text-[var(--accent)] disabled:opacity-50"
@@ -2454,7 +2508,61 @@ ${note.content}`, count: 5 }),
                 </button>
               </div>
             </div>
-            <div className={cn("mt-4 leading-relaxed", readerFont === "serif" ? "font-serif" : readerFont === "mono" ? "font-mono text-xs" : "font-sans")}>
+            {blindRecall && (
+              <div className="mt-4 space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
+                <div className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                  Chế độ Tự viết không nhìn (di chuột vào bài bên dưới để đối chiếu):
+                </div>
+                <textarea
+                  rows={4}
+                  value={blindText}
+                  onChange={(e) => setBlindText(e.target.value)}
+                  placeholder="Gõ lại những ý chính bạn nhớ được từ ghi chú này..."
+                  className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                />
+              </div>
+            )}
+            {slideMode ? (() => {
+              const slides = readingNote.content
+                .split(/(?=^## )/m)
+                .map((s) => s.trim())
+                .filter(Boolean);
+              const totalS = Math.max(1, slides.length);
+              const curSlide = slides[slideIdx % totalS] ?? readingNote.content;
+              return (
+                <div className="mt-4 space-y-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-5">
+                  <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
+                    <span>Trang {(slideIdx % totalS) + 1} / {totalS}</span>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setSlideIdx((i) => (i - 1 + totalS) % totalS)}
+                        className="rounded-lg border border-[var(--border-subtle)] px-2.5 py-1 text-xs"
+                      >
+                        ← Trước
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSlideIdx((i) => (i + 1) % totalS)}
+                        className="btn-primary rounded-lg px-2.5 py-1 text-xs"
+                      >
+                        Tiếp →
+                      </button>
+                    </div>
+                  </div>
+                  <div className="min-h-[160px] py-2">
+                    <MarkdownView content={curSlide} />
+                  </div>
+                </div>
+              );
+            })() : (
+            <div
+              className={cn(
+                "mt-4 leading-relaxed transition-all",
+                blindRecall && "blur-sm hover:blur-none",
+                readerFont === "serif" ? "font-serif" : readerFont === "mono" ? "font-mono text-xs" : "font-sans"
+              )}
+            >
               <MarkdownView
                 content={
                   clozeMode
@@ -2463,6 +2571,7 @@ ${note.content}`, count: 5 }),
                 }
               />
             </div>
+            )}
             {guideData && (
               <div className="mt-5 space-y-3 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)]/50 p-4 text-xs">
                 <div className="font-semibold text-[var(--accent)]">✦ Đề cương ôn tập AI</div>

@@ -919,6 +919,7 @@ export function PomodoroTimer({
                 <span className="text-[var(--text-muted)]">Nhịp sinh học:</span>
                 {(
                   [
+                    [15, "15' Chống trì hoãn"],
                     [52, "52' Học (52/17)"],
                     [17, "17' Nghỉ"],
                     [90, "90' Ultradian"],
@@ -1028,7 +1029,14 @@ export function PomodoroTimer({
                   />
                 </svg>
                 <div className="absolute flex flex-col items-center">
-                  <span className="font-mono text-5xl font-bold tracking-tight tabular-nums text-[var(--text-primary)]">
+                  <span
+                    className={cn(
+                      "font-mono text-5xl font-bold tracking-tight tabular-nums transition-colors",
+                      timer.isRunning && timer.secondsLeft <= 60 && timer.secondsLeft > 0
+                        ? "animate-pulse text-rose-500"
+                        : "text-[var(--text-primary)]"
+                    )}
+                  >
                     {formatDuration(timer.secondsLeft)}
                   </span>
                   <span className="mt-1.5 flex items-center gap-1 text-[11px] font-medium text-[var(--text-muted)]">
@@ -1063,6 +1071,11 @@ export function PomodoroTimer({
                   <span className="font-mono text-[var(--text-primary)]">
                     {isCycleComplete ? "4/4" : `${cyclePos}/4`}
                   </span>
+                  {todayFocusedMins > 0 && (
+                    <span className="rounded-md bg-[var(--bg-elevated)] px-1.5 py-0.5 text-[10px]">
+                      Học/Nghỉ đề xuất: {todayFocusedMins}p / {Math.round(todayFocusedMins / 5)}p
+                    </span>
+                  )}
                   {isCycleComplete && (
                     <button
                       type="button"
@@ -1620,6 +1633,11 @@ export function PomodoroTimer({
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
+                    {s.actualMinutes >= 45 && (
+                      <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-violet-600 dark:text-violet-400">
+                        Deep
+                      </span>
+                    )}
                     <span className="font-mono text-xs font-semibold tabular-nums text-[var(--text-primary)]">
                       {s.actualMinutes}p
                     </span>

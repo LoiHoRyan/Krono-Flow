@@ -219,6 +219,20 @@ export function ExpensesPanel({
           <div className="mt-2 font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">
             {allTotal.toLocaleString("vi-VN")} ₫
           </div>
+          {(() => {
+            const curYr = new Date().toISOString().slice(0, 4);
+            const yrTotal = expenses
+              .filter((e) => e.spentDate.startsWith(curYr))
+              .reduce((a, b) => a + b.amount, 0);
+            return (
+              <div className="mt-1.5 text-xs text-[var(--text-muted)]">
+                Tổng năm {curYr}:{" "}
+                <strong className="font-mono text-[var(--text-primary)]">
+                  {yrTotal.toLocaleString("vi-VN")} ₫
+                </strong>
+              </div>
+            );
+          })()}
           {totalStudyHours > 0 && (
             <div className="mt-2 text-xs text-[var(--text-muted)]">
               Chi phí bình quân / giờ học (ROI):{" "}

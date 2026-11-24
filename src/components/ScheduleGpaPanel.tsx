@@ -90,6 +90,7 @@ export function ScheduleGpaPanel({
   const [remCredits, setRemCredits] = useState(30);
   const [goalCumGpa, setGoalCumGpa] = useState(3.6);
   const [gradCredits, setGradCredits] = useState(130);
+  const [semFilter, setSemFilter] = useState("Tất cả");
 
   useEffect(() => {
     const rawGc = Number(localStorage.getItem("kronoflow-grad-credits") || "130");
@@ -669,6 +670,26 @@ export function ScheduleGpaPanel({
             </button>
           </form>
 
+          {grades.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
+              <span className="text-[var(--text-muted)]">Lọc học kỳ:</span>
+              {["Tất cả", ...Array.from(new Set(grades.map((g) => g.semester)))].map((sem) => (
+                <button
+                  key={sem}
+                  type="button"
+                  onClick={() => setSemFilter(sem)}
+                  className={cn(
+                    "rounded-lg px-2.5 py-0.5 font-medium",
+                    semFilter === sem
+                      ? "bg-[var(--accent)] text-white"
+                      : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                  )}
+                >
+                  {sem}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
@@ -683,7 +704,7 @@ export function ScheduleGpaPanel({
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)]">
-                {grades.map((g) => {
+                {grades.filter((g) => semFilter === "Tất cả" || g.semester === semFilter).map((g) => {
                   const conv = toGpa4(g.score10);
                   const semesterMap = new Map<string, { weighted4: number; credits: number }>();
   for (const g of grades) {

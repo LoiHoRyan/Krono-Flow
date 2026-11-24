@@ -506,6 +506,10 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       } else if (e.key.toLowerCase() === "p" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         setPrivacyMode((v) => !v);
+      } else if (e.altKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        const el = document.querySelector<HTMLInputElement>('main input[type="text"]');
+        if (el) el.focus();
       } else if (e.altKey && e.key >= "1" && e.key <= "9") {
         const target = NAV_DEF[Number(e.key) - 1];
         if (target) {
@@ -1514,6 +1518,14 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                   </button>
                 );
               })}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between border-t border-[var(--border-subtle)] pt-2 text-[10px] text-[var(--text-muted)]">
+              <span>
+                {props.todos.filter((t) => !t.isCompleted).length} việc chưa xong ·{" "}
+                {props.flashcards.filter((c) => !c.nextReviewAt || new Date(c.nextReviewAt).getTime() <= Date.now()).length} thẻ cần ôn ·{" "}
+                {props.exams.length} kỳ thi
+              </span>
+              <span>Alt+F: Tìm nhanh</span>
             </div>
           </div>
         </div>

@@ -12,6 +12,7 @@ import {
   BookOpen,
   Pin,
   Tag,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -87,6 +88,26 @@ export function HabitsVaultPanel({
   const [vaultQuery, setVaultQuery] = useState("");
   const [bookQuery, setBookQuery] = useState("");
   const [sleepMap, setSleepMap] = useState<Record<string, number>>({});
+  const [weeklyPageGoal, setWeeklyPageGoal] = useState(100);
+
+  useEffect(() => {
+    const wp = Number(localStorage.getItem("kronoflow-weekly-pages") || "100");
+    if (!isNaN(wp) && wp > 0) setWeeklyPageGoal(wp);
+  }, []);
+
+  const exportHabitsCsv = () => {
+    const header = "Thoi quen,Ngay hoan thanh\n";
+    const rows = habits
+      .map((h) => `"${h.title.replaceAll('"', '""')}","${h.completedDates.join("; ")}"`)
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + header + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kronoflow-habits-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   useEffect(() => {
     try {
@@ -303,6 +324,17 @@ export function HabitsVaultPanel({
           </span>
         </div>
 
+        {habits.length > 0 && (
+          <div className="mt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={exportHabitsCsv}
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1 text-[11px] font-medium text-[var(--accent)] hover:border-[var(--accent)]"
+            >
+              <Download className="h-3 w-3" /> Xuất CSV thói quen
+            </button>
+          </div>
+        )}
         <form onSubmit={handleAddHabit} className="mt-4 flex flex-wrap items-center gap-2">
           <input
             type="text"
@@ -730,13 +762,31 @@ export function HabitsVaultPanel({
         </form>
 
         {books.length > 0 && (
-          <input
-            type="text"
-            value={bookQuery}
-            onChange={(e) => setBookQuery(e.target.value)}
-            placeholder="Tìm nhanh sách trên kệ..."
-            className="mt-3 w-full max-w-xs rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
-          />
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <input
+              type="text"
+              value={bookQuery}
+              onChange={(e) => setBookQuery(e.target.value)}
+              placeholder="Tìm nhanh sách trên kệ..."
+              className="w-full max-w-xs rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+            />
+            <label className="inline-flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+              Chỉ tiêu đọc/tuần:
+              <input
+                type="number"
+                min={10}
+                step={10}
+                value={weeklyPageGoal}
+                onChange={(e) => {
+                  const v = Math.max(10, Number(e.target.value));
+                  setWeeklyPageGoal(v);
+                  localStorage.setItem("kronoflow-weekly-pages", String(v));
+                }}
+                className="w-16 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-primary)]"
+              />
+              trang · Tổng đã đọc: <strong className="font-mono text-[var(--accent)]">{books.reduce((a, b) => a + b.currentPage, 0)} tr</strong>
+            </label>
+          </div>
         )}
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {books.filter((b) => !bookQuery.trim() || b.title.toLowerCase().includes(bookQuery.toLowerCase())).map((b) => {

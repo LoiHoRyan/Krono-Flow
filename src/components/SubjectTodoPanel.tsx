@@ -86,6 +86,7 @@ export function SubjectTodoPanel({
   const [selectedTodoIds, setSelectedTodoIds] = useState<string[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [todoLinks, setTodoLinks] = useState<Record<string, string>>({});
+  const [groupBySub, setGroupBySub] = useState(false);
 
   useEffect(() => {
     try {
@@ -451,7 +452,7 @@ export function SubjectTodoPanel({
     .sort((a, b) => {
       if (sortBy === "priority") return prioWeight[a.priority] - prioWeight[b.priority];
       if (sortBy === "due") return (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999");
-      if (sortBy === "subject") return (a.subjectId ?? "zzz").localeCompare(b.subjectId ?? "zzz");
+      if (groupBySub || sortBy === "subject") return (a.subjectId ?? "zzz").localeCompare(b.subjectId ?? "zzz");
       const ia = todoOrder.indexOf(a.id);
       const ib = todoOrder.indexOf(b.id);
       if (ia !== -1 && ib !== -1) return ia - ib;
@@ -846,6 +847,18 @@ export function SubjectTodoPanel({
                     Dọn việc đã xong
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setGroupBySub((v) => !v)}
+                  className={cn(
+                    "rounded-lg border px-2 py-1 text-[11px] font-medium",
+                    groupBySub
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                      : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)]"
+                  )}
+                >
+                  {groupBySub ? "Đang gom theo môn" : "Gom theo môn"}
+                </button>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as "default" | "due" | "priority" | "subject")}
