@@ -776,6 +776,35 @@ export function DashboardBento({
         onRefresh={onRefresh}
       />
 
+      {/* MỐC THÀNH TÍCH TIẾP THEO (NEXT MILESTONE CARD) */}
+      {!cleanMode && (() => {
+        const totalHrs = +(
+          sessions.filter((s) => s.status === "completed").reduce((a, b) => a + b.actualMinutes, 0) / 60
+        ).toFixed(1);
+        const targets = [5, 10, 25, 50, 100, 250, 500];
+        const nextHrs = targets.find((h) => h > totalHrs) ?? Math.ceil((totalHrs + 50) / 50) * 50;
+        const hrsPct = Math.min(100, Math.round((totalHrs / nextHrs) * 100));
+        const nextStreak = [3, 7, 14, 30, 60, 100].find((d) => d > streak) ?? streak + 30;
+        return (
+          <div className="glass-card flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-2.5 text-xs">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-4 w-4 shrink-0 text-amber-500" />
+              <span className="text-[var(--text-secondary)]">
+                Mốc sắp chạm: <strong className="text-[var(--text-primary)]">{nextHrs} giờ học</strong>{" "}
+                (đã đạt {totalHrs}h · còn {Math.max(0, +(nextHrs - totalHrs).toFixed(1))}h) · Chuỗi tiếp theo:{" "}
+                <strong className="text-[var(--accent)]">{nextStreak} ngày</strong>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 w-24 overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                <div className="h-full rounded-full bg-amber-500" style={{ width: `${hrsPct}%` }} />
+              </div>
+              <span className="font-mono text-[11px] font-semibold text-amber-600">{hrsPct}%</span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* LỊCH TUẦN THU GỌN (MINI WEEK STRIP) + GỢI Ý MỤC TIÊU NGÀY */}
       {!cleanMode && (() => {
         const now = new Date();

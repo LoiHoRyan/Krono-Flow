@@ -68,6 +68,7 @@ export function QuickScratchpad({
         </p>
 
         <textarea
+          autoFocus
           value={text}
           onChange={(e) => handleChange(e.target.value)}
           placeholder={

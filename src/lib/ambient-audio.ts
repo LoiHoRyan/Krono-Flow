@@ -128,6 +128,7 @@ class MultiChannelAmbientEngine {
 
   playBell(styleOverride?: BellStyle) {
     if (typeof window === "undefined") return;
+    if (!styleOverride && localStorage.getItem("kronoflow-mute-bell") === "on") return;
     const ctx = this.ensureContext();
     if (!ctx) return;
     const saved = (localStorage.getItem("kronoflow-bell") as BellStyle | null) ?? "soft";

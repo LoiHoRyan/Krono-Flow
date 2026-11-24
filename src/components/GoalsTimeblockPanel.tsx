@@ -46,6 +46,29 @@ export function GoalsTimeblockPanel({
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [tbView, setTbView] = useState<"grid" | "list">("grid");
   const [tbWide, setTbWide] = useState(false);
+  const [top3, setTop3] = useState<{ text: string; done: boolean }[]>([
+    { text: "", done: false },
+    { text: "", done: false },
+    { text: "", done: false },
+  ]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("kronoflow-top3-week");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length === 3) setTop3(parsed);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const updateTop3 = (idx: number, patch: Partial<{ text: string; done: boolean }>) => {
+    const next = top3.map((it, i) => (i === idx ? { ...it, ...patch } : it));
+    setTop3(next);
+    localStorage.setItem("kronoflow-top3-week", JSON.stringify(next));
+  };
   useEffect(() => {
     const t = setInterval(() => {
       const d = new Date();
@@ -184,6 +207,45 @@ export function GoalsTimeblockPanel({
 
   return (
     <div className="grid gap-6 lg:grid-cols-12">
+      {/* TOP 3 TRỌNG TÂM TUẦN */}
+      <section className="glass-card rounded-2xl p-5 lg:col-span-12">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-amber-500" />
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+              3 Trọng tâm quan trọng nhất tuần này (Top 3 Weekly Priorities)
+            </h3>
+          </div>
+          <span className="font-mono text-xs text-[var(--accent)]">
+            {top3.filter((x) => x.done && x.text.trim()).length}/3 hoàn thành
+          </span>
+        </div>
+        <div className="grid gap-2.5 sm:grid-cols-3">
+          {top3.map((item, idx) => (
+            <div
+              key={idx}
+              className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2"
+            >
+              <input
+                type="checkbox"
+                checked={item.done}
+                onChange={() => updateTop3(idx, { done: !item.done })}
+                className="h-4 w-4 shrink-0 accent-[var(--accent)]"
+              />
+              <input
+                type="text"
+                value={item.text}
+                onChange={(e) => updateTop3(idx, { text: e.target.value })}
+                placeholder={`Trọng tâm #${idx + 1}...`}
+                className={cn(
+                  "w-full bg-transparent text-xs outline-none",
+                  item.done ? "line-through text-[var(--text-muted)]" : "text-[var(--text-primary)]"
+                )}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
       {/* DAILY TIME BLOCKING */}
       <section className={cn("glass-card card-lift rounded-2xl p-6", tbWide ? "lg:col-span-12" : "lg:col-span-6")}>
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -223,6 +285,13 @@ export function GoalsTimeblockPanel({
               className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:text-[var(--accent)]"
             >
               {tbWide ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))}
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--accent)] hover:border-[var(--accent)]"
+            >
+              Hôm nay
             </button>
             <input
               type="date"

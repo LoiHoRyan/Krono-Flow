@@ -510,6 +510,19 @@ export function SubjectTodoPanel({
                 </button>
               </div>
             </div>
+            <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
+              <span>Ước tính theo tín chỉ (1 TC ≈ 30h):</span>
+              {([2, 3, 4] as const).map((tc) => (
+                <button
+                  key={tc}
+                  type="button"
+                  onClick={() => setTargetHours(tc * 30)}
+                  className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-1.5 py-0.5 hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  {tc} TC → {tc * 30}h
+                </button>
+              ))}
+            </div>
           </form>
 
           <ul className="mt-5 space-y-2.5">
@@ -692,6 +705,29 @@ export function SubjectTodoPanel({
                   </button>
                 </div>
               )}
+              {activeTodos.length > 0 && (() => {
+                const hi = activeTodos.filter((t) => t.priority === "high").length;
+                const md = activeTodos.filter((t) => t.priority === "medium").length;
+                const lo = activeTodos.filter((t) => t.priority === "low").length;
+                const tot = Math.max(1, activeTodos.length);
+                return (
+                  <div className="mt-3 space-y-1 text-[11px]">
+                    <div className="flex items-center justify-between text-[var(--text-muted)]">
+                      <span>Phân bổ ưu tiên việc chưa xong ({activeTodos.length}):</span>
+                      <span className="flex gap-2.5">
+                        <span className="text-rose-500">Cao: {hi}</span>
+                        <span className="text-amber-600">Vừa: {md}</span>
+                        <span>Thấp: {lo}</span>
+                      </span>
+                    </div>
+                    <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                      <div className="bg-rose-500" style={{ width: `${(hi / tot) * 100}%` }} />
+                      <div className="bg-amber-400" style={{ width: `${(md / tot) * 100}%` }} />
+                      <div className="bg-zinc-400" style={{ width: `${(lo / tot) * 100}%` }} />
+                    </div>
+                  </div>
+                );
+              })()}
               <form
                 onSubmit={handleCreateEbbinghaus}
                 className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs"

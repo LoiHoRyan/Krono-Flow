@@ -149,6 +149,21 @@ export function ExpensesPanel({
               className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-primary)]"
             />
           </div>
+          {(() => {
+            const now = new Date();
+            const curYm = now.toISOString().slice(0, 7);
+            if (selectedMonth !== curYm || monthTotal <= 0) return null;
+            const daysPassed = Math.max(1, now.getDate());
+            const totalDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+            const dailyAvg = Math.round(monthTotal / daysPassed);
+            const projected = dailyAvg * totalDays;
+            return (
+              <div className="mt-1 text-[11px] text-[var(--text-muted)]">
+                TB: <strong className="font-mono text-[var(--text-primary)]">{dailyAvg.toLocaleString("vi-VN")} ₫/ngày</strong> · Dự báo cuối tháng:{" "}
+                <strong className="font-mono text-[var(--accent)]">{projected.toLocaleString("vi-VN")} ₫</strong>
+              </div>
+            );
+          })()}
           {momPct !== null && (
             <div className="mt-1 text-[11px] text-[var(--text-muted)]">
               So với tháng trước ({prevMonthPrefix}):{" "}

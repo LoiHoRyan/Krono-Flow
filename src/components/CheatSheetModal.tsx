@@ -130,6 +130,7 @@ export function CheatSheetModal({
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            autoFocus
             placeholder="Tên công thức / ghi nhớ..."
             className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-primary)] sm:col-span-5"
           />

@@ -24,6 +24,10 @@ import {
   Coffee,
   Zap,
   Droplets,
+  Download,
+  BellOff,
+  Bell,
+  Presentation,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { ambientEngine, AmbientChannel, BellStyle } from "@/lib/ambient-audio";
@@ -69,7 +73,53 @@ export function PomodoroTimer({
   onSessionSaved?: () => void;
 }) {
   const timer = useTimer();
-  const [clockTab, setClockTab] = useState<"pomodoro" | "exam" | "stopwatch">("pomodoro");
+  const [clockTab, setClockTab] = useState<"pomodoro" | "exam" | "stopwatch" | "rehearsal">("pomodoro");
+  const [rehTargetMins, setRehTargetMins] = useState(10);
+  const [rehElapsed, setRehElapsed] = useState(0);
+  const [rehRunning, setRehRunning] = useState(false);
+  const [muteBell, setMuteBell] = useState(false);
+  const [recentPresets, setRecentPresets] = useState<string[]>([]);
+
+  useEffect(() => {
+    setMuteBell(localStorage.getItem("kronoflow-mute-bell") === "on");
+    try {
+      const raw = localStorage.getItem("kronoflow-recent-focus");
+      if (raw) setRecentPresets(JSON.parse(raw));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!rehRunning) return;
+    const id = setInterval(() => setRehElapsed((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [rehRunning]);
+
+  const rememberFocusPreset = (note: string) => {
+    const clean = note.trim();
+    if (!clean) return;
+    const next = [clean, ...recentPresets.filter((x) => x !== clean)].slice(0, 4);
+    setRecentPresets(next);
+    localStorage.setItem("kronoflow-recent-focus", JSON.stringify(next));
+  };
+
+  const exportSessionsCsv = () => {
+    const header = "Ngay gio,Che do,So phut,Mon hoc,Ghi chu\n";
+    const rows = sessions
+      .map((s) => {
+        const subName = s.subjectId ? (subjectMap.get(s.subjectId)?.name ?? "") : "";
+        return `"${new Date(s.startedAt).toLocaleString("vi-VN")}","${s.mode}",${s.actualMinutes},"${subName.replaceAll('"', '""')}","${(s.notes ?? "").replaceAll('"', '""')}"`;
+      })
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + header + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kronoflow-sessions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const [zenMode, setZenMode] = useState(false);
   const [zenTheme, setZenTheme] = useState<"aurora" | "sunset" | "ocean" | "minimal">("aurora");
   const [breathOpen, setBreathOpen] = useState(false);
@@ -378,6 +428,7 @@ export function PomodoroTimer({
       <section
         className={cn(
           "glass-card card-lift rounded-2xl p-6",
+          timer.isRunning && "focus-active-glow",
           zenMode ? "mx-auto my-auto w-full max-w-2xl shadow-2xl" : "lg:col-span-7"
         )}
       >
@@ -388,6 +439,7 @@ export function PomodoroTimer({
                 ["pomodoro", "Pomodoro"],
                 ["exam", "Thi thử (60–120')"],
                 ["stopwatch", "Đếm xuôi"],
+                ["rehearsal", "Thuyết trình"],
               ] as const
             ).map(([k, label]) => (
               <button
@@ -406,6 +458,25 @@ export function PomodoroTimer({
             ))}
           </div>
 
+          <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              const next = !muteBell;
+              setMuteBell(next);
+              localStorage.setItem("kronoflow-mute-bell", next ? "on" : "off");
+            }}
+            title={muteBell ? "Chuông hết giờ đang tắt (Thư viện)" : "Tắt chuông hết giờ (Chế độ thư viện)"}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-medium",
+              muteBell
+                ? "border-rose-500/40 bg-rose-500/10 text-rose-500"
+                : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+            )}
+          >
+            {muteBell ? <BellOff className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
+            <span className="hidden sm:inline">{muteBell ? "Tắt chuông" : "Chuông"}</span>
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -422,6 +493,7 @@ export function PomodoroTimer({
             {zenMode ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
             {zenMode ? "Thoát Toàn màn hình" : "Toàn màn hình"}
           </button>
+          </div>
         </div>
 
         {/* STUDY SCENE PRESETS + PiP + BREATHING 4-7-8 */}
@@ -577,7 +649,85 @@ export function PomodoroTimer({
           </div>
         )}
 
-        {clockTab === "stopwatch" ? (
+        {clockTab === "rehearsal" ? (() => {
+          const targetSec = rehTargetMins * 60;
+          const warnSec = Math.round(targetSec * 0.8);
+          const isOver = rehElapsed > targetSec;
+          const isWarn = !isOver && rehElapsed >= warnSec;
+          return (
+            <div className="my-8 flex flex-col items-center">
+              <div className="mb-4 flex items-center gap-2 text-xs">
+                <Presentation className="h-4 w-4 text-[var(--accent)]" />
+                <span className="text-[var(--text-secondary)]">Thời lượng bài thuyết trình:</span>
+                {([5, 10, 15, 20] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    disabled={rehRunning}
+                    onClick={() => {
+                      setRehTargetMins(m);
+                      setRehElapsed(0);
+                    }}
+                    className={cn(
+                      "rounded-lg border px-2.5 py-1 font-mono text-xs",
+                      rehTargetMins === m
+                        ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] font-semibold"
+                        : "border-[var(--border-subtle)] text-[var(--text-muted)]"
+                    )}
+                  >
+                    {m}p
+                  </button>
+                ))}
+              </div>
+              <div
+                className={cn(
+                  "flex h-56 w-56 flex-col items-center justify-center rounded-full border-4 transition-colors",
+                  isOver
+                    ? "border-rose-500 bg-rose-500/10"
+                    : isWarn
+                    ? "border-amber-500 bg-amber-500/10"
+                    : "border-[var(--accent)]/40 bg-[var(--bg-canvas)]"
+                )}
+              >
+                <span
+                  className={cn(
+                    "font-mono text-5xl font-semibold tabular-nums",
+                    isOver ? "text-rose-500" : isWarn ? "text-amber-600" : "text-[var(--text-primary)]"
+                  )}
+                >
+                  {formatDuration(rehElapsed)}
+                </span>
+                <span className="mt-1.5 text-[11px] font-medium text-[var(--text-muted)]">
+                  {isOver
+                    ? `Lố giờ +${formatDuration(rehElapsed - targetSec)}!`
+                    : isWarn
+                    ? "Sắp hết giờ (≥80%) · Chốt ý!"
+                    : `Mục tiêu ${rehTargetMins} phút`}
+                </span>
+              </div>
+              <div className="mt-6 flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setRehRunning((r) => !r)}
+                  className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium"
+                >
+                  {rehRunning ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  {rehRunning ? "Tạm dừng" : "Bắt đầu tập nói"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRehRunning(false);
+                    setRehElapsed(0);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-4 py-2.5 text-xs text-[var(--text-secondary)]"
+                >
+                  <RotateCcw className="h-4 w-4" /> Đặt lại
+                </button>
+              </div>
+            </div>
+          );
+        })() : clockTab === "stopwatch" ? (
           <div className="my-8 flex flex-col items-center">
             <div className="flex h-56 w-56 flex-col items-center justify-center rounded-full border-4 border-[var(--border-subtle)] bg-[var(--bg-canvas)] shadow-inner">
               <TimerIcon className="h-5 w-5 text-[var(--accent)]" />
@@ -815,12 +965,27 @@ export function PomodoroTimer({
                 className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
               />
             </div>
+            {recentPresets.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[11px]">
+                <span className="text-[var(--text-muted)]">Gần đây:</span>
+                {recentPresets.map((rp) => (
+                  <button
+                    key={rp}
+                    type="button"
+                    onClick={() => timer.setNotes(rp)}
+                    className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-0.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                  >
+                    {rp}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
               {!timer.isRunning ? (
                 <button
                   type="button"
-                  onClick={() => { playUiTick("check"); timer.start(); }}
+                  onClick={() => { playUiTick("check"); rememberFocusPreset(timer.notes); timer.start(); }}
                   className="btn-primary inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold"
                 >
                   <Play className="h-4 w-4" />
@@ -1089,9 +1254,21 @@ export function PomodoroTimer({
                 Lưu trữ thời gian thực trên PostgreSQL
               </p>
             </div>
-            <span className="rounded-lg bg-[var(--bg-elevated)] px-2.5 py-1 font-mono text-[11px] text-[var(--text-secondary)]">
-              {sessions.length} phiên
-            </span>
+            <div className="flex items-center gap-1.5">
+              {sessions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={exportSessionsCsv}
+                  title="Xuất lịch sử phiên học ra Excel/CSV"
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-[11px] font-medium text-[var(--accent)] hover:border-[var(--accent)]"
+                >
+                  <Download className="h-3 w-3" /> CSV
+                </button>
+              )}
+              <span className="rounded-lg bg-[var(--bg-elevated)] px-2.5 py-1 font-mono text-[11px] text-[var(--text-secondary)]">
+                {sessions.length} phiên
+              </span>
+            </div>
           </div>
           <div className="mt-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2.5 text-[11px]">
             <div className="flex flex-wrap items-center justify-between gap-1.5">

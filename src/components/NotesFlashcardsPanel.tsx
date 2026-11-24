@@ -223,6 +223,8 @@ export function NotesFlashcardsPanel({
   const [deckSubject, setDeckSubject] = useState("all");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [bookPaperMode, setBookPaperMode] = useState(false);
+  const [clozeMode, setClozeMode] = useState(false);
+  const [notesTimeline, setNotesTimeline] = useState(false);
   const [readProgress, setReadProgress] = useState(0);
   const [drillMode, setDrillMode] = useState(false);
   const [drillIdx, setDrillIdx] = useState(0);
@@ -804,6 +806,20 @@ export function NotesFlashcardsPanel({
               <StickyNote className="h-3.5 w-3.5" /> {pastelMode ? "Bảng ghim Pastel" : "Lưới chuẩn"}
             </button>
           )}
+          {subTab === "notes" && (
+            <button
+              type="button"
+              onClick={() => setNotesTimeline((v) => !v)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium",
+                notesTimeline
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                  : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)]"
+              )}
+            >
+              <Clock className="h-3.5 w-3.5" /> {notesTimeline ? "Đang xem: Dòng thời gian" : "Dòng thời gian"}
+            </button>
+          )}
           {subTab === "notes" && filteredNotes.length > 0 && (
             <button
               type="button"
@@ -1108,7 +1124,7 @@ export function NotesFlashcardsPanel({
               ))}
             </div>
           )}
-          <div className={cn("lg:col-span-7", pastelMode ? "columns-1 gap-4 space-y-4 sm:columns-2" : "grid gap-4 sm:grid-cols-2")}>
+          <div className={cn("lg:col-span-7", notesTimeline ? "space-y-3 border-l-2 border-[var(--accent)]/40 pl-4" : pastelMode ? "columns-1 gap-4 space-y-4 sm:columns-2" : "grid gap-4 sm:grid-cols-2")}>
             {filteredNotes.map((n) => {
               const sub = n.subjectId ? subjectMap.get(n.subjectId) : undefined;
               const pCol = pastelMode ? noteColors[n.id] : "";
@@ -2037,6 +2053,19 @@ export function NotesFlashcardsPanel({
                 </button>
                 <button
                   type="button"
+                  onClick={() => setClozeMode((v) => !v)}
+                  title="Ẩn các từ khóa in đậm (**...**) thành chỗ trống để tự kiểm tra trí nhớ"
+                  className={cn(
+                    "rounded-lg border px-2.5 py-1 text-xs font-medium",
+                    clozeMode
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                      : "border-[var(--border-subtle)]"
+                  )}
+                >
+                  {clozeMode ? "Hiện từ khóa" : "Điền khuyết"}
+                </button>
+                <button
+                  type="button"
                   disabled={guideLoading}
                   onClick={() => handleGenerateStudyGuide(readingNote)}
                   className="rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-medium text-[var(--accent)] disabled:opacity-50"
@@ -2063,7 +2092,13 @@ export function NotesFlashcardsPanel({
               </div>
             </div>
             <div className="mt-4 leading-relaxed">
-              <MarkdownView content={readingNote.content} />
+              <MarkdownView
+                content={
+                  clozeMode
+                    ? readingNote.content.replace(/\*\*([^*]+)\*\*/g, "`[ ________ ]`")
+                    : readingNote.content
+                }
+              />
             </div>
             {guideData && (
               <div className="mt-5 space-y-3 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)]/50 p-4 text-xs">
