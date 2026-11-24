@@ -43,6 +43,7 @@ import {
   ArrowUp,
   Flame,
   RefreshCw,
+  Monitor,
 } from "lucide-react";
 import { cn, formatDuration, normalizeVi } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -58,6 +59,7 @@ import { WeeklyReviewModal } from "@/components/WeeklyReviewModal";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { CheatSheetModal } from "@/components/CheatSheetModal";
 import { LastMinuteCramModal } from "@/components/LastMinuteCramModal";
+import { StandbyClockModal } from "@/components/StandbyClockModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -296,6 +298,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [cheatOpen, setCheatOpen] = useState(false);
   const [cramOpen, setCramOpen] = useState(false);
+  const [standbyOpen, setStandbyOpen] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
   const [privacyMode, setPrivacyMode] = useState(false);
   const [dndMode, setDndMode] = useState(false);
@@ -482,6 +485,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         setQuickOpen(false);
         setHelpOpen(false);
         setAiOpen(false);
+        setStandbyOpen(false);
       }
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
@@ -506,6 +510,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       } else if (e.key.toLowerCase() === "p" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         setPrivacyMode((v) => !v);
+      } else if (e.altKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        setStandbyOpen((v) => !v);
       } else if (e.altKey && e.key.toLowerCase() === "f") {
         e.preventDefault();
         const el = document.querySelector<HTMLInputElement>('main input[type="text"]');
@@ -605,6 +612,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         />
       )}
       <CheatSheetModal open={cheatOpen} onClose={() => setCheatOpen(false)} />
+      <StandbyClockModal open={standbyOpen} onClose={() => setStandbyOpen(false)} />
       <LastMinuteCramModal
         open={cramOpen}
         notes={props.notes}
@@ -922,6 +930,14 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             >
               <Flame className="h-3.5 w-3.5" />
               <span>Ôn gấp 15p</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStandbyOpen(true)}
+              title="Mở Đồng hồ để bàn chờ (Alt+S)"
+              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] xl:inline-flex"
+            >
+              <Monitor className="h-4 w-4" />
             </button>
             <button
               type="button"

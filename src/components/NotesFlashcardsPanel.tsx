@@ -261,6 +261,30 @@ export function NotesFlashcardsPanel({
   const [slideIdx, setSlideIdx] = useState(0);
   const [blindRecall, setBlindRecall] = useState(false);
   const [blindText, setBlindText] = useState("");
+  const [lineHeight, setLineHeight] = useState<"snug" | "relaxed" | "loose">("relaxed");
+  const [reviewedToday, setReviewedToday] = useState<string[]>([]);
+  const [hideResolvedMistakes, setHideResolvedMistakes] = useState(false);
+  const [handsFreePlaying, setHandsFreePlaying] = useState(false);
+
+  useEffect(() => {
+    try {
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const rawRev = localStorage.getItem(`kronoflow-reviewed-${todayIso}`);
+      if (rawRev) setReviewedToday(JSON.parse(rawRev));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleReviewedToday = (noteId: string) => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const next = reviewedToday.includes(noteId)
+      ? reviewedToday.filter((x) => x !== noteId)
+      : [...reviewedToday, noteId];
+    setReviewedToday(next);
+    localStorage.setItem(`kronoflow-reviewed-${todayIso}`, JSON.stringify(next));
+    playUiTick("check");
+  };
 
   const printMistakesA4 = () => {
     const win = window.open("", "_blank");
@@ -729,6 +753,27 @@ ${note.content}`, count: 5 }),
   const deck = weakOnly ? baseDeck.filter((c) => c.mastery <= 2) : baseDeck;
 
   useEffect(() => {
+    if (!handsFreePlaying || subTab !== "flashcards" || deck.length === 0) return;
+    const card = deck[cardIdx % deck.length];
+    if (!card) return;
+    setFlipped(false);
+    speakText(reverseCard ? card.back : card.front);
+    const t1 = setTimeout(() => {
+      setFlipped(true);
+      speakText(reverseCard ? card.front : card.back);
+    }, 3500);
+    const t2 = setTimeout(() => {
+      setFlipped(false);
+      setCardIdx((i) => (i + 1) % deck.length);
+    }, 7500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handsFreePlaying, subTab, cardIdx, deck.length]);
+
+  useEffect(() => {
     if (subTab !== "flashcards" || deck.length === 0) return;
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -1007,6 +1052,15 @@ ${note.content}`, count: 5 }),
               ✓ Đánh dấu vững hết
             </button>
           )}
+          {subTab === "mistakes" && mistakes.some((m) => m.resolved) && (
+            <button
+              type="button"
+              onClick={() => setHideResolvedMistakes((v) => !v)}
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)]"
+            >
+              {hideResolvedMistakes ? "Hiện cả câu đã vững" : "Ẩn câu đã vững"}
+            </button>
+          )}
           {subTab === "notes" && filteredNotes.length > 0 && (
             <button
               type="button"
@@ -1093,6 +1147,19 @@ ${note.content}`, count: 5 }),
                 )}
               >
                 {reverseCard ? "Đang đảo chiều (Sau → Trước)" : "Đảo mặt thẻ"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setHandsFreePlaying((v) => !v)}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-medium",
+                  handsFreePlaying
+                    ? "border-emerald-500 bg-emerald-500/15 text-emerald-600 animate-pulse"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)]"
+                )}
+              >
+                <Volume2 className="h-3.5 w-3.5" />
+                {handsFreePlaying ? "Đang nghe rảnh tay (Dừng)" : "Nghe rảnh tay"}
               </button>
             </>
           )}
@@ -2475,6 +2542,26 @@ ${note.content}`, count: 5 }),
                 </button>
                 <button
                   type="button"
+                  onClick={() => setLineHeight((lh) => (lh === "snug" ? "relaxed" : lh === "relaxed" ? "loose" : "snug"))}
+                  title="Đổi độ giãn dòng khi đọc"
+                  className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-[11px]"
+                >
+                  Dòng: {lineHeight === "snug" ? "Gọn" : lineHeight === "loose" ? "Rộng" : "Thoáng"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleReviewedToday(readingNote.id)}
+                  className={cn(
+                    "rounded-lg border px-2 py-1 text-[11px] font-medium",
+                    reviewedToday.includes(readingNote.id)
+                      ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-600"
+                      : "border-[var(--border-subtle)]"
+                  )}
+                >
+                  {reviewedToday.includes(readingNote.id) ? "✓ Đã ôn hôm nay" : "Đánh dấu đã ôn"}
+                </button>
+                <button
+                  type="button"
                   disabled={guideLoading}
                   onClick={() => handleGenerateStudyGuide(readingNote)}
                   className="rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-medium text-[var(--accent)] disabled:opacity-50"
@@ -2558,7 +2645,7 @@ ${note.content}`, count: 5 }),
             })() : (
             <div
               className={cn(
-                "mt-4 leading-relaxed transition-all",
+                lineHeight === "snug" ? "mt-4 leading-snug transition-all" : lineHeight === "loose" ? "mt-4 leading-loose transition-all" : "mt-4 leading-relaxed transition-all",
                 blindRecall && "blur-sm hover:blur-none",
                 readerFont === "serif" ? "font-serif" : readerFont === "mono" ? "font-mono text-xs" : "font-sans"
               )}

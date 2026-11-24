@@ -98,7 +98,7 @@ export function HabitsVaultPanel({
   const exportHabitsCsv = () => {
     const header = "Thoi quen,Ngay hoan thanh\n";
     const rows = habits
-      .map((h) => `"${h.title.replaceAll('"', '""')}","${h.completedDates.join("; ")}"`)
+      .map((h) => `"${h.title.replaceAll('"', '""')}","${h.dates.join("; ")}"`)
       .join("\n");
     const blob = new Blob(["\uFEFF" + header + rows], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);

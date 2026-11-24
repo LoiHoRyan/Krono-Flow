@@ -72,6 +72,11 @@ export function TimerProvider({
         setIsRunning(false);
         ambientEngine.stop();
         ambientEngine.playBell();
+          if (localStorage.getItem("kronoflow-auto-break") === "on" && true) {
+            setMode("short_break");
+            setCustomMinutes(5);
+            setSecondsLeft(5 * 60);
+          }
         setAmbient("none");
         const { activeSessionId: sid, customMinutes: mins, notes: curNotes, onSessionCompleted: cb } =
           stateRef.current;

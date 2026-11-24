@@ -37,7 +37,7 @@ export function SubjectHubDrawer({
   onClose,
   onFocusSubject,
 }: SubjectHubDrawerProps) {
-  const [syllabusMap, setSyllabusMap] = useState<Record<string, { id: string; title: string; done: boolean }[]>>({});
+  const [syllabusMap, setSyllabusMap] = useState<Record<string, { id: string; title: string; done: boolean; conf?: "low" | "mid" | "high" }[]>>({});
   const [newChap, setNewChap] = useState("");
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export function SubjectHubDrawer({
     }
   }, []);
 
-  const saveSyllabus = (next: Record<string, { id: string; title: string; done: boolean }[]>) => {
+  const saveSyllabus = (next: Record<string, { id: string; title: string; done: boolean; conf?: "low" | "mid" | "high" }[]>) => {
     setSyllabusMap(next);
     localStorage.setItem("kronoflow-syllabus", JSON.stringify(next));
   };
@@ -267,6 +267,31 @@ export function SubjectHubDrawer({
                         {ch.title}
                       </span>
                     </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const order: ("low" | "mid" | "high")[] = ["low", "mid", "high"];
+                          const cur = ch.conf ?? "mid";
+                          const nextC = order[(order.indexOf(cur) + 1) % order.length] ?? "mid";
+                          saveSyllabus({
+                            ...syllabusMap,
+                            [subject.id]: chapters.map((x) =>
+                              x.id === ch.id ? { ...x, conf: nextC } : x
+                            ),
+                          });
+                        }}
+                        title="Đổi mức độ tự tin cho chương này"
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          ch.conf === "high"
+                            ? "bg-emerald-500/15 text-emerald-600"
+                            : ch.conf === "low"
+                            ? "bg-rose-500/15 text-rose-500"
+                            : "bg-amber-500/15 text-amber-600"
+                        }`}
+                      >
+                        {ch.conf === "high" ? "Vững" : ch.conf === "low" ? "Chưa chắc" : "Tạm ổn"}
+                      </button>
                     <button
                       type="button"
                       onClick={() =>
@@ -279,6 +304,7 @@ export function SubjectHubDrawer({
                     >
                       ×
                     </button>
+                    </div>
                   </label>
                 ))}
               </div>

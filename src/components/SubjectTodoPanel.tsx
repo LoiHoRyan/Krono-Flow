@@ -20,6 +20,7 @@ import {
   ListChecks,
   Copy,
   Link2,
+  Download,
 } from "lucide-react";
 import { cn, normalizeVi } from "@/lib/utils";
 import type { SessionLogItem } from "./PomodoroTimer";
@@ -859,6 +860,30 @@ export function SubjectTodoPanel({
                 >
                   {groupBySub ? "Đang gom theo môn" : "Gom theo môn"}
                 </button>
+                {todos.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const header = "Cong viec,Mon hoc,Uu tien,Han chot,Trang thai\n";
+                      const rows = todos
+                        .map((t) => {
+                          const sName = t.subjectId ? (subjectMap.get(t.subjectId)?.name ?? "") : "";
+                          return `"${t.title.replaceAll('"', '""')}","${sName.replaceAll('"', '""')}","${t.priority}","${t.dueDate?.slice(0, 10) ?? ""}","${t.isCompleted ? "Xong" : "Chua xong"}"`;
+                        })
+                        .join("\n");
+                      const blob = new Blob(["\uFEFF" + header + rows], { type: "text/csv;charset=utf-8;" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `kronoflow-todos-${new Date().toISOString().slice(0, 10)}.csv`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-[11px] font-medium text-[var(--accent)]"
+                  >
+                    <Download className="h-3 w-3" /> CSV
+                  </button>
+                )}
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as "default" | "due" | "priority" | "subject")}

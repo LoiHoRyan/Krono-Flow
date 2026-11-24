@@ -259,6 +259,11 @@ export const THEMES: ThemeDef[] = [
 export const WALLPAPERS: { id: string; label: string; style: string }[] = [
   { id: "none", label: "Nền trơn sạch sẽ", style: "none" },
   {
+    id: "ruled-paper",
+    label: "Giấy kẻ ngang",
+    style: "repeating-linear-gradient(transparent, transparent 27px, rgba(148,163,184,0.16) 28px)",
+  },
+  {
     id: "dots",
     label: "Chấm bi sổ tay",
     style: "radial-gradient(rgba(148,163,184,0.25) 1px, transparent 1px)",

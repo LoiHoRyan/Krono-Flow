@@ -812,6 +812,48 @@ export function DashboardBento({
         onRefresh={onRefresh}
       />
 
+      {/* THANH CÂN BẰNG THỜI GIAN THEO MÔN HỌC */}
+      {!cleanMode && subjects.length > 0 && (() => {
+        const subMins = subjects
+          .map((sub) => ({
+            id: sub.id,
+            name: sub.name,
+            color: sub.color,
+            mins: sessions
+              .filter((s) => s.status === "completed" && s.subjectId === sub.id)
+              .reduce((a, b) => a + b.actualMinutes, 0),
+          }))
+          .filter((x) => x.mins > 0)
+          .sort((a, b) => b.mins - a.mins)
+          .slice(0, 4);
+        const tot = subMins.reduce((a, b) => a + b.mins, 0);
+        if (tot === 0) return null;
+        return (
+          <div className="glass-card rounded-2xl px-4 py-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[var(--text-muted)]">
+              <span>Cân bằng thời gian theo môn:</span>
+              <div className="flex flex-wrap gap-2.5">
+                {subMins.map((sm) => (
+                  <span key={sm.id} className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: sm.color }} />
+                    {sm.name} ({Math.round((sm.mins / tot) * 100)}%)
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="mt-2 flex h-2 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+              {subMins.map((sm) => (
+                <div
+                  key={sm.id}
+                  style={{ width: `${(sm.mins / tot) * 100}%`, backgroundColor: sm.color }}
+                  title={`${sm.name}: ${(sm.mins / 60).toFixed(1)}h`}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* MỐC THÀNH TÍCH TIẾP THEO (NEXT MILESTONE CARD) */}
       {!cleanMode && (() => {
         const totalHrs = +(
@@ -1166,6 +1208,26 @@ export function DashboardBento({
                   className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent-soft)] px-2 py-1 text-[11px] font-medium text-[var(--accent)]"
                 >
                   <CalendarRange className="h-3 w-3" /> Chia lịch ôn
+                </button>
+              )}
+              {exams.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const lines = [
+                      "📅 Lịch thi sắp tới:",
+                      ...exams.map((ex) => {
+                        const d = Math.ceil((new Date(ex.examDate).getTime() - Date.now()) / 86400000);
+                        return `• ${ex.title} — ${ex.examDate.slice(0, 10)} (${d >= 0 ? `còn ${d} ngày` : "đã qua"})`;
+                      }),
+                    ];
+                    navigator.clipboard?.writeText(lines.join("\n")).catch(() => {});
+                    window.alert("Đã sao chép danh sách Lịch thi để gửi nhóm học!");
+                  }}
+                  title="Sao chép lịch thi gửi nhóm học"
+                  className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-[11px] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                >
+                  <Copy className="h-3 w-3" /> Chép lịch
                 </button>
               )}
             </div>

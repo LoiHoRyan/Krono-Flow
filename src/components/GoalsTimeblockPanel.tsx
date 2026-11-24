@@ -517,6 +517,18 @@ export function GoalsTimeblockPanel({
                       <span className="font-mono text-xs text-[var(--accent)]">
                         {g.currentValue}/{g.targetValue} {g.unit} ({pct}%)
                       </span>
+                      {g.deadline && g.currentValue < g.targetValue && (() => {
+                        const weeksLeft = Math.max(
+                          1,
+                          Math.ceil((new Date(g.deadline).getTime() - Date.now()) / (7 * 86400000))
+                        );
+                        const perWeek = Math.ceil((g.targetValue - g.currentValue) / weeksLeft);
+                        return (
+                          <span className="hidden rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-muted)] sm:inline">
+                            ~{perWeek} {g.unit}/tuần
+                          </span>
+                        );
+                      })()}
                       <button
                         type="button"
                         onClick={() => deleteGoal(g.id)}

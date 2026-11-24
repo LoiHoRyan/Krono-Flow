@@ -79,6 +79,7 @@ export function PomodoroTimer({
   const [rehElapsed, setRehElapsed] = useState(0);
   const [rehRunning, setRehRunning] = useState(false);
   const [muteBell, setMuteBell] = useState(false);
+  const [autoBreak, setAutoBreak] = useState(false);
   const [recentPresets, setRecentPresets] = useState<string[]>([]);
   const [focusRatings, setFocusRatings] = useState<number[]>([]);
 
@@ -100,6 +101,7 @@ export function PomodoroTimer({
 
   useEffect(() => {
     setMuteBell(localStorage.getItem("kronoflow-mute-bell") === "on");
+    setAutoBreak(localStorage.getItem("kronoflow-auto-break") === "on");
     try {
       const raw = localStorage.getItem("kronoflow-recent-focus");
       if (raw) setRecentPresets(JSON.parse(raw));
@@ -580,6 +582,23 @@ export function PomodoroTimer({
           >
             {muteBell ? <BellOff className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
             <span className="hidden sm:inline">{muteBell ? "Tắt chuông" : "Chuông"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !autoBreak;
+              setAutoBreak(next);
+              localStorage.setItem("kronoflow-auto-break", next ? "on" : "off");
+            }}
+            title="Tự động chuyển sang 5 phút nghỉ ngắn sau khi hết phiên học"
+            className={cn(
+              "hidden items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-medium sm:inline-flex",
+              autoBreak
+                ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+            )}
+          >
+            {autoBreak ? "Tự nghỉ: Bật" : "Tự nghỉ"}
           </button>
           <button
             type="button"
