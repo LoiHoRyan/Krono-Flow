@@ -85,14 +85,6 @@ export function SubjectTodoPanel({
   const [selectedTodoIds, setSelectedTodoIds] = useState<string[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
 
-  useEffect(() => {
-    localStorage.setItem("kronoflow-todo-view", view);
-  }, [view]);
-
-  useEffect(() => {
-    localStorage.setItem("kronoflow-todo-filter", filter);
-  }, [filter]);
-
   const duplicateTodo = async (todo: TodoItem) => {
     await fetch("/api/todos", {
       method: "POST",
@@ -252,6 +244,14 @@ export function SubjectTodoPanel({
   const [priority, setPriority] = useState<TodoItem["priority"]>("medium");
   const [filter, setFilter] = useState<"all" | "pending" | "done" | "today" | "week" | "high" | "overdue">("all");
   const [sortBy, setSortBy] = useState<"default" | "due" | "priority" | "subject">("default");
+
+  useEffect(() => {
+    localStorage.setItem("kronoflow-todo-view", view);
+  }, [view]);
+
+  useEffect(() => {
+    localStorage.setItem("kronoflow-todo-filter", filter);
+  }, [filter]);
   const [todoOrder, setTodoOrder] = useState<string[]>([]);
   const [dragListId, setDragListId] = useState<string | null>(null);
 
