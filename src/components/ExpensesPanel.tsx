@@ -19,10 +19,12 @@ const CATEGORIES = ["Sách & Giáo trình", "Khóa học", "In ấn & Dụng c�
 
 export function ExpensesPanel({
   expenses,
+  totalStudyHours = 0,
   onNotify,
   onRefresh,
 }: {
   expenses: ExpenseRecord[];
+  totalStudyHours?: number;
   onNotify: (msg: string) => void;
   onRefresh: () => void;
 }) {
@@ -176,6 +178,14 @@ export function ExpensesPanel({
           <div className="mt-2 font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">
             {allTotal.toLocaleString("vi-VN")} ₫
           </div>
+          {totalStudyHours > 0 && (
+            <div className="mt-2 text-xs text-[var(--text-muted)]">
+              Chi phí bình quân / giờ học (ROI):{" "}
+              <strong className="font-mono text-[var(--accent)]">
+                {Math.round(allTotal / Math.max(0.5, totalStudyHours)).toLocaleString("vi-VN")} ₫/giờ
+              </strong>
+            </div>
+          )}
         </div>
       </div>
 

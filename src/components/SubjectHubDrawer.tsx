@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import {
   X,
   Clock,
@@ -35,7 +37,25 @@ export function SubjectHubDrawer({
   onClose,
   onFocusSubject,
 }: SubjectHubDrawerProps) {
+  const [syllabusMap, setSyllabusMap] = useState<Record<string, { id: string; title: string; done: boolean }[]>>({});
+  const [newChap, setNewChap] = useState("");
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("kronoflow-syllabus");
+      if (raw) setSyllabusMap(JSON.parse(raw));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const saveSyllabus = (next: Record<string, { id: string; title: string; done: boolean }[]>) => {
+    setSyllabusMap(next);
+    localStorage.setItem("kronoflow-syllabus", JSON.stringify(next));
+  };
+
   if (!subject) return null;
+  const chapters = syllabusMap[subject.id] ?? [];
 
   const subSessions = sessions.filter(
     (s) => s.status === "completed" && s.subjectId === subject.id
@@ -185,6 +205,85 @@ export function SubjectHubDrawer({
               </div>
             </div>
           )}
+
+          <div>
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+              Tiến độ chương học / Giáo trình ({chapters.filter((c) => c.done).length}/{chapters.length})
+            </h4>
+            <div className="flex gap-1.5">
+              <input
+                type="text"
+                value={newChap}
+                onChange={(e) => setNewChap(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newChap.trim()) {
+                    e.preventDefault();
+                    saveSyllabus({
+                      ...syllabusMap,
+                      [subject.id]: [...chapters, { id: String(Date.now()), title: newChap.trim(), done: false }],
+                    });
+                    setNewChap("");
+                  }
+                }}
+                placeholder="VD: Chương 1: Tổng quan..."
+                className="flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs outline-none focus:border-[var(--accent)]"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (!newChap.trim()) return;
+                  saveSyllabus({
+                    ...syllabusMap,
+                    [subject.id]: [...chapters, { id: String(Date.now()), title: newChap.trim(), done: false }],
+                  });
+                  setNewChap("");
+                }}
+                className="btn-primary rounded-xl px-3 py-1.5 text-xs font-medium"
+              >
+                Thêm
+              </button>
+            </div>
+            {chapters.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {chapters.map((ch) => (
+                  <label
+                    key={ch.id}
+                    className="flex cursor-pointer items-center justify-between gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs"
+                  >
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={ch.done}
+                        onChange={() =>
+                          saveSyllabus({
+                            ...syllabusMap,
+                            [subject.id]: chapters.map((x) =>
+                              x.id === ch.id ? { ...x, done: !x.done } : x
+                            ),
+                          })
+                        }
+                      />
+                      <span className={ch.done ? "line-through text-[var(--text-muted)]" : "text-[var(--text-primary)]"}>
+                        {ch.title}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        saveSyllabus({
+                          ...syllabusMap,
+                          [subject.id]: chapters.filter((x) => x.id !== ch.id),
+                        })
+                      }
+                      className="text-[var(--text-muted)] hover:text-rose-500"
+                    >
+                      ×
+                    </button>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
 
           {subExams.length > 0 && (
             <div>

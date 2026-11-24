@@ -38,6 +38,8 @@ import {
   WifiOff,
   ChevronDown,
   ChevronRight,
+  BellOff,
+  Bell,
 } from "lucide-react";
 import { cn, formatDuration } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -253,6 +255,8 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [cheatOpen, setCheatOpen] = useState(false);
   const [privacyMode, setPrivacyMode] = useState(false);
+  const [dndMode, setDndMode] = useState(false);
+  const [fabLeft, setFabLeft] = useState(false);
   const [warmLevel, setWarmLevel] = useState(0);
   const [fontScale, setFontScale] = useState<"95%" | "100%" | "108%">("100%");
   const [bedtimeWarning, setBedtimeWarning] = useState<string | null>(null);
@@ -352,7 +356,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       const mins = Number(localStorage.getItem("kronoflow-wellness-mins") || "0");
       if (mins > 0) {
         timerId = setInterval(() => {
-          notify(`Đã qua ${mins} phút — hãy đứng dậy vươn vai và uống 1 ngụm nước nhé!`);
+          if (localStorage.getItem("kronoflow-dnd") !== "on") {
+            notify(`Đã qua ${mins} phút — hãy đứng dậy vươn vai và uống 1 ngụm nước nhé!`);
+          }
         }, mins * 60 * 1000);
       }
     };
@@ -557,7 +563,10 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
           props.onRefresh();
         }}
       />
-      <div className="no-print fixed bottom-24 right-4 z-40 flex flex-col gap-2.5 lg:bottom-7 lg:right-7">
+      <div className={cn(
+          "no-print fixed bottom-24 z-40 flex flex-col gap-2.5 lg:bottom-7",
+          fabLeft ? "left-4 lg:left-7" : "right-4 lg:right-7"
+        )}>
         <button
           type="button"
           onClick={() => setAiOpen(true)}
@@ -851,6 +860,28 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             >
               {privacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !dndMode;
+                setDndMode(next);
+                localStorage.setItem("kronoflow-dnd", next ? "on" : "off");
+                notify(next ? "Đã bật chế độ Im lặng (DND)" : "Đã tắt chế độ Im lặng");
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setFabLeft((v) => !v);
+              }}
+              title="Bật/Tắt Im lặng không làm phiền (Chuột phải để đổi góc nút nổi AI)"
+              className={cn(
+                "rounded-xl border p-1.5 text-xs transition-colors",
+                dndMode
+                  ? "border-rose-500/50 bg-rose-500/15 text-rose-500"
+                  : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)] hover:border-[var(--accent)]"
+              )}
+            >
+              {dndMode ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+            </button>
             <span
               title="Tiến độ mục tiêu tập trung hôm nay"
               className="hidden items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1 font-mono text-[11px] font-medium text-[var(--accent)] md:inline-flex"
@@ -1055,6 +1086,11 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             <div className="privacy-sensitive">
             <ExpensesPanel
               expenses={props.expenses}
+              totalStudyHours={
+                props.sessions
+                  .filter((s) => s.status === "completed")
+                  .reduce((a, b) => a + b.actualMinutes, 0) / 60
+              }
               onNotify={notify}
               onRefresh={props.onRefresh}
             />

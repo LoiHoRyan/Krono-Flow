@@ -167,8 +167,13 @@ export function StudioSettingsPanel({
       : "unsupported"
   );
 
-  const curTheme = user?.theme ?? "pure-white";
-  const curWp = user?.wallpaper ?? "none";
+  const [curTheme, setCurTheme] = useState(user?.theme ?? "pure-white");
+  const [curWp, setCurWp] = useState(user?.wallpaper ?? "none");
+
+  useEffect(() => {
+    if (user?.theme) setCurTheme(user.theme);
+    if (user?.wallpaper) setCurWp(user.wallpaper);
+  }, [user?.id, user?.theme, user?.wallpaper]);
 
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -220,58 +225,55 @@ export function StudioSettingsPanel({
     reader.readAsDataURL(file);
   };
 
-  const selectTheme = async (themeId: string) => {
+  const selectTheme = (themeId: string) => {
+    setCurTheme(themeId);
     setCustomAccent("");
     onApplyLocalTheme(themeId, curWp, null, fontStyle, borderRadius);
-    await fetch("/api/user", {
+    fetch("/api/user", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ theme: themeId, customAccent: null }),
-    });
-    onRefresh();
+    }).catch(() => {});
   };
 
-  const selectAccent = async (hex: string | null) => {
+  const selectAccent = (hex: string | null) => {
     setCustomAccent(hex ?? "");
     onApplyLocalTheme(curTheme, curWp, hex, fontStyle, borderRadius);
-    await fetch("/api/user", {
+    fetch("/api/user", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ customAccent: hex }),
-    });
-    onRefresh();
+    }).catch(() => {});
   };
 
-  const selectFont = async (nextFont: string) => {
+  const selectFont = (nextFont: string) => {
     setFontStyle(nextFont);
     onApplyLocalTheme(curTheme, curWp, customAccent || null, nextFont, borderRadius);
-    await fetch("/api/user", {
+    fetch("/api/user", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fontStyle: nextFont }),
-    });
-    onRefresh();
+    }).catch(() => {});
   };
 
-  const selectRadius = async (nextRad: string) => {
+  const selectRadius = (nextRad: string) => {
     setBorderRadius(nextRad);
     onApplyLocalTheme(curTheme, curWp, customAccent || null, fontStyle, nextRad);
-    await fetch("/api/user", {
+    fetch("/api/user", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ borderRadius: nextRad }),
-    });
-    onRefresh();
+    }).catch(() => {});
   };
 
-  const selectWallpaper = async (wp: string) => {
+  const selectWallpaper = (wp: string) => {
+    setCurWp(wp);
     onApplyLocalTheme(curTheme, wp, customAccent || null, fontStyle, borderRadius);
-    await fetch("/api/user", {
+    fetch("/api/user", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ wallpaper: wp }),
-    });
-    onRefresh();
+    }).catch(() => {});
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {

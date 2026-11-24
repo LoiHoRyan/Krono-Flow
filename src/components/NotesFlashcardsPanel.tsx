@@ -177,6 +177,71 @@ export function NotesFlashcardsPanel({
   const [drillMode, setDrillMode] = useState(false);
   const [drillIdx, setDrillIdx] = useState(0);
   const [drillShowSol, setDrillShowSol] = useState(false);
+  const [findText, setFindText] = useState("");
+  const [replaceText, setReplaceText] = useState("");
+  const [showFindBar, setShowFindBar] = useState(false);
+  const [guideLoading, setGuideLoading] = useState(false);
+  const [guideData, setGuideData] = useState<{ keyPoints: string[]; questions: string[] } | null>(null);
+
+  useEffect(() => {
+    try {
+      const dm = localStorage.getItem("kronoflow-draft-mistake");
+      if (dm) {
+        const parsed = JSON.parse(dm);
+        if (parsed.q && !mQuestion) setMQuestion(parsed.q);
+        if (parsed.r && !mReason) setMReason(parsed.r);
+        if (parsed.s && !mSolution) setMSolution(parsed.s);
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (mQuestion || mReason || mSolution) {
+      localStorage.setItem(
+        "kronoflow-draft-mistake",
+        JSON.stringify({ q: mQuestion, r: mReason, s: mSolution })
+      );
+    }
+  }, [mQuestion, mReason, mSolution]);
+
+  const handleGenerateStudyGuide = async (note: NoteRecord) => {
+    setGuideLoading(true);
+    setGuideData(null);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const k = localStorage.getItem("kronoflow-gemini-key");
+      if (k) headers["x-gemini-key"] = k;
+      const res = await fetch("/api/ai/study-guide", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ title: note.title, content: note.content }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setGuideData(json.data ?? null);
+      }
+    } finally {
+      setGuideLoading(false);
+    }
+  };
+
+  const handleNoteToFlashcard = async (note: NoteRecord) => {
+    await fetch("/api/flashcards", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        front: `Tóm tắt trọng tâm: ${note.title}`,
+        back: note.content.slice(0, 350),
+        subjectId: note.subjectId ?? null,
+      }),
+    });
+    playUiTick("check");
+    onRefresh();
+    window.alert("Đã chuyển ghi chú thành 1 thẻ Flashcard mới!");
+  };
 
   const allNoteTags = Array.from(
     new Set(
@@ -401,6 +466,7 @@ export function NotesFlashcardsPanel({
       setMQuestion("");
       setMReason("");
       setMSolution("");
+      localStorage.removeItem("kronoflow-draft-mistake");
       onRefresh();
     }
   };
@@ -791,7 +857,42 @@ export function NotesFlashcardsPanel({
                 <Columns2 className="h-3 w-3" />
                 {splitPreview ? "Đang chia đôi" : "Chia đôi xem trước"}
               </button>
+              <button
+                type="button"
+                onClick={() => setShowFindBar((v) => !v)}
+                className="rounded-lg px-2 py-0.5 text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)]"
+              >
+                Tìm & Thay
+              </button>
             </div>
+            {showFindBar && (
+              <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2 text-xs">
+                <input
+                  type="text"
+                  value={findText}
+                  onChange={(e) => setFindText(e.target.value)}
+                  placeholder="Tìm từ..."
+                  className="flex-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-xs"
+                />
+                <input
+                  type="text"
+                  value={replaceText}
+                  onChange={(e) => setReplaceText(e.target.value)}
+                  placeholder="Thay bằng..."
+                  className="flex-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!findText) return;
+                    setNoteContent((prev) => prev.replaceAll(findText, replaceText));
+                  }}
+                  className="btn-primary rounded-lg px-2.5 py-1 text-[11px] font-medium"
+                >
+                  Thay hết
+                </button>
+              </div>
+            )}
             <div className={cn("grid gap-2.5", splitPreview ? "sm:grid-cols-2" : "grid-cols-1")}>
               <textarea
                 rows={7}
@@ -1706,6 +1807,21 @@ export function NotesFlashcardsPanel({
                 </button>
                 <button
                   type="button"
+                  disabled={guideLoading}
+                  onClick={() => handleGenerateStudyGuide(readingNote)}
+                  className="rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-medium text-[var(--accent)] disabled:opacity-50"
+                >
+                  {guideLoading ? "Đang tạo..." : "✦ Đề cương AI"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNoteToFlashcard(readingNote)}
+                  className="rounded-lg border border-[var(--border-subtle)] px-2.5 py-1 text-xs"
+                >
+                  → Flashcard
+                </button>
+                <button
+                  type="button"
                   onClick={() => exportNoteMd(readingNote)}
                   className="rounded-lg border border-[var(--border-subtle)] px-2.5 py-1 text-xs"
                 >
@@ -1719,6 +1835,27 @@ export function NotesFlashcardsPanel({
             <div className="mt-4 leading-relaxed">
               <MarkdownView content={readingNote.content} />
             </div>
+            {guideData && (
+              <div className="mt-5 space-y-3 rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-soft)]/50 p-4 text-xs">
+                <div className="font-semibold text-[var(--accent)]">✦ Đề cương ôn tập AI</div>
+                <div>
+                  <div className="font-medium">5 Ý cốt lõi:</div>
+                  <ul className="mt-1 list-disc space-y-1 pl-4">
+                    {guideData.keyPoints.map((kp, i) => (
+                      <li key={i}>{kp}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <div className="font-medium">Câu hỏi tự luận trọng tâm:</div>
+                  <ol className="mt-1 list-decimal space-y-1 pl-4">
+                    {guideData.questions.map((q, i) => (
+                      <li key={i}>{q}</li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+            )}
             {(() => {
               const wikiRefs = Array.from(readingNote.content.matchAll(/\[\[([^\]]+)\]\]/g)).map((m) =>
                 (m[1] ?? "").trim().toLowerCase()

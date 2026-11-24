@@ -7,6 +7,7 @@ import { CalendarDays, Calculator, GraduationCap, Plus, Trash2,
   ShieldAlert,
   Download,
   Sparkles,
+  Copy,
 } from "lucide-react";
 
 export interface ScheduleSlotRecord {
@@ -407,6 +408,23 @@ export function ScheduleGpaPanel({
                 className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--accent)] hover:border-[var(--accent)]"
               >
                 Xuất CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const summary = [
+                    `🎓 Tổng kết GPA KronoFlow`,
+                    `- Tổng tín chỉ: ${totalCredits}`,
+                    `- Điểm trung bình hệ 10: ${avg10}`,
+                    `- GPA hệ 4.0: ${avg4}`,
+                    ...grades.map((g) => `• ${g.courseName} (${g.credits} TC): ${g.score10} (${toGpa4(g.score10).letter})`),
+                  ].join("\n");
+                  navigator.clipboard?.writeText(summary).catch(() => {});
+                  window.alert("Đã sao chép bảng điểm GPA vào bộ nhớ tạm!");
+                }}
+                className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <Copy className="h-3 w-3" /> Chép bảng điểm
               </button>
               <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-1.5">
                 Tín chỉ: <strong className="font-mono">{totalCredits}</strong>

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, Circle, Clock, Flag, Plus, Sparkles, Trash2,
   LayoutGrid,
   List,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
@@ -43,6 +45,7 @@ export function GoalsTimeblockPanel({
   const { lang } = useLang();
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [tbView, setTbView] = useState<"grid" | "list">("grid");
+  const [tbWide, setTbWide] = useState(false);
   useEffect(() => {
     const t = setInterval(() => {
       const d = new Date();
@@ -182,7 +185,7 @@ export function GoalsTimeblockPanel({
   return (
     <div className="grid gap-6 lg:grid-cols-12">
       {/* DAILY TIME BLOCKING */}
-      <section className="glass-card card-lift rounded-2xl p-6 lg:col-span-6">
+      <section className={cn("glass-card card-lift rounded-2xl p-6", tbWide ? "lg:col-span-12" : "lg:col-span-6")}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-[var(--accent)]" />
@@ -213,6 +216,14 @@ export function GoalsTimeblockPanel({
                 <List className="h-3 w-3" /> Danh sách
               </button>
             </div>
+            <button
+              type="button"
+              onClick={() => setTbWide((v) => !v)}
+              title="Mở rộng toàn chiều rộng"
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:text-[var(--accent)]"
+            >
+              {tbWide ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            </button>
             <input
               type="date"
               value={selectedDate}
@@ -425,7 +436,14 @@ export function GoalsTimeblockPanel({
                   className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3.5"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-[var(--text-primary)]">{g.title}</span>
+                    <span className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-[var(--text-primary)]">
+                      {g.title}
+                      {g.deadline && pct < 70 && Math.ceil((new Date(g.deadline).getTime() - Date.now()) / 86400000) <= 7 && (
+                        <span className="rounded-full bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-rose-500">
+                          Sắp hết hạn
+                        </span>
+                      )}
+                    </span>
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs text-[var(--accent)]">
                         {g.currentValue}/{g.targetValue} {g.unit} ({pct}%)

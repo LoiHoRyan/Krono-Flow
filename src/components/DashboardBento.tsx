@@ -487,7 +487,10 @@ export function DashboardBento({
                 <Trophy className="h-3.5 w-3.5 text-amber-500" />
                 Cấp {levelInfo.level} · {levelInfo.rank} ({levelInfo.xp} XP)
               </span>
-              <span className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1 font-mono text-xs text-[var(--accent)]">
+              <span
+                title={`Tuần ${Math.ceil((new Date().getDate() + new Date(new Date().getFullYear(), new Date().getMonth(), 1).getDay()) / 7)} của tháng · ${new Date().toLocaleDateString("vi-VN")}`}
+                className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1 font-mono text-xs text-[var(--accent)]"
+              >
                 {nowClock}
               </span>
             </div>
@@ -900,7 +903,24 @@ export function DashboardBento({
           <p className="mt-2 text-[11px] text-[var(--text-muted)]">
             Còn <strong className="text-sky-500">{user?.streakFreezes ?? 0}</strong> Streak Freeze
           </p>
-        </div>
+        
+              <div className="mt-2.5 flex items-center gap-[3px]" title="30 ngày gần nhất (Xanh: Đã học · Xanh dương: Freeze)">
+                {Array.from({ length: 30 }, (_, i) => {
+                  const d = new Date(Date.now() - (29 - i) * 86400000).toISOString().slice(0, 10);
+                  const studied = (dayMap.get(d) ?? 0) > 0;
+                  const frozen = frozenDates.includes(d);
+                  return (
+                    <span
+                      key={d}
+                      title={`${d}: ${studied ? `${dayMap.get(d) ?? 0} phút` : frozen ? "Freeze" : "Nghỉ"}`}
+                      className={cn(
+                        "h-1.5 flex-1 rounded-full",
+                        studied ? "bg-emerald-500" : frozen ? "bg-sky-400" : "bg-[var(--bg-elevated)]"
+                      )}
+                    />
+                  );
+                })}
+              </div></div>
 
         <div className="glass-card card-lift p-5">
           <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">

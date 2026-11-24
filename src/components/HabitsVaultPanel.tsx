@@ -117,6 +117,29 @@ export function HabitsVaultPanel({
   const [mood, setMood] = useState(todayRef?.mood ?? 4);
   const [highlight, setHighlight] = useState(todayRef?.highlight ?? "");
   const [improvement, setImprovement] = useState(todayRef?.improvement ?? "");
+
+  useEffect(() => {
+    try {
+      const dr = localStorage.getItem("kronoflow-draft-reflection");
+      if (dr && !highlight && !improvement) {
+        const parsed = JSON.parse(dr);
+        if (parsed.h) setHighlight(parsed.h);
+        if (parsed.i) setImprovement(parsed.i);
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (highlight || improvement) {
+      localStorage.setItem(
+        "kronoflow-draft-reflection",
+        JSON.stringify({ h: highlight, i: improvement })
+      );
+    }
+  }, [highlight, improvement]);
   const [bookTitle, setBookTitle] = useState("");
   const [bookPages, setBookPages] = useState(250);
 

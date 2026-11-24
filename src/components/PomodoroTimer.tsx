@@ -79,6 +79,24 @@ export function PomodoroTimer({
   const [clockStyle, setClockStyle] = useState<"ring" | "flip">("ring");
   const [logRange, setLogRange] = useState<"all" | "today" | "week">("all");
   const [examQuestions, setExamQuestions] = useState(50);
+  const [auxTimers, setAuxTimers] = useState<{ id: string; label: string; secs: number; running: boolean }[]>([]);
+
+  useEffect(() => {
+    if (!auxTimers.some((t) => t.running && t.secs > 0)) return;
+    const id = setInterval(() => {
+      setAuxTimers((prev) =>
+        prev.map((t) => (t.running && t.secs > 0 ? { ...t, secs: t.secs - 1 } : t))
+      );
+    }, 1000);
+    return () => clearInterval(id);
+  }, [auxTimers]);
+
+  const addAuxTimer = (mins: number, label: string) => {
+    setAuxTimers((prev) => [
+      ...prev.slice(-2),
+      { id: String(Date.now()), label, secs: mins * 60, running: true },
+    ]);
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1039,6 +1057,45 @@ export function PomodoroTimer({
             <span className="rounded-lg bg-[var(--bg-elevated)] px-2.5 py-1 font-mono text-[11px] text-[var(--text-secondary)]">
               {sessions.length} phiên
             </span>
+          </div>
+          <div className="mt-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2.5 text-[11px]">
+            <div className="flex flex-wrap items-center justify-between gap-1.5">
+              <span className="font-medium text-[var(--text-secondary)]">Hẹn giờ phụ song song:</span>
+              <div className="flex gap-1">
+                {([5, 10, 15] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => addAuxTimer(m, `Hẹn ${m}p`)}
+                    className="rounded-md bg-[var(--accent-soft)] px-2 py-0.5 font-mono text-[10px] font-medium text-[var(--accent)]"
+                  >
+                    +{m}p
+                  </button>
+                ))}
+              </div>
+            </div>
+            {auxTimers.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {auxTimers.map((at) => (
+                  <div
+                    key={at.id}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 font-mono"
+                  >
+                    <span className="text-[var(--text-muted)]">{at.label}</span>
+                    <strong className={at.secs === 0 ? "text-emerald-500" : "text-[var(--accent)]"}>
+                      {at.secs === 0 ? "Xong!" : formatDuration(at.secs)}
+                    </strong>
+                    <button
+                      type="button"
+                      onClick={() => setAuxTimers((p) => p.filter((x) => x.id !== at.id))}
+                      className="text-[var(--text-muted)] hover:text-rose-500"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {(() => {
