@@ -460,6 +460,49 @@ export function AnalyticsPanel({
         </div>
       </section>
 
+      {/* NHỊP ĐỘ 24 GIỜ TRONG NGÀY (24H FOCUS HEATMAP STRIP) */}
+      {(() => {
+        const hrs = Array.from({ length: 24 }, (_, h) => ({ h, mins: 0 }));
+        for (const s of completed) {
+          const hr = new Date(s.startedAt).getHours();
+          const slot = hrs[hr];
+          if (slot) slot.mins += s.actualMinutes;
+        }
+        const maxH = Math.max(1, ...hrs.map((x) => x.mins));
+        return (
+          <section className="glass-card rounded-2xl p-5">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                Bản đồ nhiệt 24 giờ trong ngày (00h – 23h)
+              </h3>
+              <span className="text-[11px] text-[var(--text-muted)]">Càng đậm càng tập trung nhiều</span>
+            </div>
+            <div className="mt-3 grid grid-cols-12 gap-1 sm:grid-cols-24">
+              {hrs.map((item) => {
+                const ratio = item.mins / maxH;
+                return (
+                  <div key={item.h} className="flex flex-col items-center gap-1">
+                    <div
+                      title={`${String(item.h).padStart(2, "0")}:00 — ${item.mins} phút`}
+                      className="h-7 w-full rounded-md border border-[var(--border-subtle)] transition-colors"
+                      style={{
+                        backgroundColor:
+                          item.mins === 0
+                            ? "var(--bg-canvas)"
+                            : `color-mix(in srgb, var(--accent) ${Math.max(20, Math.round(ratio * 100))}%, transparent)`,
+                      }}
+                    />
+                    <span className="font-mono text-[9px] text-[var(--text-muted)]">
+                      {item.h % 3 === 0 ? `${item.h}h` : ""}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })()}
+
       {/* TỐC ĐỘ HỌC TẬP (FOCUS VELOCITY GAUGE) */}
       {(() => {
         const last7Mins = days.slice(-7).reduce((a, b) => a + b.minutes, 0);

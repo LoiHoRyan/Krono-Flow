@@ -86,6 +86,7 @@ export function StudioSettingsPanel({
   const [einkMode, setEinkMode] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [wideLayout, setWideLayout] = useState(false);
+  const [pillButtons, setPillButtons] = useState(false);
   const [savedAccents, setSavedAccents] = useState<string[]>(["#2563eb", "#0f766e", "#7c3aed", "#e11d48", "#d97706"]);
   const [diagText, setDiagText] = useState<string | null>(null);
   const [autoDayNight, setAutoDayNight] = useState(false);
@@ -112,6 +113,9 @@ export function StudioSettingsPanel({
       setEinkMode(localStorage.getItem("kronoflow-eink") === "on");
       setReduceMotion(localStorage.getItem("kronoflow-reduce-motion") === "on");
       setWideLayout(localStorage.getItem("kronoflow-wide-layout") === "on");
+      const pb = localStorage.getItem("kronoflow-btn-pill") === "on";
+      setPillButtons(pb);
+      document.documentElement.classList.toggle("btn-pill", pb);
     } catch {
       // ignore
     }
@@ -970,6 +974,21 @@ export function StudioSettingsPanel({
                     )}
                   >
                     Khung rộng: {wideLayout ? "Bật" : "Tắt"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !pillButtons;
+                      setPillButtons(next);
+                      localStorage.setItem("kronoflow-btn-pill", next ? "on" : "off");
+                      document.documentElement.classList.toggle("btn-pill", next);
+                    }}
+                    className={cn(
+                      "rounded-lg px-2.5 py-1 text-[11px] font-medium",
+                      pillButtons ? "bg-[var(--accent)] text-white" : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                    )}
+                  >
+                    Nút bo tròn (Pill): {pillButtons ? "Bật" : "Tắt"}
                   </button>
                 </div>
               </div>

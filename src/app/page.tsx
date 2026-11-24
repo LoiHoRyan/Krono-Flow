@@ -40,6 +40,7 @@ import {
   ChevronRight,
   BellOff,
   Bell,
+  ArrowUp,
 } from "lucide-react";
 import { cn, formatDuration, normalizeVi } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -239,6 +240,11 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     if (localStorage.getItem("kronoflow-reduce-motion") === "on") {
       document.documentElement.classList.add("reduce-motion");
     }
+    if (localStorage.getItem("kronoflow-btn-pill") === "on") {
+      document.documentElement.classList.add("btn-pill");
+    }
+    const onScroll = () => setShowScrollTop(window.scrollY > 360);
+    window.addEventListener("scroll", onScroll, { passive: true });
     if (localStorage.getItem("kronoflow-hide-hints") === "1") {
       setShowHints(false);
     }
@@ -268,6 +274,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       window.removeEventListener("online", goOn);
       window.removeEventListener("kronoflow-sidebar-change", syncHidden);
       window.removeEventListener("kronoflow-layout-change", syncLayout);
+      window.removeEventListener("scroll", onScroll);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -287,6 +294,15 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [fabLeft, setFabLeft] = useState(false);
   const [showHints, setShowHints] = useState(true);
   const [wideLayout, setWideLayout] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const handleSafeLogout = () => {
+    const hasDraft = Boolean(localStorage.getItem("kronoflow-draft-note"));
+    if (hasDraft && !window.confirm("Bạn đang có bản nháp Ghi chú chưa lưu. Vẫn muốn đăng xuất?")) {
+      return;
+    }
+    props.onLogout();
+  };
   const [warmLevel, setWarmLevel] = useState(0);
   const [fontScale, setFontScale] = useState<"95%" | "100%" | "108%">("100%");
   const [bedtimeWarning, setBedtimeWarning] = useState<string | null>(null);
@@ -598,6 +614,16 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
           "no-print fixed bottom-24 z-40 flex flex-col gap-2.5 lg:bottom-7",
           fabLeft ? "left-4 lg:left-7" : "right-4 lg:right-7"
         )}>
+        {showScrollTop && (
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            title="Lên đầu trang"
+            className="flex h-10 w-10 items-center justify-center self-center rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)] shadow-md hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
+            <ArrowUp className="h-4 w-4" />
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setAiOpen(true)}
@@ -803,7 +829,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </span>
             <button
               type="button"
-              onClick={props.onLogout}
+              onClick={handleSafeLogout}
               title={t("logout")}
               className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-rose-500"
             >
@@ -967,7 +993,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </button>
             <button
               type="button"
-              onClick={props.onLogout}
+              onClick={handleSafeLogout}
               className="rounded-xl border border-[var(--border-subtle)] p-2 text-[var(--text-secondary)] hover:text-rose-500 lg:hidden"
               title={t("logout")}
             >

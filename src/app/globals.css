@@ -345,3 +345,8 @@ body {
 .focus-active-glow {
   animation: focusGlow 3.2s ease-in-out infinite;
 }
+
+/* Optional Pill Button Style */
+.btn-pill .btn-primary {
+  border-radius: 9999px !important;
+}

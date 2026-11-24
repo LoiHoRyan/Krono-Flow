@@ -427,7 +427,14 @@ export function HabitsVaultPanel({
             <input
               type="url"
               value={resUrl}
-              onChange={(e) => setResUrl(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setResUrl(v);
+                const lower = v.toLowerCase();
+                if (lower.includes("youtube.com") || lower.includes("youtu.be")) setResCat("Video");
+                else if (lower.includes("drive.google.com") || lower.includes("docs.google.com") || lower.endsWith(".pdf")) setResCat("Tài liệu");
+                else if (lower.includes("github.com") || lower.includes("notion.so")) setResCat("Công cụ");
+              }}
               placeholder="https://..."
               className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
             />

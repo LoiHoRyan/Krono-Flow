@@ -261,6 +261,8 @@ export function SubjectTodoPanel({
       if (raw) setTodoOrder(JSON.parse(raw));
       const sv = localStorage.getItem("kronoflow-todo-view");
       if (sv === "list" || sv === "kanban" || sv === "eisenhower") setView(sv);
+      const lastSub = localStorage.getItem("kronoflow-last-subject");
+      if (lastSub) setTodoSubjectId(lastSub);
       const sf = localStorage.getItem("kronoflow-todo-filter");
       if (sf === "all" || sf === "pending" || sf === "done" || sf === "today" || sf === "week" || sf === "high" || sf === "overdue") {
         setFilter(sf);
@@ -661,7 +663,7 @@ export function SubjectTodoPanel({
             />
             <select
               value={todoSubjectId}
-              onChange={(e) => setTodoSubjectId(e.target.value)}
+              onChange={(e) => { setTodoSubjectId(e.target.value); if (e.target.value) localStorage.setItem("kronoflow-last-subject", e.target.value); }}
               className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-2 text-xs text-[var(--text-secondary)]"
             >
               <option value="">Không gắn môn</option>

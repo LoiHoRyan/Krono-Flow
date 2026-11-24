@@ -32,6 +32,7 @@ import {
   Mic,
   MicOff,
   Shuffle,
+  BookA,
 } from "lucide-react";
 import { cn, normalizeVi } from "@/lib/utils";
 import { MarkdownView } from "./MarkdownView";
@@ -83,7 +84,33 @@ export function NotesFlashcardsPanel({
   onFocusNote?: (title: string) => void;
   onRefresh: () => void;
 }) {
-  const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz" | "typing" | "mistakes" | "feynman" | "match" | "tf">("notes");
+  const [subTab, setSubTab] = useState<"notes" | "flashcards" | "quiz" | "typing" | "mistakes" | "feynman" | "match" | "tf" | "glossary">("notes");
+  const [readerFont, setReaderFont] = useState<"sans" | "serif" | "mono">("sans");
+  const [glossary, setGlossary] = useState<{ id: string; term: string; def: string; ex: string }[]>([]);
+  const [gTerm, setGTerm] = useState("");
+  const [gDef, setGDef] = useState("");
+  const [gEx, setGEx] = useState("");
+  const [gLetter, setGLetter] = useState("ALL");
+
+  useEffect(() => {
+    try {
+      const rawG = localStorage.getItem("kronoflow-glossary");
+      if (rawG) setGlossary(JSON.parse(rawG));
+      const lastSub = localStorage.getItem("kronoflow-last-subject");
+      if (lastSub) {
+        setNoteSubject(lastSub);
+        setCardSubject(lastSub);
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const saveGlossary = (next: { id: string; term: string; def: string; ex: string }[]) => {
+    setGlossary(next);
+    localStorage.setItem("kronoflow-glossary", JSON.stringify(next));
+  };
   const [tfSec, setTfSec] = useState(30);
   const [tfScore, setTfScore] = useState(0);
   const [tfRound, setTfRound] = useState<{ front: string; shownBack: string; isTrue: boolean } | null>(null);
@@ -783,6 +810,19 @@ export function NotesFlashcardsPanel({
             <Zap className="h-3.5 w-3.5" />
             Đúng/Sai 30s
           </button>
+          <button
+            type="button"
+            onClick={() => setSubTab("glossary")}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold",
+              subTab === "glossary"
+                ? "btn-primary"
+                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            )}
+          >
+            <BookA className="h-3.5 w-3.5" />
+            Thuật ngữ ({glossary.length})
+          </button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -930,7 +970,7 @@ export function NotesFlashcardsPanel({
             />
             <select
               value={noteSubject}
-              onChange={(e) => setNoteSubject(e.target.value)}
+              onChange={(e) => { setNoteSubject(e.target.value); if (e.target.value) localStorage.setItem("kronoflow-last-subject", e.target.value); }}
               className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-xs text-[var(--text-secondary)]"
             >
               <option value="">-- Gắn môn học --</option>
@@ -1571,7 +1611,94 @@ export function NotesFlashcardsPanel({
             );
           })()}
         </div>
-      ) : subTab === "tf" ? (
+      ) : subTab === "glossary" ? (
+        <div className="glass-card rounded-2xl p-6 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+              <BookA className="h-4 w-4 text-[var(--accent)]" />
+              Sổ tay Thuật ngữ & Từ vựng chuyên ngành (A–Z)
+            </div>
+            <div className="flex flex-wrap gap-1 text-[10px]">
+              {["ALL", ...Array.from(new Set(glossary.map((g) => g.term.charAt(0).toUpperCase()))).sort()].map((lt) => (
+                <button
+                  key={lt}
+                  type="button"
+                  onClick={() => setGLetter(lt)}
+                  className={cn(
+                    "rounded-md px-2 py-0.5 font-mono font-semibold",
+                    gLetter === lt ? "bg-[var(--accent)] text-white" : "bg-[var(--bg-elevated)] text-[var(--text-muted)]"
+                  )}
+                >
+                  {lt === "ALL" ? "Tất cả" : lt}
+                </button>
+              ))}
+            </div>
+          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!gTerm.trim() || !gDef.trim()) return;
+              saveGlossary(
+                [{ id: String(Date.now()), term: gTerm.trim(), def: gDef.trim(), ex: gEx.trim() }, ...glossary].sort((a, b) =>
+                  a.term.localeCompare(b.term, "vi")
+                )
+              );
+              setGTerm("");
+              setGDef("");
+              setGEx("");
+            }}
+            className="grid gap-2 sm:grid-cols-12"
+          >
+            <input
+              type="text"
+              value={gTerm}
+              onChange={(e) => setGTerm(e.target.value)}
+              placeholder="Thuật ngữ / Từ khóa..."
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs sm:col-span-3"
+            />
+            <input
+              type="text"
+              value={gDef}
+              onChange={(e) => setGDef(e.target.value)}
+              placeholder="Định nghĩa ngắn gọn..."
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs sm:col-span-4"
+            />
+            <input
+              type="text"
+              value={gEx}
+              onChange={(e) => setGEx(e.target.value)}
+              placeholder="Ví dụ minh họa (tùy chọn)..."
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs sm:col-span-3"
+            />
+            <button type="submit" className="btn-primary rounded-xl px-3 py-2 text-xs font-medium sm:col-span-2">
+              + Thêm từ
+            </button>
+          </form>
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {glossary
+              .filter((g) => gLetter === "ALL" || g.term.charAt(0).toUpperCase() === gLetter)
+              .map((g) => (
+                <div
+                  key={g.id}
+                  className="flex items-start justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3 text-xs"
+                >
+                  <div>
+                    <div className="font-semibold text-[var(--accent)]">{g.term}</div>
+                    <div className="mt-0.5 text-[var(--text-primary)]">{g.def}</div>
+                    {g.ex && <div className="mt-1 italic text-[11px] text-[var(--text-muted)]">VD: {g.ex}</div>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => saveGlossary(glossary.filter((x) => x.id !== g.id))}
+                    className="text-[var(--text-muted)] hover:text-rose-500"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+          </div>
+        </div>
+            ) : subTab === "tf" ? (
         <div className="glass-card rounded-2xl p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
@@ -2066,6 +2193,14 @@ export function NotesFlashcardsPanel({
                 </button>
                 <button
                   type="button"
+                  onClick={() => setReaderFont((f) => (f === "sans" ? "serif" : f === "serif" ? "mono" : "sans"))}
+                  title="Đổi phông chữ chế độ đọc (Sans / Serif / Mono)"
+                  className="rounded-lg border border-[var(--border-subtle)] px-2 py-1 font-mono text-[11px]"
+                >
+                  {readerFont === "serif" ? "Serif" : readerFont === "mono" ? "Mono" : "Sans"}
+                </button>
+                <button
+                  type="button"
                   disabled={guideLoading}
                   onClick={() => handleGenerateStudyGuide(readingNote)}
                   className="rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-medium text-[var(--accent)] disabled:opacity-50"
@@ -2091,7 +2226,7 @@ export function NotesFlashcardsPanel({
                 </button>
               </div>
             </div>
-            <div className="mt-4 leading-relaxed">
+            <div className={cn("mt-4 leading-relaxed", readerFont === "serif" ? "font-serif" : readerFont === "mono" ? "font-mono text-xs" : "font-sans")}>
               <MarkdownView
                 content={
                   clozeMode

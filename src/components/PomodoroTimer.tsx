@@ -79,6 +79,23 @@ export function PomodoroTimer({
   const [rehRunning, setRehRunning] = useState(false);
   const [muteBell, setMuteBell] = useState(false);
   const [recentPresets, setRecentPresets] = useState<string[]>([]);
+  const [focusRatings, setFocusRatings] = useState<number[]>([]);
+
+  useEffect(() => {
+    try {
+      const rawR = localStorage.getItem("kronoflow-focus-ratings");
+      if (rawR) setFocusRatings(JSON.parse(rawR));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const addFocusRating = (stars: number) => {
+    const next = [stars, ...focusRatings].slice(0, 30);
+    setFocusRatings(next);
+    localStorage.setItem("kronoflow-focus-ratings", JSON.stringify(next));
+    playUiTick("check");
+  };
 
   useEffect(() => {
     setMuteBell(localStorage.getItem("kronoflow-mute-bell") === "on");
@@ -159,6 +176,13 @@ export function PomodoroTimer({
       } else if (e.key.toLowerCase() === "r" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         timer.reset();
+      } else if (e.key.toLowerCase() === "m" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        if (timer.ambient !== "none") {
+          timer.changeAmbient("none");
+        } else {
+          timer.changeAmbient("rain");
+        }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -572,7 +596,7 @@ export function PomodoroTimer({
                 Gợi ý nhịp tối ưu: {suggestedMins}p
               </button>
             )}
-            <span className="hidden sm:inline font-mono text-[10px]">Space: Chạy/Dừng · R: Đặt lại</span>
+            <span className="hidden sm:inline font-mono text-[10px]">Space: Chạy/Dừng · R: Đặt lại · M: Tắt/Mở nhạc nền</span>
           </div>
         </div>
 
@@ -964,6 +988,26 @@ export function PomodoroTimer({
                 placeholder="Mục tiêu phiên này..."
                 className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
               />
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-[11px] text-[var(--text-muted)]">
+              <span>Đánh giá chất lượng phiên:</span>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => addFocusRating(st)}
+                    className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-1.5 py-0.5 text-amber-500 hover:border-amber-500"
+                  >
+                    {st}★
+                  </button>
+                ))}
+              </div>
+              {focusRatings.length > 0 && (
+                <span className="font-mono text-[var(--accent)]">
+                  TB: {(focusRatings.reduce((a, b) => a + b, 0) / focusRatings.length).toFixed(1)}★
+                </span>
+              )}
             </div>
             {recentPresets.length > 0 && (
               <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[11px]">

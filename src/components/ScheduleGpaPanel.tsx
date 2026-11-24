@@ -86,6 +86,8 @@ export function ScheduleGpaPanel({
   const [gkW, setGkW] = useState(30);
   const [drlTitle, setDrlTitle] = useState("");
   const [drlPoints, setDrlPoints] = useState(5);
+  const [remCredits, setRemCredits] = useState(30);
+  const [goalCumGpa, setGoalCumGpa] = useState(3.6);
   const [drlItems, setDrlItems] = useState<{ id: string; title: string; points: number; date: string }[]>([]);
 
   useEffect(() => {
@@ -383,7 +385,8 @@ export function ScheduleGpaPanel({
                     daySlots.map((sl) => (
                       <div
                         key={sl.id}
-                        className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2 text-[11px]"
+                        style={{ borderLeftColor: sl.color || "var(--accent)" }}
+                        className="rounded-lg border border-l-4 border-[var(--border-subtle)] bg-[var(--bg-surface)] p-2 text-[11px]"
                       >
                         <div className="flex items-start justify-between gap-1">
                           <span className="font-medium text-[var(--text-primary)]">{sl.title}</span>
@@ -874,6 +877,43 @@ export function ScheduleGpaPanel({
                   Xóa nháp
                 </button>
               )}
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium text-[var(--text-secondary)]">Kế hoạch giữ bằng / Học bổng:</span>
+                <label className="text-[11px] text-[var(--text-muted)]">
+                  Tín chỉ còn lại:
+                  <input
+                    type="number"
+                    min={1}
+                    max={160}
+                    value={remCredits}
+                    onChange={(e) => setRemCredits(Math.max(1, Number(e.target.value)))}
+                    className="ml-1 w-14 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-1.5 py-0.5 font-mono text-xs text-[var(--text-primary)]"
+                  />
+                </label>
+                <label className="text-[11px] text-[var(--text-muted)]">
+                  Mục tiêu GPA 4.0:
+                  <input
+                    type="number"
+                    min={2.0}
+                    max={4.0}
+                    step={0.1}
+                    value={goalCumGpa}
+                    onChange={(e) => setGoalCumGpa(Math.min(4, Math.max(1, Number(e.target.value))))}
+                    className="ml-1 w-14 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-1.5 py-0.5 font-mono text-xs text-[var(--text-primary)]"
+                  />
+                </label>
+              </div>
+              {(() => {
+                const needed = +((goalCumGpa * (totalCredits + remCredits) - realW4) / Math.max(1, remCredits)).toFixed(2);
+                return (
+                  <span className="font-mono font-semibold text-[var(--accent)]">
+                    Cần đạt TB:{" "}
+                    {needed <= 0 ? "Đã chắc chắn đạt!" : needed > 4 ? `${needed} (Vượt 4.0)` : `${needed} / 4.0`}
+                  </span>
+                );
+              })()}
             </div>
             {whatIfList.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">

@@ -144,6 +144,13 @@ export function DashboardBento({
   const [kickoffBusy, setKickoffBusy] = useState(false);
   const [lastContextTab, setLastContextTab] = useState<string | null>(null);
   const [openExamCheckId, setOpenExamCheckId] = useState<string | null>(null);
+  const [hidePastExams, setHidePastExams] = useState(false);
+  const [semEndDate, setSemEndDate] = useState("");
+
+  useEffect(() => {
+    const savedEnd = localStorage.getItem("kronoflow-sem-end");
+    if (savedEnd) setSemEndDate(savedEnd);
+  }, []);
   const [examChecks, setExamChecks] = useState<Record<string, string[]>>({});
   const EXAM_PREP_STEPS = ["In đề cương", "Ôn công thức", "Xem Sổ Lỗi Sai", "Làm đề bấm giờ"];
 
@@ -734,6 +741,23 @@ export function DashboardBento({
               <div className="flex items-center justify-between text-[var(--text-secondary)]">
                 <span>Tiến độ Tháng {now.getMonth() + 1}: <strong>{monthPct}%</strong></span>
                 <span>Năm {now.getFullYear()}: <strong>{yearPct}%</strong></span>
+                <label className="inline-flex items-center gap-1 text-[10px] text-[var(--text-muted)]">
+                  Hết HK:
+                  <input
+                    type="date"
+                    value={semEndDate}
+                    onChange={(e) => {
+                      setSemEndDate(e.target.value);
+                      localStorage.setItem("kronoflow-sem-end", e.target.value);
+                    }}
+                    className="rounded border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-1 py-0.5 font-mono text-[10px]"
+                  />
+                  {semEndDate && (
+                    <strong className="font-mono text-[var(--accent)]">
+                      ({Math.max(0, Math.ceil((new Date(semEndDate).getTime() - nowMs) / 86400000))}d)
+                    </strong>
+                  )}
+                </label>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
                 <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${monthPct}%` }} />
@@ -1152,7 +1176,20 @@ export function DashboardBento({
               </button>
             </form>
             <ul className="mt-3.5 space-y-2">
-              {exams.map((ex) => {
+              {exams.some((e) => new Date(e.examDate).getTime() < nowMs) && (
+                <button
+                  type="button"
+                  onClick={() => setHidePastExams((v) => !v)}
+                  className="text-[11px] text-[var(--accent)] hover:underline"
+                >
+                  {hidePastExams ? "Hiện lại kỳ thi đã qua" : "Ẩn gọn các kỳ thi đã qua"}
+                </button>
+              )}
+              {exams
+                .filter((e) => !hidePastExams || new Date(e.examDate).getTime() >= nowMs - 86400000)
+                .map((ex) => {
+                const prepDone = (examChecks[ex.id] ?? []).length;
+                const readiness = Math.min(100, Math.round((prepDone / EXAM_PREP_STEPS.length) * 100));
                 const diffDays = Math.ceil(
                   (new Date(ex.examDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                 );
@@ -1171,8 +1208,13 @@ export function DashboardBento({
                     <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <div className="truncate font-medium text-[var(--text-primary)]">{ex.title}</div>
-                      <div className="text-[10px] text-[var(--text-muted)]">
-                        {new Date(ex.examDate).toLocaleDateString("vi-VN")}
+                      <div className="flex items-center gap-2 text-[10px] text-[var(--text-muted)]">
+                        <span>{new Date(ex.examDate).toLocaleDateString("vi-VN")}</span>
+                        {readiness > 0 && (
+                          <span className="font-mono text-emerald-600 dark:text-emerald-400">
+                            Sẵn sàng {readiness}%
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
