@@ -255,6 +255,59 @@ export function NotesFlashcardsPanel({
   const [wordTarget, setWordTarget] = useState(0);
   const [weakOnly, setWeakOnly] = useState(false);
   const [reverseCard, setReverseCard] = useState(false);
+  const [compactNotes, setCompactNotes] = useState(false);
+  const [noteAiFcBusy, setNoteAiFcBusy] = useState(false);
+
+  const printMistakesA4 = () => {
+    const win = window.open("", "_blank");
+    if (!win) return;
+    const rows = mistakes
+      .map(
+        (m, i) =>
+          `<div style="border:1px solid #cbd5e1;border-radius:10px;padding:12px;margin-bottom:10px;break-inside:avoid;">
+            <div style="font-weight:700;font-size:13px;">#${i + 1}. ${m.question.replaceAll("<", "&lt;")} ${m.resolved ? "(Đã vững)" : ""}</div>
+            <div style="font-size:12px;color:#b91c1c;margin-top:4px;">Nguyên nhân: ${m.reason.replaceAll("<", "&lt;")}</div>
+            <div style="font-size:12px;color:#047857;margin-top:4px;">Cách giải: ${m.solution.replaceAll("<", "&lt;")}</div>
+          </div>`
+      )
+      .join("");
+    win.document.write(`<html><head><title>Sổ Lỗi Sai KronoFlow</title><style>body{font-family:system-ui,sans-serif;padding:24px;max-width:800px;margin:auto;}</style></head><body><h2>Sổ Lỗi Sai Ôn Thi (${mistakes.length} câu)</h2>${rows}<script>window.print();</script></body></html>`);
+    win.document.close();
+  };
+
+  const handleNoteTo5AiFlashcards = async (note: NoteRecord) => {
+    setNoteAiFcBusy(true);
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const k = localStorage.getItem("kronoflow-gemini-key");
+      if (k) headers["x-gemini-key"] = k;
+      const res = await fetch("/api/ai/flashcards", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ text: `${note.title}
+
+${note.content}`, count: 5 }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const cards: { front: string; back: string }[] = json.data ?? [];
+        await Promise.all(
+          cards.slice(0, 5).map((c) =>
+            fetch("/api/flashcards", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ front: c.front, back: c.back, subjectId: note.subjectId ?? null }),
+            })
+          )
+        );
+        playUiTick("check");
+        onRefresh();
+        window.alert(`Đã tạo tự động ${Math.min(5, cards.length)} thẻ Flashcards AI từ ghi chú này!`);
+      }
+    } finally {
+      setNoteAiFcBusy(false);
+    }
+  };
 
   const exportGlossaryCsv = () => {
     const rows = glossary
@@ -900,6 +953,29 @@ export function NotesFlashcardsPanel({
               <Clock className="h-3.5 w-3.5" /> {notesTimeline ? "Đang xem: Dòng thời gian" : "Dòng thời gian"}
             </button>
           )}
+          {subTab === "notes" && (
+            <button
+              type="button"
+              onClick={() => setCompactNotes((v) => !v)}
+              className={cn(
+                "rounded-xl border px-3 py-1.5 text-xs font-medium",
+                compactNotes
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                  : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)]"
+              )}
+            >
+              {compactNotes ? "Đang xem: Siêu gọn" : "Danh sách gọn"}
+            </button>
+          )}
+          {subTab === "mistakes" && mistakes.length > 0 && (
+            <button
+              type="button"
+              onClick={printMistakesA4}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              <Printer className="h-3.5 w-3.5" /> In Sổ Lỗi Sai A4
+            </button>
+          )}
           {subTab === "notes" && filteredNotes.length > 0 && (
             <button
               type="button"
@@ -1266,7 +1342,7 @@ export function NotesFlashcardsPanel({
               ))}
             </div>
           )}
-          <div className={cn("lg:col-span-7", notesTimeline ? "space-y-3 border-l-2 border-[var(--accent)]/40 pl-4" : pastelMode ? "columns-1 gap-4 space-y-4 sm:columns-2" : "grid gap-4 sm:grid-cols-2")}>
+          <div className={cn("lg:col-span-7", compactNotes ? "space-y-2" : notesTimeline ? "space-y-3 border-l-2 border-[var(--accent)]/40 pl-4" : pastelMode ? "columns-1 gap-4 space-y-4 sm:columns-2" : "grid gap-4 sm:grid-cols-2")}>
             {filteredNotes.map((n) => {
               const sub = n.subjectId ? subjectMap.get(n.subjectId) : undefined;
               const pCol = pastelMode ? noteColors[n.id] : "";
@@ -2357,6 +2433,14 @@ export function NotesFlashcardsPanel({
                   className="rounded-lg border border-[var(--border-subtle)] px-2.5 py-1 text-xs"
                 >
                   → Flashcard
+                </button>
+                <button
+                  type="button"
+                  disabled={noteAiFcBusy}
+                  onClick={() => handleNoteTo5AiFlashcards(readingNote)}
+                  className="rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-medium text-[var(--accent)] disabled:opacity-50"
+                >
+                  {noteAiFcBusy ? "Đang tạo..." : "✦ 5 Thẻ AI"}
                 </button>
                 <button
                   type="button"

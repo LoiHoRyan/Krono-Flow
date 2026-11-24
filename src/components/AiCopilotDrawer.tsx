@@ -748,6 +748,26 @@ export function AiCopilotDrawer({
         </div>
 
         {/* Input Form */}
+        {messages.some((m) => m.role === "assistant") && (
+          <div className="flex flex-wrap gap-1.5 border-t border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-4 py-2 text-[11px]">
+            <button
+              type="button"
+              disabled={sending}
+              onClick={() => sendMessage("Giải thích lại câu trả lời vừa rồi ngắn gọn và dễ hiểu hơn giúp mình")}
+              className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              ✦ Giải thích dễ hiểu hơn
+            </button>
+            <button
+              type="button"
+              disabled={sending}
+              onClick={() => sendMessage("Cho mình 2 ví dụ thực tế minh họa cho nội dung vừa rồi")}
+              className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              ✦ Cho ví dụ thực tế
+            </button>
+          </div>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();

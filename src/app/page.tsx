@@ -41,6 +41,8 @@ import {
   BellOff,
   Bell,
   ArrowUp,
+  Flame,
+  RefreshCw,
 } from "lucide-react";
 import { cn, formatDuration, normalizeVi } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -55,6 +57,7 @@ import { AiCopilotDrawer } from "@/components/AiCopilotDrawer";
 import { WeeklyReviewModal } from "@/components/WeeklyReviewModal";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { CheatSheetModal } from "@/components/CheatSheetModal";
+import { LastMinuteCramModal } from "@/components/LastMinuteCramModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -292,6 +295,8 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [cheatOpen, setCheatOpen] = useState(false);
+  const [cramOpen, setCramOpen] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
   const [privacyMode, setPrivacyMode] = useState(false);
   const [dndMode, setDndMode] = useState(false);
   const [fabLeft, setFabLeft] = useState(false);
@@ -596,6 +601,12 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         />
       )}
       <CheatSheetModal open={cheatOpen} onClose={() => setCheatOpen(false)} />
+      <LastMinuteCramModal
+        open={cramOpen}
+        notes={props.notes}
+        mistakes={props.mistakes}
+        onClose={() => setCramOpen(false)}
+      />
       <OnboardingModal
         open={onboardingOpen}
         onClose={() => setOnboardingOpen(false)}
@@ -828,7 +839,21 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                   props.dbStatus === "connected" ? "text-emerald-500" : "text-rose-500"
                 )}
               />
-              {sidebarMode === "full" && (props.dbStatus === "connected" ? "PostgreSQL" : "Offline")}
+              {sidebarMode === "full" && (props.dbStatus === "connected" ? `PG · ${lastSyncedAt}` : "Offline")}
+              {sidebarMode === "full" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    props.onRefresh();
+                    setLastSyncedAt(new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
+                    notify("Đã đồng bộ dữ liệu mới nhất từ PostgreSQL!");
+                  }}
+                  title="Tải lại dữ liệu từ PostgreSQL"
+                  className="ml-1 rounded p-0.5 text-[var(--text-muted)] hover:text-[var(--accent)]"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </button>
+              )}
             </span>
             <button
               type="button"
@@ -884,6 +909,15 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             >
               <Code2 className="h-3.5 w-3.5" />
               <span>Công thức</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCramOpen(true)}
+              title="Chế độ Ôn gấp trước giờ thi 15 phút"
+              className="hidden items-center gap-1 rounded-xl border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 xl:inline-flex"
+            >
+              <Flame className="h-3.5 w-3.5" />
+              <span>Ôn gấp 15p</span>
             </button>
             <button
               type="button"

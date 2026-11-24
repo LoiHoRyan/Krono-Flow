@@ -147,6 +147,7 @@ export function PomodoroTimer({
   const [clockStyle, setClockStyle] = useState<"ring" | "flip">("ring");
   const [logRange, setLogRange] = useState<"all" | "today" | "week">("all");
   const [logSubFilter, setLogSubFilter] = useState("all");
+  const [logQuery, setLogQuery] = useState("");
   const [manualOpen, setManualOpen] = useState(false);
   const [manualMins, setManualMins] = useState(30);
   const [manualSub, setManualSub] = useState("");
@@ -1532,6 +1533,7 @@ export function PomodoroTimer({
             const nowMs = Date.now();
             const filteredLogs = sessions.filter((s) => {
               if (logSubFilter !== "all" && s.subjectId !== logSubFilter) return false;
+              if (logQuery.trim() && !(s.notes ?? "").toLowerCase().includes(logQuery.toLowerCase())) return false;
               if (logRange === "today") return s.startedAt.slice(0, 10) === todayIso;
               if (logRange === "week") return nowMs - new Date(s.startedAt).getTime() <= 7 * 86400000;
               return true;
@@ -1539,6 +1541,13 @@ export function PomodoroTimer({
             const rangeMins = filteredLogs.reduce((a, b) => a + b.actualMinutes, 0);
             return (
               <>
+                <input
+                  type="text"
+                  value={logQuery}
+                  onChange={(e) => setLogQuery(e.target.value)}
+                  placeholder="Tìm phiên theo ghi chú..."
+                  className="mt-2.5 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                />
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px]">
                   <div className="flex gap-1">
                     {(

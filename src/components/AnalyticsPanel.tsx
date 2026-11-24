@@ -468,6 +468,42 @@ export function AnalyticsPanel({
         </div>
       </section>
 
+      {/* SO SÁNH THÁNG NÀY VS THÁNG TRƯỚC */}
+      {(() => {
+        const now = new Date();
+        const curYm = now.toISOString().slice(0, 7);
+        const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const prevYm = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+        const curSess = completed.filter((s) => s.startedAt.slice(0, 7) === curYm);
+        const prevSess = completed.filter((s) => s.startedAt.slice(0, 7) === prevYm);
+        const curM = curSess.reduce((a, b) => a + b.actualMinutes, 0);
+        const prevM = prevSess.reduce((a, b) => a + b.actualMinutes, 0);
+        const delta = prevM > 0 ? Math.round(((curM - prevM) / prevM) * 100) : curM > 0 ? 100 : 0;
+        return (
+          <section className="glass-card flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5 text-xs">
+            <div>
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                So sánh Tháng này ({curYm}) vs Tháng trước ({prevYm})
+              </h3>
+              <p className="mt-0.5 text-[var(--text-muted)]">
+                Tháng này: <strong className="font-mono text-[var(--text-primary)]">{(curM / 60).toFixed(1)}h</strong> ({curSess.length} phiên) · Tháng trước:{" "}
+                <strong className="font-mono text-[var(--text-primary)]">{(prevM / 60).toFixed(1)}h</strong> ({prevSess.length} phiên)
+              </p>
+            </div>
+            <span
+              className={cn(
+                "rounded-xl px-3 py-1.5 font-mono text-xs font-semibold",
+                delta >= 0
+                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                  : "bg-rose-500/15 text-rose-500"
+              )}
+            >
+              {delta >= 0 ? `+${delta}% so tháng trước` : `${delta}% so tháng trước`}
+            </span>
+          </section>
+        );
+      })()}
+
       {/* MỤC TIÊU GIỜ HỌC THÁNG & HIỆU SUẤT THEO THỨ (T2–CN) */}
       {(() => {
         const curYm = new Date().toISOString().slice(0, 7);

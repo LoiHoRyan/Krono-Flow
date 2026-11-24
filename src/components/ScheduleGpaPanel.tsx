@@ -89,6 +89,12 @@ export function ScheduleGpaPanel({
   const [drlPoints, setDrlPoints] = useState(5);
   const [remCredits, setRemCredits] = useState(30);
   const [goalCumGpa, setGoalCumGpa] = useState(3.6);
+  const [gradCredits, setGradCredits] = useState(130);
+
+  useEffect(() => {
+    const rawGc = Number(localStorage.getItem("kronoflow-grad-credits") || "130");
+    if (!isNaN(rawGc) && rawGc >= 30) setGradCredits(rawGc);
+  }, []);
   const [drlItems, setDrlItems] = useState<{ id: string; title: string; points: number; date: string }[]>([]);
 
   useEffect(() => {
@@ -374,6 +380,31 @@ export function ScheduleGpaPanel({
           </div>
         )}
 
+        {slots.length > 0 && (() => {
+          const counts = DAYS.map((d) => ({
+            label: d.label,
+            cnt: slots.filter((s) => s.dayOfWeek === d.id).length,
+          }));
+          const busiest = [...counts].sort((a, b) => b.cnt - a.cnt)[0];
+          const freest = [...counts].sort((a, b) => a.cnt - b.cnt)[0];
+          return (
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-[var(--text-muted)]">
+              <span className="rounded-lg bg-[var(--bg-canvas)] px-2.5 py-1 border border-[var(--border-subtle)]">
+                Tổng lịch tuần: <strong className="font-mono text-[var(--text-primary)]">{slots.length} tiết</strong>
+              </span>
+              {busiest && busiest.cnt > 0 && (
+                <span className="rounded-lg bg-[var(--bg-canvas)] px-2.5 py-1 border border-[var(--border-subtle)]">
+                  Bận nhất: <strong className="text-[var(--accent)]">{busiest.label}</strong> ({busiest.cnt} tiết)
+                </span>
+              )}
+              {freest && (
+                <span className="rounded-lg bg-[var(--bg-canvas)] px-2.5 py-1 border border-[var(--border-subtle)]">
+                  Rảnh nhất: <strong className="text-emerald-600">{freest.label}</strong> ({freest.cnt} tiết)
+                </span>
+              )}
+            </div>
+          );
+        })()}
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
           {DAYS.map((d) => {
             const daySlots = slots.filter((s) => s.dayOfWeek === d.id);
@@ -563,6 +594,37 @@ export function ScheduleGpaPanel({
               </div>
             );
           })()}
+          <div className="mt-3 space-y-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3 text-[11px]">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[var(--text-secondary)]">
+                Tiến độ tín chỉ ra trường:{" "}
+                <strong className="font-mono text-[var(--accent)]">
+                  {totalCredits}/{gradCredits} TC ({Math.min(100, Math.round((totalCredits / Math.max(1, gradCredits)) * 100))}%)
+                </strong>
+              </span>
+              <label className="inline-flex items-center gap-1 text-[var(--text-muted)]">
+                Tổng khóa:
+                <input
+                  type="number"
+                  min={30}
+                  max={250}
+                  value={gradCredits}
+                  onChange={(e) => {
+                    const v = Math.max(30, Number(e.target.value));
+                    setGradCredits(v);
+                    localStorage.setItem("kronoflow-grad-credits", String(v));
+                  }}
+                  className="w-16 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--text-primary)]"
+                />
+              </label>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-all"
+                style={{ width: `${Math.min(100, Math.round((totalCredits / Math.max(1, gradCredits)) * 100))}%` }}
+              />
+            </div>
+          </div>
 
           <form onSubmit={handleAddGrade} className="mt-4 flex flex-wrap gap-2">
             <input

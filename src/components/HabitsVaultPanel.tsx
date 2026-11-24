@@ -86,6 +86,22 @@ export function HabitsVaultPanel({
   const [resTagFilter, setResTagFilter] = useState("Tất cả");
   const [vaultQuery, setVaultQuery] = useState("");
   const [bookQuery, setBookQuery] = useState("");
+  const [sleepMap, setSleepMap] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    try {
+      const rawS = localStorage.getItem("kronoflow-sleep-logs");
+      if (rawS) setSleepMap(JSON.parse(rawS));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const setTodaySleep = (hrs: number) => {
+    const next = { ...sleepMap, [todayKey]: hrs };
+    setSleepMap(next);
+    localStorage.setItem("kronoflow-sleep-logs", JSON.stringify(next));
+  };
   const [vaultMeta, setVaultMeta] = useState<Record<string, { tags: string[]; pinned?: boolean }>>({});
   const VAULT_TAGS = ["Slide", "Đề cũ", "Video", "PDF", "Tóm tắt"];
 
@@ -577,6 +593,35 @@ export function HabitsVaultPanel({
 
         {/* 3. NHẬT KÝ PHẢN TƯ CUỐI NGÀY */}
         <section className="privacy-sensitive glass-card card-lift rounded-2xl p-6 lg:col-span-5">
+          {(() => {
+            const vals = Object.values(sleepMap).slice(-7);
+            const avgSleep = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : null;
+            const todaySleep = sleepMap[todayKey] ?? 0;
+            return (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-[11px]">
+                <span className="text-[var(--text-secondary)]">
+                  Giấc ngủ đêm qua:{avgSleep ? ` (TB ${avgSleep}h)` : ""}
+                </span>
+                <div className="flex gap-1">
+                  {([5, 6, 7, 8, 9] as const).map((h) => (
+                    <button
+                      key={h}
+                      type="button"
+                      onClick={() => setTodaySleep(h)}
+                      className={cn(
+                        "rounded-md px-2 py-0.5 font-mono font-medium",
+                        todaySleep === h
+                          ? "bg-[var(--accent)] text-white"
+                          : "bg-[var(--bg-elevated)] text-[var(--text-muted)]"
+                      )}
+                    >
+                      {h}h
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           <div className="flex items-center gap-2">
             <HeartHandshake className="h-4 w-4 text-[var(--accent)]" />
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">

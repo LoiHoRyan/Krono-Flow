@@ -19,6 +19,7 @@ import {
   CalendarPlus,
   ListChecks,
   Copy,
+  Link2,
 } from "lucide-react";
 import { cn, normalizeVi } from "@/lib/utils";
 import type { SessionLogItem } from "./PomodoroTimer";
@@ -84,6 +85,27 @@ export function SubjectTodoPanel({
   const [newSubText, setNewSubText] = useState("");
   const [selectedTodoIds, setSelectedTodoIds] = useState<string[]>([]);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [todoLinks, setTodoLinks] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    try {
+      const rawL = localStorage.getItem("kronoflow-todo-links");
+      if (rawL) setTodoLinks(JSON.parse(rawL));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const attachTodoLink = (todoId: string) => {
+    const cur = todoLinks[todoId] ?? "";
+    const url = window.prompt("Dán liên kết tài liệu / đề bài cho công việc này (để trống để xóa):", cur);
+    if (url === null) return;
+    const next = { ...todoLinks };
+    if (url.trim()) next[todoId] = url.trim();
+    else delete next[todoId];
+    setTodoLinks(next);
+    localStorage.setItem("kronoflow-todo-links", JSON.stringify(next));
+  };
 
   const duplicateTodo = async (todo: TodoItem) => {
     await fetch("/api/todos", {
@@ -728,6 +750,11 @@ export function SubjectTodoPanel({
                   </button>
                 </div>
               )}
+              {activeTodos.filter((t) => t.priority === "high").length > 5 && (
+                <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                  ⚠ Bạn đang có <strong>{activeTodos.filter((t) => t.priority === "high").length}</strong> việc ưu tiên Cao cùng lúc — hãy chọn ra 3 việc quan trọng nhất để làm trước nhé.
+                </div>
+              )}
               {activeTodos.length > 0 && (() => {
                 const hi = activeTodos.filter((t) => t.priority === "high").length;
                 const md = activeTodos.filter((t) => t.priority === "medium").length;
@@ -1014,6 +1041,26 @@ export function SubjectTodoPanel({
                         >
                           {todo.priority}
                         </span>
+                        {todoLinks[todo.id] ? (
+                          <a
+                            href={todoLinks[todo.id]}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Mở tài liệu đính kèm"
+                            className="text-[var(--accent)] hover:opacity-80"
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => attachTodoLink(todo.id)}
+                            title="Đính kèm link tài liệu / đề bài"
+                            className="text-[var(--text-muted)] hover:text-[var(--accent)]"
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => duplicateTodo(todo)}
