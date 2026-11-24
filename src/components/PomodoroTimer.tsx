@@ -834,6 +834,34 @@ export function PomodoroTimer({
                     </button>
                   ))}
             </div>
+            {clockTab === "pomodoro" && (
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5 text-[11px]">
+                <span className="text-[var(--text-muted)]">Nhịp sinh học:</span>
+                {(
+                  [
+                    [52, "52' Học (52/17)"],
+                    [17, "17' Nghỉ"],
+                    [90, "90' Ultradian"],
+                    [20, "20' Nghỉ sâu"],
+                  ] as const
+                ).map(([mins, lb]) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    disabled={timer.isRunning}
+                    onClick={() => timer.changeDuration(mins)}
+                    className={cn(
+                      "rounded-lg border px-2 py-0.5 transition-colors disabled:opacity-50",
+                      timer.customMinutes === mins
+                        ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] font-medium"
+                        : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    )}
+                  >
+                    {lb}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {clockTab === "exam" && (
               <div className="mt-3 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-xs">

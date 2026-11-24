@@ -243,6 +243,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     if (localStorage.getItem("kronoflow-btn-pill") === "on") {
       document.documentElement.classList.add("btn-pill");
     }
+    if (localStorage.getItem("kronoflow-flat-cards") === "on") {
+      document.documentElement.classList.add("flat-cards");
+    }
     const onScroll = () => setShowScrollTop(window.scrollY > 360);
     window.addEventListener("scroll", onScroll, { passive: true });
     if (localStorage.getItem("kronoflow-hide-hints") === "1") {

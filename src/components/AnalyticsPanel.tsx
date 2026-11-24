@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { Download, Flame, TrendingUp, Award, Clock, Layers, Trophy, Lock,
   Activity,
   Radar,
@@ -25,6 +27,12 @@ export function AnalyticsPanel({
   todos?: TodoItem[];
 }) {
   const { lang, t } = useLang();
+  const [monthlyGoalHrs, setMonthlyGoalHrs] = useState(60);
+
+  useEffect(() => {
+    const raw = Number(localStorage.getItem("kronoflow-monthly-goal-hrs") || "60");
+    if (!isNaN(raw) && raw > 0) setMonthlyGoalHrs(raw);
+  }, []);
   const completed = sessions.filter((s) => s.status === "completed");
   const totalMinutes = completed.reduce((acc, s) => acc + s.actualMinutes, 0);
   const avgSession = completed.length > 0 ? Math.round(totalMinutes / completed.length) : 0;
@@ -459,6 +467,79 @@ export function AnalyticsPanel({
           })}
         </div>
       </section>
+
+      {/* MỤC TIÊU GIỜ HỌC THÁNG & HIỆU SUẤT THEO THỨ (T2–CN) */}
+      {(() => {
+        const curYm = new Date().toISOString().slice(0, 7);
+        const curMonthHrs = +(
+          completed
+            .filter((s) => s.startedAt.slice(0, 7) === curYm)
+            .reduce((a, b) => a + b.actualMinutes, 0) / 60
+        ).toFixed(1);
+        const mPct = Math.min(100, Math.round((curMonthHrs / Math.max(1, monthlyGoalHrs)) * 100));
+        const dowLabels = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+        const dowTotals = [0, 0, 0, 0, 0, 0, 0];
+        for (const s of completed) {
+          const d = new Date(s.startedAt).getDay();
+          const idx = d === 0 ? 6 : d - 1;
+          dowTotals[idx] = (dowTotals[idx] ?? 0) + s.actualMinutes;
+        }
+        const maxDow = Math.max(30, ...dowTotals);
+        return (
+          <div className="grid gap-4 lg:grid-cols-12">
+            <section className="glass-card rounded-2xl p-5 lg:col-span-5">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">Mục tiêu giờ học tháng</h3>
+                <label className="inline-flex items-center gap-1 text-[11px] text-[var(--text-muted)]">
+                  Đích:
+                  <input
+                    type="number"
+                    min={5}
+                    max={300}
+                    value={monthlyGoalHrs}
+                    onChange={(e) => {
+                      const v = Math.max(5, Number(e.target.value));
+                      setMonthlyGoalHrs(v);
+                      localStorage.setItem("kronoflow-monthly-goal-hrs", String(v));
+                    }}
+                    className="w-14 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-1.5 py-0.5 font-mono text-xs text-[var(--text-primary)]"
+                  />
+                  h
+                </label>
+              </div>
+              <div className="mt-3 flex items-baseline justify-between">
+                <span className="font-mono text-2xl font-bold text-[var(--accent)]">{curMonthHrs}h</span>
+                <span className="font-mono text-xs text-[var(--text-muted)]">{mPct}% / {monthlyGoalHrs}h</span>
+              </div>
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: `${mPct}%` }} />
+              </div>
+            </section>
+            <section className="glass-card rounded-2xl p-5 lg:col-span-7">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                Hiệu suất theo Thứ trong tuần (T2 – CN)
+              </h3>
+              <div className="mt-3 flex h-24 items-end gap-2">
+                {dowLabels.map((lb, idx) => {
+                  const m = dowTotals[idx] ?? 0;
+                  return (
+                    <div key={lb} className="flex flex-1 flex-col items-center gap-1">
+                      <div className="flex h-16 w-full items-end">
+                        <div
+                          className="w-full rounded-t-md bg-[var(--accent)]/85 transition-all"
+                          style={{ height: `${Math.max(8, Math.round((m / maxDow) * 100))}%` }}
+                          title={`${lb}: ${m} phút`}
+                        />
+                      </div>
+                      <span className="font-mono text-[10px] text-[var(--text-muted)]">{lb}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
+        );
+      })()}
 
       {/* NHỊP ĐỘ 24 GIỜ TRONG NGÀY (24H FOCUS HEATMAP STRIP) */}
       {(() => {

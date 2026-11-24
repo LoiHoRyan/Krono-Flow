@@ -303,8 +303,23 @@ export function ExpensesPanel({
                 >
                   <div>
                     <div className="font-medium text-[var(--text-primary)]">{ex.title}</div>
-                    <div className="text-[11px] text-[var(--text-muted)]">
-                      {ex.category} · {ex.spentDate}
+                    <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+                      <span
+                        className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+                          ex.category.includes("Sách")
+                            ? "bg-sky-500/15 text-sky-600 dark:text-sky-400"
+                            : ex.category.includes("Khóa học")
+                            ? "bg-violet-500/15 text-violet-600 dark:text-violet-400"
+                            : ex.category.includes("In ấn")
+                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                            : ex.category.includes("Cà phê")
+                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                            : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                        }`}
+                      >
+                        {ex.category}
+                      </span>
+                      <span>{ex.spentDate}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

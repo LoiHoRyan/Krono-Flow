@@ -87,6 +87,7 @@ export function StudioSettingsPanel({
   const [reduceMotion, setReduceMotion] = useState(false);
   const [wideLayout, setWideLayout] = useState(false);
   const [pillButtons, setPillButtons] = useState(false);
+  const [flatCards, setFlatCards] = useState(false);
   const [savedAccents, setSavedAccents] = useState<string[]>(["#2563eb", "#0f766e", "#7c3aed", "#e11d48", "#d97706"]);
   const [diagText, setDiagText] = useState<string | null>(null);
   const [autoDayNight, setAutoDayNight] = useState(false);
@@ -116,6 +117,9 @@ export function StudioSettingsPanel({
       const pb = localStorage.getItem("kronoflow-btn-pill") === "on";
       setPillButtons(pb);
       document.documentElement.classList.toggle("btn-pill", pb);
+      const fc = localStorage.getItem("kronoflow-flat-cards") === "on";
+      setFlatCards(fc);
+      document.documentElement.classList.toggle("flat-cards", fc);
     } catch {
       // ignore
     }
@@ -989,6 +993,21 @@ export function StudioSettingsPanel({
                     )}
                   >
                     Nút bo tròn (Pill): {pillButtons ? "Bật" : "Tắt"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !flatCards;
+                      setFlatCards(next);
+                      localStorage.setItem("kronoflow-flat-cards", next ? "on" : "off");
+                      document.documentElement.classList.toggle("flat-cards", next);
+                    }}
+                    className={cn(
+                      "rounded-lg px-2.5 py-1 text-[11px] font-medium",
+                      flatCards ? "bg-[var(--accent)] text-white" : "bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+                    )}
+                  >
+                    Thẻ phẳng tối giản: {flatCards ? "Bật" : "Tắt"}
                   </button>
                 </div>
               </div>

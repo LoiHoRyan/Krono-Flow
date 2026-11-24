@@ -9,6 +9,7 @@ import { CalendarDays, Calculator, GraduationCap, Plus, Trash2,
   Sparkles,
   Copy,
   Award,
+  Printer,
 } from "lucide-react";
 
 export interface ScheduleSlotRecord {
@@ -289,6 +290,34 @@ export function ScheduleGpaPanel({
               className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-medium text-[var(--accent)] hover:border-[var(--accent)]"
             >
               <Download className="h-3.5 w-3.5" /> Xuất lịch tuần (.ics)
+            </button>
+          )}
+          {slots.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const win = window.open("", "_blank");
+                if (!win) return;
+                const cols = DAYS.map((d) => {
+                  const list = slots
+                    .filter((s) => s.dayOfWeek === d.id)
+                    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+                    .map(
+                      (sl) =>
+                        `<div style="border-left:3px solid ${sl.color};padding:6px 8px;margin-bottom:8px;background:#f8fafc;border-radius:6px;">
+                          <div style="font-weight:600;font-size:12px;">${sl.title.replaceAll("<", "&lt;")}</div>
+                          <div style="font-size:11px;color:#475569;">${sl.startTime} – ${sl.endTime} ${sl.location ? `· ${sl.location.replaceAll("<", "&lt;")}` : ""}</div>
+                        </div>`
+                    )
+                    .join("");
+                  return `<div style="border:1px solid #cbd5e1;border-radius:10px;padding:10px;"><div style="font-weight:700;margin-bottom:8px;font-size:13px;">${d.label}</div>${list || '<span style="font-size:11px;color:#94a3b8;">Trống</span>'}</div>`;
+                }).join("");
+                win.document.write(`<html><head><title>Thời khóa biểu KronoFlow</title><style>body{font-family:system-ui,sans-serif;padding:20px;} .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;}</style></head><body><h2 style="margin-bottom:14px;">Thời khóa biểu tuần KronoFlow</h2><div class="grid">${cols}</div><script>window.print();</script></body></html>`);
+                win.document.close();
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              <Printer className="h-3.5 w-3.5" /> In lịch A4
             </button>
           )}
         </div>
@@ -914,6 +943,26 @@ export function ScheduleGpaPanel({
                   </span>
                 );
               })()}
+              <div className="flex w-full flex-wrap gap-2 border-t border-[var(--border-subtle)] pt-2 text-[11px] text-[var(--text-muted)]">
+                <span>Thang mốc cho {remCredits} TC còn lại:</span>
+                {(
+                  [
+                    ["Khá (2.5)", 2.5],
+                    ["Giỏi (3.2)", 3.2],
+                    ["Xuất sắc (3.6)", 3.6],
+                  ] as const
+                ).map(([lb, tgt]) => {
+                  const req = +((tgt * (totalCredits + remCredits) - realW4) / Math.max(1, remCredits)).toFixed(2);
+                  return (
+                    <span key={lb} className="rounded-lg bg-[var(--bg-surface)] px-2 py-0.5 font-mono">
+                      {lb}:{" "}
+                      <strong className={req > 4 ? "text-rose-500" : "text-[var(--accent)]"}>
+                        {req <= 0 ? "Đạt" : req > 4 ? ">4.0" : req}
+                      </strong>
+                    </span>
+                  );
+                })}
+              </div>
             </div>
             {whatIfList.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">

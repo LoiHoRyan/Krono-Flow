@@ -252,6 +252,22 @@ export function NotesFlashcardsPanel({
   const [bookPaperMode, setBookPaperMode] = useState(false);
   const [clozeMode, setClozeMode] = useState(false);
   const [notesTimeline, setNotesTimeline] = useState(false);
+  const [wordTarget, setWordTarget] = useState(0);
+  const [weakOnly, setWeakOnly] = useState(false);
+  const [reverseCard, setReverseCard] = useState(false);
+
+  const exportGlossaryCsv = () => {
+    const rows = glossary
+      .map((g) => `"${g.term.replaceAll('"', '""')}","${g.def.replaceAll('"', '""')}","${g.ex.replaceAll('"', '""')}"`)
+      .join("\n");
+    const blob = new Blob(["\uFEFFTerm,Definition,Example\n" + rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kronoflow-glossary-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const [readProgress, setReadProgress] = useState(0);
   const [drillMode, setDrillMode] = useState(false);
   const [drillIdx, setDrillIdx] = useState(0);
@@ -646,9 +662,33 @@ export function NotesFlashcardsPanel({
   );
   const subjectFilteredCards =
     deckSubject === "all" ? flashcards : flashcards.filter((c) => c.subjectId === deckSubject);
-  const deck = onlyDue
+  const baseDeck = onlyDue
     ? subjectFilteredCards.filter((c) => !c.nextReviewAt || new Date(c.nextReviewAt).getTime() <= nowMs)
     : subjectFilteredCards;
+  const deck = weakOnly ? baseDeck.filter((c) => c.mastery <= 2) : baseDeck;
+
+  useEffect(() => {
+    if (subTab !== "flashcards" || deck.length === 0) return;
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        setFlipped((f) => !f);
+        playUiTick("flip");
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setFlipped(false);
+        setCardIdx((i) => (i + 1) % deck.length);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setFlipped(false);
+        setCardIdx((i) => (i - 1 + deck.length) % deck.length);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [subTab, deck.length]);
 
   const updateMastery = async (card: FlashcardRecord, delta: number) => {
     const next = Math.max(0, Math.min(5, card.mastery + delta));
@@ -914,6 +954,41 @@ export function NotesFlashcardsPanel({
               <Download className="h-3.5 w-3.5" /> Xuất CSV (Anki)
             </button>
           )}
+          {subTab === "flashcards" && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setWeakOnly((v) => !v);
+                  setCardIdx(0);
+                  setFlipped(false);
+                }}
+                className={cn(
+                  "rounded-xl border px-3 py-1.5 text-xs font-medium",
+                  weakOnly
+                    ? "border-amber-500/50 bg-amber-500/15 text-amber-600"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)]"
+                )}
+              >
+                {weakOnly ? "Đang lọc: Thẻ yếu (≤2★)" : "Chỉ ôn thẻ yếu"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setReverseCard((v) => !v);
+                  setFlipped(false);
+                }}
+                className={cn(
+                  "rounded-xl border px-3 py-1.5 text-xs font-medium",
+                  reverseCard
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)]"
+                )}
+              >
+                {reverseCard ? "Đang đảo chiều (Sau → Trước)" : "Đảo mặt thẻ"}
+              </button>
+            </>
+          )}
         </div>
         <PdfStudyReaderModal
           open={pdfOpen}
@@ -1096,12 +1171,39 @@ export function NotesFlashcardsPanel({
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
-              <span>
-                {noteContent.trim() ? noteContent.trim().split(/\s+/).length : 0} từ · ~
-                {Math.max(1, Math.ceil((noteContent.trim() ? noteContent.trim().split(/\s+/).length : 0) / 180))} phút đọc
-              </span>
-            </div>
+            {(() => {
+              const words = noteContent.trim() ? noteContent.trim().split(/\s+/).length : 0;
+              const pct = wordTarget > 0 ? Math.min(100, Math.round((words / wordTarget) * 100)) : 0;
+              return (
+                <div className="space-y-1.5 text-[11px] text-[var(--text-muted)]">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                      {words} từ · ~{Math.max(1, Math.ceil(words / 180))} phút đọc
+                      {wordTarget > 0 && (
+                        <strong className="ml-1.5 font-mono text-[var(--accent)]">({pct}% mục tiêu)</strong>
+                      )}
+                    </span>
+                    <label className="inline-flex items-center gap-1">
+                      Mục tiêu từ:
+                      <input
+                        type="number"
+                        min={0}
+                        step={100}
+                        value={wordTarget}
+                        onChange={(e) => setWordTarget(Math.max(0, Number(e.target.value)))}
+                        placeholder="0"
+                        className="w-16 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--text-primary)]"
+                      />
+                    </label>
+                  </div>
+                  {wordTarget > 0 && (
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                      <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             <button
               type="submit"
               className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-medium"
@@ -1617,6 +1719,15 @@ export function NotesFlashcardsPanel({
             <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
               <BookA className="h-4 w-4 text-[var(--accent)]" />
               Sổ tay Thuật ngữ & Từ vựng chuyên ngành (A–Z)
+              {glossary.length > 0 && (
+                <button
+                  type="button"
+                  onClick={exportGlossaryCsv}
+                  className="ml-2 inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]"
+                >
+                  <Download className="h-3 w-3" /> Xuất CSV
+                </button>
+              )}
             </div>
             <div className="flex flex-wrap gap-1 text-[10px]">
               {["ALL", ...Array.from(new Set(glossary.map((g) => g.term.charAt(0).toUpperCase()))).sort()].map((lt) => (
@@ -2035,7 +2146,7 @@ export function NotesFlashcardsPanel({
                         Câu hỏi / Khái niệm
                       </span>
                       <p className="mt-3 text-lg font-medium text-[var(--text-primary)]">
-                        {activeCard.front}
+                        {reverseCard ? activeCard.back : activeCard.front}
                       </p>
                       <span className="mt-5 inline-flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
                         <RotateCw className="h-3 w-3" />
@@ -2048,7 +2159,7 @@ export function NotesFlashcardsPanel({
                         Đáp án / Giải thích
                       </span>
                       <p className="mt-3 text-base font-medium text-[var(--text-primary)]">
-                        {activeCard.back}
+                        {reverseCard ? activeCard.front : activeCard.back}
                       </p>
                     </div>
                   </div>
