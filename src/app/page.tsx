@@ -299,6 +299,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [cheatOpen, setCheatOpen] = useState(false);
   const [cramOpen, setCramOpen] = useState(false);
   const [standbyOpen, setStandbyOpen] = useState(false);
+  const [showExamPill, setShowExamPill] = useState(true);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
   const [privacyMode, setPrivacyMode] = useState(false);
   const [dndMode, setDndMode] = useState(false);
@@ -931,6 +932,29 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               <Flame className="h-3.5 w-3.5" />
               <span>Ôn gấp 15p</span>
             </button>
+            {showExamPill && (() => {
+              const nowT = Date.now();
+              const nextEx = [...exams]
+                .filter((ex) => new Date(ex.examDate).getTime() >= nowT - 86400000)
+                .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime())[0];
+              if (!nextEx) return null;
+              const days = Math.max(0, Math.ceil((new Date(nextEx.examDate).getTime() - nowT) / 86400000));
+              return (
+                <button
+                  type="button"
+                  onClick={() => setTab("dashboard")}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setShowExamPill(false);
+                  }}
+                  title={`${nextEx.title} (${nextEx.examDate.slice(0, 10)}) — Nhấp phải để ẩn`}
+                  className="hidden items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-500/20 dark:text-rose-400 2xl:inline-flex"
+                >
+                  <span className="max-w-[110px] truncate">{nextEx.title}</span>
+                  <span className="font-mono font-bold">· {days === 0 ? "Hôm nay" : `${days}d`}</span>
+                </button>
+              );
+            })()}
             <button
               type="button"
               onClick={() => setStandbyOpen(true)}

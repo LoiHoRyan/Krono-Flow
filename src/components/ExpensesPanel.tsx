@@ -208,6 +208,43 @@ export function ExpensesPanel({
                   </div>
                 )}
               </div>
+              {monthTotal > 0 && (() => {
+                const mCats = CATEGORIES.map((c) => ({
+                  cat: c,
+                  sum: expenses
+                    .filter((e) => e.spentDate.startsWith(selectedMonth) && e.category === c)
+                    .reduce((a, b) => a + b.amount, 0),
+                }))
+                  .filter((x) => x.sum > 0)
+                  .sort((a, b) => b.sum - a.sum);
+                if (mCats.length === 0) return null;
+                return (
+                  <div className="mt-3 space-y-1.5 border-t border-[var(--border-subtle)] pt-2.5 text-[11px]">
+                    <div className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)]">
+                      Tỷ trọng danh mục tháng này
+                    </div>
+                    {mCats.map((item) => {
+                      const share = Math.round((item.sum / monthTotal) * 100);
+                      return (
+                        <div key={item.cat} className="space-y-0.5">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="truncate text-[var(--text-secondary)]">{item.cat}</span>
+                            <span className="font-mono text-[var(--text-primary)]">
+                              {share}% ({item.sum.toLocaleString("vi-VN")} ₫)
+                            </span>
+                          </div>
+                          <div className="h-1 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                            <div
+                              className="h-full rounded-full bg-[var(--accent)]"
+                              style={{ width: `${share}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             );
           })()}
         </div>

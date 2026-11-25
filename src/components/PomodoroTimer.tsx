@@ -80,6 +80,50 @@ export function PomodoroTimer({
   const [rehRunning, setRehRunning] = useState(false);
   const [muteBell, setMuteBell] = useState(false);
   const [autoBreak, setAutoBreak] = useState(false);
+  const [flowOpen, setFlowOpen] = useState(false);
+  const [flowRunning, setFlowRunning] = useState(false);
+  const [flowSecs, setFlowSecs] = useState(0);
+  const [flowSaving, setFlowSaving] = useState(false);
+
+  useEffect(() => {
+    if (!flowRunning) return;
+    const id = setInterval(() => setFlowSecs((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [flowRunning]);
+
+  const saveFlowSession = async () => {
+    const mins = Math.max(1, Math.round(flowSecs / 60));
+    setFlowSaving(true);
+    try {
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subjectId: timer.selectedSubjectId || null,
+          mode: "deep_work",
+          plannedMinutes: mins,
+          notes: timer.notes.trim() || "Phiên Flowtime (Đếm tiến)",
+        }),
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const createdId = json?.data?.id;
+        if (createdId) {
+          await fetch(`/api/sessions/${createdId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "completed", actualMinutes: mins }),
+          });
+        }
+        setFlowRunning(false);
+        setFlowSecs(0);
+        setFlowOpen(false);
+        onSessionSaved?.();
+      }
+    } finally {
+      setFlowSaving(false);
+    }
+  };
   const [recentPresets, setRecentPresets] = useState<string[]>([]);
   const [focusRatings, setFocusRatings] = useState<number[]>([]);
 
@@ -602,6 +646,21 @@ export function PomodoroTimer({
           </button>
           <button
             type="button"
+            onClick={() => setFlowOpen((v) => !v)}
+            title="Chế độ Đếm tiến (Flowtime) không bị ngắt sau 25 phút"
+            className={cn(
+              "inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-medium",
+              flowOpen || flowRunning
+                ? "border-emerald-500 bg-emerald-500/15 text-emerald-600"
+                : "border-[var(--border-subtle)] bg-[var(--bg-elevated)] text-[var(--text-secondary)]"
+            )}
+          >
+            {flowRunning
+              ? `Flow ${String(Math.floor(flowSecs / 60)).padStart(2, "0")}:${String(flowSecs % 60).padStart(2, "0")}`
+              : "Đếm tiến"}
+          </button>
+          <button
+            type="button"
             onClick={() => {
               const next = !zenMode;
               setZenMode(next);
@@ -618,6 +677,51 @@ export function PomodoroTimer({
           </button>
           </div>
         </div>
+        {flowOpen && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs">
+            <div>
+              <div className="font-semibold text-emerald-700 dark:text-emerald-300">
+                Chế độ Flowtime (Đếm tiến không giới hạn)
+              </div>
+              <div className="font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">
+                {String(Math.floor(flowSecs / 3600)).padStart(2, "0")}:
+                {String(Math.floor((flowSecs % 3600) / 60)).padStart(2, "0")}:
+                {String(flowSecs % 60).padStart(2, "0")}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setFlowRunning((r) => !r)}
+                className="btn-primary rounded-xl px-3 py-1.5 text-xs font-medium"
+              >
+                {flowRunning ? "Tạm dừng" : flowSecs > 0 ? "Tiếp tục" : "Bắt đầu"}
+              </button>
+              {flowSecs >= 60 && (
+                <button
+                  type="button"
+                  disabled={flowSaving}
+                  onClick={saveFlowSession}
+                  className="rounded-xl border border-emerald-500/40 bg-emerald-500/20 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 disabled:opacity-50"
+                >
+                  {flowSaving ? "Đang lưu..." : `Lưu ${Math.max(1, Math.round(flowSecs / 60))}p`}
+                </button>
+              )}
+              {flowSecs > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFlowRunning(false);
+                    setFlowSecs(0);
+                  }}
+                  className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs text-[var(--text-muted)]"
+                >
+                  Đặt lại
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* STUDY SCENE PRESETS + PiP + BREATHING 4-7-8 */}
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-[11px]">

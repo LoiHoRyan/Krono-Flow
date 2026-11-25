@@ -717,6 +717,66 @@ export function StudioSettingsPanel({
               </button>
               <button
                 type="button"
+                onClick={() => {
+                  try {
+                    const dump: Record<string, string> = {};
+                    for (let i = 0; i < localStorage.length; i++) {
+                      const k = localStorage.key(i);
+                      if (k && k.startsWith("kronoflow-")) {
+                        const v = localStorage.getItem(k);
+                        if (v !== null) dump[k] = v;
+                      }
+                    }
+                    const blob = new Blob([JSON.stringify(dump, null, 2)], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `kronoflow-local-settings-${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  } catch {
+                    window.alert("Không thể xuất cài đặt cục bộ.");
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs font-medium text-[var(--text-primary)]"
+              >
+                <Download className="h-3.5 w-3.5 text-sky-500" />
+                Sao lưu cài đặt
+              </button>
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs font-medium text-[var(--text-primary)]">
+                <Upload className="h-3.5 w-3.5 text-sky-500" />
+                Nạp cài đặt
+                <input
+                  type="file"
+                  accept="application/json"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      try {
+                        const parsed = JSON.parse(String(reader.result ?? "{}")) as Record<string, unknown>;
+                        let count = 0;
+                        for (const [k, v] of Object.entries(parsed)) {
+                          if (k.startsWith("kronoflow-") && typeof v === "string") {
+                            localStorage.setItem(k, v);
+                            count += 1;
+                          }
+                        }
+                        window.alert(`Đã khôi phục ${count} thiết lập cục bộ! Trang sẽ tải lại để áp dụng.`);
+                        window.location.reload();
+                      } catch {
+                        window.alert("Tệp JSON cài đặt không hợp lệ.");
+                      }
+                    };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              <button
+                type="button"
                 onClick={toggleDensity}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs font-medium text-[var(--text-primary)]"
               >

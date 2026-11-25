@@ -121,6 +121,21 @@ export function DashboardBento({
   const [cleanMode, setCleanMode] = useState(false);
   const [coverPreset, setCoverPreset] = useState("none");
   const [copiedStandup, setCopiedStandup] = useState(false);
+  const [editingGoal, setEditingGoal] = useState(false);
+
+  const quickUpdateGoal = async (mins: number) => {
+    setEditingGoal(false);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dailyGoalMinutes: mins }),
+      });
+      if (res.ok) onRefresh();
+    } catch {
+      // ignore
+    }
+  };
   const [copiedAgenda, setCopiedAgenda] = useState(false);
 
   const copyTodayAgenda = () => {
@@ -1070,12 +1085,39 @@ export function DashboardBento({
             <span>{lang === "vi" ? "Hôm nay / Mục tiêu" : "Today / Goal"}</span>
             <Target className="h-4 w-4 text-[var(--accent)]" />
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">
-              {todayMinutes}p
-            </span>
-            <span className="text-xs text-[var(--text-muted)]">/ {dailyGoal}p</span>
+          <div className="mt-2 flex items-baseline justify-between gap-1.5">
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-mono text-2xl font-bold tabular-nums text-[var(--text-primary)]">
+                {todayMinutes}p
+              </span>
+              <span className="text-xs text-[var(--text-muted)]">/ {dailyGoal}p</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEditingGoal((v) => !v)}
+              className="rounded-md border border-[var(--border-subtle)] px-1.5 py-0.5 text-[10px] text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              {editingGoal ? "Đóng" : "Chỉnh"}
+            </button>
           </div>
+          {editingGoal && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {[60, 90, 120, 180, 240].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => quickUpdateGoal(m)}
+                  className={`rounded-md border px-1.5 py-0.5 font-mono text-[10px] ${
+                    dailyGoal === m
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] font-semibold text-[var(--accent)]"
+                      : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)]"
+                  }`}
+                >
+                  {m}p
+                </button>
+              ))}
+            </div>
+          )}
           <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
             <div className="accent-gradient progress-sheen h-full rounded-full" style={{ width: `${goalPct}%` }} />
           </div>

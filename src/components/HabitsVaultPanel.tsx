@@ -95,6 +95,21 @@ export function HabitsVaultPanel({
     if (!isNaN(wp) && wp > 0) setWeeklyPageGoal(wp);
   }, []);
 
+  const calcHabitStreak = (dates: string[]) => {
+    const set = new Set(dates);
+    let count = 0;
+    const d = new Date();
+    const todayIso = d.toISOString().slice(0, 10);
+    if (!set.has(todayIso)) {
+      d.setDate(d.getDate() - 1);
+    }
+    while (set.has(d.toISOString().slice(0, 10))) {
+      count += 1;
+      d.setDate(d.getDate() - 1);
+    }
+    return count;
+  };
+
   const exportHabitsCsv = () => {
     const header = "Thoi quen,Ngay hoan thanh\n";
     const rows = habits
@@ -396,6 +411,15 @@ export function HabitsVaultPanel({
                           style={{ backgroundColor: h.color }}
                         />
                         {h.title}
+                        {(() => {
+                          const st = calcHabitStreak(h.dates);
+                          if (st <= 0) return null;
+                          return (
+                            <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                              🔥 {st}d
+                            </span>
+                          );
+                        })()}
                       </span>
                     </td>
                     {last7Days.map((d) => {

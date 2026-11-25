@@ -850,6 +850,30 @@ export function AnalyticsPanel({
                 <Copy className="h-3.5 w-3.5" />
                 Chép Markdown
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const cutoff = Date.now() - 7 * 86400000;
+                  const wk = completed.filter((s) => new Date(s.startedAt).getTime() >= cutoff);
+                  const wkMins = wk.reduce((a, b) => a + b.actualMinutes, 0);
+                  const bySub = new Map<string, number>();
+                  for (const s of wk) {
+                    const k = s.subjectId ?? "general";
+                    bySub.set(k, (bySub.get(k) ?? 0) + s.actualMinutes);
+                  }
+                  const topEntry = [...bySub.entries()].sort((a, b) => b[1] - a[1])[0];
+                  const topSubName = topEntry
+                    ? (subjects.find((sub) => sub.id === topEntry[0])?.name ?? "Tự học")
+                    : "Chưa có";
+                  const msg = `📊 Tổng kết 7 ngày qua (KronoFlow):\n• Tổng thời gian: ${(wkMins / 60).toFixed(1)} giờ (${wk.length} phiên)\n• Môn học nhiều nhất: ${topSubName}\n• Thẻ Flashcard hiện có: ${totalCards} · Thói quen: ${totalHabits}`;
+                  navigator.clipboard?.writeText(msg).catch(() => {});
+                  window.alert("Đã sao chép báo cáo tuần gọn vào clipboard!");
+                }}
+                className="no-print inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-medium text-emerald-600 hover:border-emerald-500"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Chép tuần này
+              </button>
             </div>
             <div className="mt-4 grid items-center gap-6 md:grid-cols-12">
               <div className="flex justify-center md:col-span-5">

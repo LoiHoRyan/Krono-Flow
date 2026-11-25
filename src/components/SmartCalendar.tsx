@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -89,6 +89,28 @@ export function SmartCalendar({
   const [quickTitle, setQuickTitle] = useState("");
   const [quickStart, setQuickStart] = useState("19:30");
   const [quickEnd, setQuickEnd] = useState("21:00");
+  const [dayNotes, setDayNotes] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("kronoflow-cal-notes");
+      if (raw) setDayNotes(JSON.parse(raw));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const updateDayNote = (day: string, val: string) => {
+    const next = { ...dayNotes };
+    if (val.trim()) next[day] = val;
+    else delete next[day];
+    setDayNotes(next);
+    try {
+      localStorage.setItem("kronoflow-cal-notes", JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  };
 
   const completedSessions = sessions.filter((s) => s.status === "completed");
   const dayMap = new Map<string, number>();
@@ -469,6 +491,23 @@ export function SmartCalendar({
             })}
           </ul>
         )}
+
+        <div className="mt-3 border-t border-[var(--border-subtle)] pt-2.5">
+          <label className="mb-1 block text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)]">
+            {lang === "vi" ? `Ghi chú nhanh ngày ${selectedDay}` : `Quick note for ${selectedDay}`}
+          </label>
+          <input
+            type="text"
+            value={dayNotes[selectedDay] ?? ""}
+            onChange={(e) => updateDayNote(selectedDay, e.target.value)}
+            placeholder={
+              lang === "vi"
+                ? "VD: Phòng thi B204, hạn nộp bài tập nhóm 23:59..."
+                : "e.g. Exam room B204, assignment due 23:59..."
+            }
+            className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+          />
+        </div>
 
         <form
           onSubmit={handleQuickAdd}

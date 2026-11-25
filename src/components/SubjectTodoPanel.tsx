@@ -268,6 +268,8 @@ export function SubjectTodoPanel({
   const [priority, setPriority] = useState<TodoItem["priority"]>("medium");
   const [filter, setFilter] = useState<"all" | "pending" | "done" | "today" | "week" | "high" | "overdue">("all");
   const [sortBy, setSortBy] = useState<"default" | "due" | "priority" | "subject">("default");
+  const [hideCompleted, setHideCompleted] = useState(false);
+  const [prioFilter, setPrioFilter] = useState<"all" | TodoItem["priority"]>("all");
 
   useEffect(() => {
     localStorage.setItem("kronoflow-todo-view", view);
@@ -441,6 +443,8 @@ export function SubjectTodoPanel({
   const filteredTodos = todos
     .filter((t) => {
       if (todoQuery.trim() && !normalizeVi(t.title).includes(normalizeVi(todoQuery))) return false;
+      if (hideCompleted && t.isCompleted) return false;
+      if (prioFilter !== "all" && t.priority !== prioFilter) return false;
       if (filter === "pending") return !t.isCompleted;
       if (filter === "done") return t.isCompleted;
       if (filter === "today") return !t.isCompleted && t.dueDate?.slice(0, 10) === nowIso;
@@ -860,6 +864,42 @@ export function SubjectTodoPanel({
                 >
                   {groupBySub ? "Đang gom theo môn" : "Gom theo môn"}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setHideCompleted((v) => !v)}
+                  className={cn(
+                    "rounded-lg border px-2 py-1 text-[11px] font-medium",
+                    hideCompleted
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                      : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)]"
+                  )}
+                >
+                  {hideCompleted ? "Đang ẩn việc xong" : "Ẩn việc xong"}
+                </button>
+                <div className="inline-flex items-center gap-0.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-0.5 text-[10px]">
+                  {(
+                    [
+                      ["all", "Mọi mức"],
+                      ["high", "Cao"],
+                      ["medium", "TB"],
+                      ["low", "Thấp"],
+                    ] as const
+                  ).map(([val, lbl]) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setPrioFilter(val)}
+                      className={cn(
+                        "rounded px-1.5 py-0.5 font-medium",
+                        prioFilter === val
+                          ? "bg-[var(--accent)] text-white"
+                          : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                      )}
+                    >
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
                 {todos.length > 0 && (
                   <button
                     type="button"
