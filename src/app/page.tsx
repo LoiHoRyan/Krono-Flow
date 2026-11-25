@@ -46,6 +46,9 @@ import {
   Monitor,
   Music2,
   ClipboardCheck,
+  PenTool,
+  Search,
+  Wrench,
 } from "lucide-react";
 import { cn, formatDuration, normalizeVi } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -66,6 +69,9 @@ import { MediaPlayerWidget } from "@/components/MediaPlayerWidget";
 import { StudyAllocatorModal } from "@/components/StudyAllocatorModal";
 import { ExamToolkitModal } from "@/components/ExamToolkitModal";
 import { EyeCareToggle } from "@/components/EyeCareToggle";
+import { StudyWhiteboardModal } from "@/components/StudyWhiteboardModal";
+import { GlobalSpotlightModal } from "@/components/GlobalSpotlightModal";
+import { StudentUtilitiesModal } from "@/components/StudentUtilitiesModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -308,6 +314,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [mediaOpen, setMediaOpen] = useState(false);
   const [allocatorOpen, setAllocatorOpen] = useState(false);
   const [toolkitOpen, setToolkitOpen] = useState(false);
+  const [whiteboardOpen, setWhiteboardOpen] = useState(false);
+  const [spotlightOpen, setSpotlightOpen] = useState(false);
+  const [utilsOpen, setUtilsOpen] = useState(false);
   const [showExamPill, setShowExamPill] = useState(true);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
   const [privacyMode, setPrivacyMode] = useState(false);
@@ -525,6 +534,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         const tabList: TabId[] = ["dashboard", "focus", "schedule", "planner", "goals", "habits", "roadmaps", "knowledge"];
         const target = tabList[Number(e.key) - 1];
         if (target) setTab(target);
+      } else if (e.altKey && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSpotlightOpen((v) => !v);
       } else if (e.altKey && e.key.toLowerCase() === "s") {
         e.preventDefault();
         setStandbyOpen((v) => !v);
@@ -630,6 +642,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       <StandbyClockModal open={standbyOpen} onClose={() => setStandbyOpen(false)} exams={props.exams} />
       <StudyAllocatorModal open={allocatorOpen} onClose={() => setAllocatorOpen(false)} subjects={props.subjects} />
       <ExamToolkitModal open={toolkitOpen} onClose={() => setToolkitOpen(false)} subjects={props.subjects} notes={props.notes} mistakes={props.mistakes} exams={props.exams} />
+      <StudyWhiteboardModal open={whiteboardOpen} onClose={() => setWhiteboardOpen(false)} />
+      <GlobalSpotlightModal open={spotlightOpen} onClose={() => setSpotlightOpen(false)} subjects={props.subjects} todos={props.todos} notes={props.notes} flashcards={props.flashcards} exams={props.exams} onJumpTab={(t) => setTab(t)} />
+      <StudentUtilitiesModal open={utilsOpen} onClose={() => setUtilsOpen(false)} subjects={props.subjects} />
       <MediaPlayerWidget open={mediaOpen} onToggleOpen={() => setMediaOpen((v) => !v)} />
       <LastMinuteCramModal
         open={cramOpen}
@@ -1007,6 +1022,30 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] lg:inline-flex"
             >
               <ClipboardCheck className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setWhiteboardOpen(true)}
+              title="Bảng Nháp Vẽ tay (Whiteboard)"
+              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] xl:inline-flex"
+            >
+              <PenTool className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setUtilsOpen(true)}
+              title="Tiện ích Sinh viên (Trích dẫn, Xếp lịch, Chia tiền nhóm, Checklist thi, Cà phê)"
+              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] xl:inline-flex"
+            >
+              <Wrench className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSpotlightOpen(true)}
+              title="Tìm kiếm toàn cục (Alt+K)"
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              <Search className="h-4 w-4" />
             </button>
             <EyeCareToggle />
             <button
