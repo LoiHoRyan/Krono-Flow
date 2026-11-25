@@ -62,6 +62,7 @@ import { CheatSheetModal } from "@/components/CheatSheetModal";
 import { LastMinuteCramModal } from "@/components/LastMinuteCramModal";
 import { StandbyClockModal } from "@/components/StandbyClockModal";
 import { MediaPlayerWidget } from "@/components/MediaPlayerWidget";
+import { StudyAllocatorModal } from "@/components/StudyAllocatorModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -302,6 +303,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [cramOpen, setCramOpen] = useState(false);
   const [standbyOpen, setStandbyOpen] = useState(false);
   const [mediaOpen, setMediaOpen] = useState(false);
+  const [allocatorOpen, setAllocatorOpen] = useState(false);
   const [showExamPill, setShowExamPill] = useState(true);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
   const [privacyMode, setPrivacyMode] = useState(false);
@@ -514,6 +516,11 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       } else if (e.key.toLowerCase() === "p" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
         setPrivacyMode((v) => !v);
+      } else if (e.altKey && /^[1-8]$/.test(e.key)) {
+        e.preventDefault();
+        const tabList: TabId[] = ["dashboard", "focus", "schedule", "planner", "goals", "habits", "roadmaps", "knowledge"];
+        const target = tabList[Number(e.key) - 1];
+        if (target) setTab(target);
       } else if (e.altKey && e.key.toLowerCase() === "s") {
         e.preventDefault();
         setStandbyOpen((v) => !v);
@@ -616,7 +623,8 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         />
       )}
       <CheatSheetModal open={cheatOpen} onClose={() => setCheatOpen(false)} />
-      <StandbyClockModal open={standbyOpen} onClose={() => setStandbyOpen(false)} />
+      <StandbyClockModal open={standbyOpen} onClose={() => setStandbyOpen(false)} exams={props.exams} />
+      <StudyAllocatorModal open={allocatorOpen} onClose={() => setAllocatorOpen(false)} subjects={props.subjects} />
       <MediaPlayerWidget open={mediaOpen} onToggleOpen={() => setMediaOpen((v) => !v)} />
       <LastMinuteCramModal
         open={cramOpen}
@@ -978,6 +986,14 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               }`}
             >
               <Music2 className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setAllocatorOpen(true)}
+              title="Sổ tay Công thức & Phân bổ giờ ôn thi"
+              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] lg:inline-flex"
+            >
+              <BookMarked className="h-4 w-4" />
             </button>
             <button
               type="button"

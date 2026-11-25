@@ -135,6 +135,51 @@ export function ExpensesPanel({
 
   return (
     <div className="space-y-6">
+      <div className="glass-card rounded-2xl p-4 text-xs">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="font-semibold text-[var(--text-primary)]">
+            Ghi nhanh 1 chạm (Khoản hay lặp)
+          </span>
+          <span className="text-[10px] text-[var(--text-muted)]">
+            Bấm để lưu thẳng vào tháng này
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { title: "Cà phê học bài", amount: 35000, category: "Cà phê học bài" },
+            { title: "In tài liệu / Photo", amount: 20000, category: "In ấn & Dụng cụ" },
+            { title: "Sách & Giáo trình", amount: 120000, category: "Sách & Giáo trình" },
+            { title: "Gửi xe / Di chuyển", amount: 10000, category: "Khác" },
+          ].map((preset) => (
+            <button
+              key={preset.title}
+              type="button"
+              onClick={async () => {
+                const res = await fetch("/api/expenses", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    title: preset.title,
+                    amount: preset.amount,
+                    category: preset.category,
+                    spentDate: new Date().toISOString().slice(0, 10),
+                  }),
+                });
+                if (res.ok) {
+                  onNotify(`Đã ghi nhanh: ${preset.title} (${preset.amount.toLocaleString("vi-VN")} ₫)`);
+                  onRefresh();
+                }
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-primary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              <span>+ {preset.title}</span>
+              <span className="font-mono text-[10px] text-[var(--text-muted)]">
+                {(preset.amount / 1000).toFixed(0)}k
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="stagger-grid grid gap-4 sm:grid-cols-2">
         <div className="glass-card card-lift rounded-2xl p-5">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--text-muted)]">

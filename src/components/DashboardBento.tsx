@@ -827,6 +827,38 @@ export function DashboardBento({
         onRefresh={onRefresh}
       />
 
+      {/* THANH NHẮC TIẾT HỌC SẮP TỚI TRONG 60 PHÚT */}
+      {!cleanMode && slots.length > 0 && (() => {
+        const now = new Date();
+        const jsDay = now.getDay(); // 0=Sun..6=Sat
+        const curMins = now.getHours() * 60 + now.getMinutes();
+        const parseHm = (hm: string) => {
+          const [h, m] = hm.split(":").map(Number);
+          return (h ?? 0) * 60 + (m ?? 0);
+        };
+        const upcoming = slots
+          .filter((sl) => sl.dayOfWeek === jsDay || (jsDay === 0 && sl.dayOfWeek === 7))
+          .map((sl) => ({ sl, diff: parseHm(sl.startTime) - curMins, endDiff: parseHm(sl.endTime) - curMins }))
+          .filter((x) => x.diff <= 60 && x.endDiff > 0)
+          .sort((a, b) => a.diff - b.diff)[0];
+        if (!upcoming) return null;
+        return (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-sky-500/35 bg-sky-500/10 px-4 py-2.5 text-xs">
+            <div className="flex items-center gap-2 font-medium text-sky-700 dark:text-sky-300">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-sky-500" />
+              <span>
+                {upcoming.diff <= 0 ? "Đang diễn ra:" : `Tiết học sắp tới (còn ${upcoming.diff} phút):`}{" "}
+                <strong>{upcoming.sl.title}</strong>
+              </span>
+            </div>
+            <div className="font-mono text-[11px] text-sky-600 dark:text-sky-400">
+              {upcoming.sl.startTime}–{upcoming.sl.endTime}
+              {upcoming.sl.location ? ` · Phòng ${upcoming.sl.location}` : ""}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* THẺ ƯU TIÊN LÀM TRƯỚC HÔM NAY */}
       {!cleanMode && (() => {
         const prioOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };

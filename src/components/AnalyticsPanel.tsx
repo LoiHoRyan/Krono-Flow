@@ -1043,6 +1043,56 @@ export function AnalyticsPanel({
           ))}
         </div>
       </section>
+
+      {/* PHÁT HIỆN KHUNG GIỜ VÀNG TẬP TRUNG */}
+      {completed.length > 0 && (() => {
+        const buckets = [
+          { label: "Sáng sớm (05:00–08:00)", mins: 0 },
+          { label: "Buổi sáng (08:00–12:00)", mins: 0 },
+          { label: "Buổi chiều (12:00–18:00)", mins: 0 },
+          { label: "Buổi tối (18:00–23:00)", mins: 0 },
+          { label: "Đêm khuya (23:00–05:00)", mins: 0 },
+        ];
+        for (const s of completed) {
+          const hr = new Date(s.startedAt).getHours();
+          const bi = hr >= 5 && hr < 8 ? 0 : hr >= 8 && hr < 12 ? 1 : hr >= 12 && hr < 18 ? 2 : hr >= 18 && hr < 23 ? 3 : 4;
+          const b = buckets[bi];
+          if (b) b.mins += s.actualMinutes;
+        }
+        const totM = buckets.reduce((a, b) => a + b.mins, 0);
+        const best = [...buckets].sort((a, b) => b.mins - a.mins)[0];
+        if (!best || totM <= 0) return null;
+        return (
+          <section className="glass-card card-lift p-5 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                  Khung giờ vàng tập trung của bạn
+                </h3>
+                <p className="text-[11px] text-[var(--text-muted)]">
+                  Gợi ý xếp các môn khó vào khung giờ bạn có tỷ lệ tập trung cao nhất.
+                </p>
+              </div>
+              <span className="rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-1 font-semibold text-amber-600 dark:text-amber-400">
+                ⚡ {best.label} ({Math.round((best.mins / totM) * 100)}%)
+              </span>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-5">
+              {buckets.map((bk) => {
+                const pct = Math.round((bk.mins / totM) * 100);
+                return (
+                  <div key={bk.label} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2.5">
+                    <div className="truncate text-[10px] text-[var(--text-muted)]">{bk.label}</div>
+                    <div className="mt-1 font-mono text-sm font-bold text-[var(--text-primary)]">
+                      {(bk.mins / 60).toFixed(1)}h <span className="text-[10px] font-normal text-[var(--accent)]">({pct}%)</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })()}
     </div>
   );
 }

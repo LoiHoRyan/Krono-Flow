@@ -41,6 +41,7 @@ import { playUiTick } from "@/lib/ui-sounds";
 import type { SubjectOption } from "./PomodoroTimer";
 import { FlashcardFileImportModal } from "./FlashcardFileImportModal";
 import { FlashcardQuizModal } from "./FlashcardQuizModal";
+import { FlashcardTypingModal } from "./FlashcardTypingModal";
 
 export interface NoteRecord {
   id: string;
@@ -269,6 +270,7 @@ export function NotesFlashcardsPanel({
   const [handsFreePlaying, setHandsFreePlaying] = useState(false);
   const [fileImportOpen, setFileImportOpen] = useState(false);
   const [quizModalOpen, setQuizModalOpen] = useState(false);
+  const [typingModalOpen, setTypingModalOpen] = useState(false);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState<0 | 1 | 2 | 3>(0);
   const [selCardFront, setSelCardFront] = useState("");
   const [selCardBack, setSelCardBack] = useState("");
@@ -1194,6 +1196,15 @@ ${note.content}`, count: 5 }),
                   className="inline-flex items-center gap-1 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 dark:text-amber-400"
                 >
                   Trắc nghiệm A/B/C/D
+                </button>
+              )}
+              {flashcards.length >= 1 && (
+                <button
+                  type="button"
+                  onClick={() => setTypingModalOpen(true)}
+                  className="inline-flex items-center gap-1 rounded-xl border border-sky-500/40 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-600 dark:text-sky-400"
+                >
+                  Gõ đáp án
                 </button>
               )}
             </>
@@ -2834,6 +2845,11 @@ ${note.content}`, count: 5 }),
         open={quizModalOpen}
         onClose={() => setQuizModalOpen(false)}
         cards={deck.length >= 2 ? deck : flashcards}
+      />
+      <FlashcardTypingModal
+        open={typingModalOpen}
+        onClose={() => setTypingModalOpen(false)}
+        cards={deck.length >= 1 ? deck : flashcards}
       />
     </div>
   );

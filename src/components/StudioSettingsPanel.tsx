@@ -698,6 +698,54 @@ export function StudioSettingsPanel({
             <h3 className="text-sm font-medium text-[var(--text-primary)]">
               Thông báo & Sao lưu / Khôi phục
             </h3>
+            {typeof window !== "undefined" && (() => {
+              let kfKeys = 0;
+              let totalBytes = 0;
+              try {
+                for (let i = 0; i < localStorage.length; i++) {
+                  const k = localStorage.key(i);
+                  if (k && k.startsWith("kronoflow-")) {
+                    kfKeys += 1;
+                    totalBytes += (localStorage.getItem(k)?.length ?? 0) * 2;
+                  }
+                }
+              } catch {
+                // ignore
+              }
+              return (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-2 text-[11px]">
+                  <span className="text-[var(--text-muted)]">
+                    Sức khỏe dữ liệu cục bộ: <strong className="font-mono text-[var(--text-primary)]">{kfKeys} khóa</strong> (~{(totalBytes / 1024).toFixed(1)} KB)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const keepPrefixes = ["kronoflow-gpa-", "kronoflow-formulas-", "kronoflow-media-", "kronoflow-syllabus", "kronoflow-cal-notes"];
+                      let removed = 0;
+                      try {
+                        const keys: string[] = [];
+                        for (let i = 0; i < localStorage.length; i++) {
+                          const k = localStorage.key(i);
+                          if (k && k.startsWith("kronoflow-reviewed-")) keys.push(k);
+                        }
+                        for (const k of keys) {
+                          if (!keepPrefixes.some((p) => k.startsWith(p))) {
+                            localStorage.removeItem(k);
+                            removed += 1;
+                          }
+                        }
+                      } catch {
+                        // ignore
+                      }
+                      window.alert(`Đã dọn ${removed} khóa cache tạm (giữ nguyên toàn bộ điểm GPA, công thức và dữ liệu học)!`);
+                    }}
+                    className="rounded-lg border border-[var(--border-subtle)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                  >
+                    Dọn cache tạm
+                  </button>
+                </div>
+              );
+            })()}
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"

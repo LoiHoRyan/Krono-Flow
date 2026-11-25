@@ -831,7 +831,13 @@ export function HabitsVaultPanel({
                   </button>
                 </div>
                 <div className="mt-1 flex items-center justify-between font-mono text-[11px] text-[var(--text-muted)]">
-                  <span>Trang {b.currentPage} / {b.totalPages} ({pct}%)</span>
+                  <span>Trang {b.currentPage} / {b.totalPages} {(() => {
+                          const rem = Math.max(0, b.totalPages - b.currentPage);
+                          if (rem <= 0) return " · ✓ Đã đọc xong";
+                          const days = Math.ceil(rem / 15);
+                          const fin = new Date(Date.now() + days * 86400000).toLocaleDateString("vi-VN");
+                          return ` · Dự kiến xong: ${fin} (~${days} ngày)`;
+                        })()} ({pct}%)</span>
                   <span>
                     {b.currentPage >= b.totalPages
                       ? "Đã đọc xong ✓"
