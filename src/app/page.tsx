@@ -45,6 +45,7 @@ import {
   RefreshCw,
   Monitor,
   Music2,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn, formatDuration, normalizeVi } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -63,6 +64,8 @@ import { LastMinuteCramModal } from "@/components/LastMinuteCramModal";
 import { StandbyClockModal } from "@/components/StandbyClockModal";
 import { MediaPlayerWidget } from "@/components/MediaPlayerWidget";
 import { StudyAllocatorModal } from "@/components/StudyAllocatorModal";
+import { ExamToolkitModal } from "@/components/ExamToolkitModal";
+import { EyeCareToggle } from "@/components/EyeCareToggle";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -304,6 +307,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [standbyOpen, setStandbyOpen] = useState(false);
   const [mediaOpen, setMediaOpen] = useState(false);
   const [allocatorOpen, setAllocatorOpen] = useState(false);
+  const [toolkitOpen, setToolkitOpen] = useState(false);
   const [showExamPill, setShowExamPill] = useState(true);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
   const [privacyMode, setPrivacyMode] = useState(false);
@@ -625,6 +629,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       <CheatSheetModal open={cheatOpen} onClose={() => setCheatOpen(false)} />
       <StandbyClockModal open={standbyOpen} onClose={() => setStandbyOpen(false)} exams={props.exams} />
       <StudyAllocatorModal open={allocatorOpen} onClose={() => setAllocatorOpen(false)} subjects={props.subjects} />
+      <ExamToolkitModal open={toolkitOpen} onClose={() => setToolkitOpen(false)} subjects={props.subjects} notes={props.notes} mistakes={props.mistakes} exams={props.exams} />
       <MediaPlayerWidget open={mediaOpen} onToggleOpen={() => setMediaOpen((v) => !v)} />
       <LastMinuteCramModal
         open={cramOpen}
@@ -995,6 +1000,15 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             >
               <BookMarked className="h-4 w-4" />
             </button>
+            <button
+              type="button"
+              onClick={() => setToolkitOpen(true)}
+              title="Bộ công cụ Ôn thi (Phiếu A4, Làm đề, So sánh, Chống cấm thi, Chốt ngày)"
+              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] lg:inline-flex"
+            >
+              <ClipboardCheck className="h-4 w-4" />
+            </button>
+            <EyeCareToggle />
             <button
               type="button"
               onClick={cycleFontScale}
