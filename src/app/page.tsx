@@ -934,7 +934,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             </button>
             {showExamPill && (() => {
               const nowT = Date.now();
-              const nextEx = [...exams]
+              const nextEx = [...props.exams]
                 .filter((ex) => new Date(ex.examDate).getTime() >= nowT - 86400000)
                 .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime())[0];
               if (!nextEx) return null;
