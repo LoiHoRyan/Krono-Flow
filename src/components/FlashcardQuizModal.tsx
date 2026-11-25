@@ -1,13 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { CheckCircle2, RotateCcw, Trophy, X, XCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Clock, History, RotateCcw, Trophy, X, XCircle } from "lucide-react";
 
 interface QuizCardInput {
   id: string;
   front: string;
   back: string;
 }
+
+interface QuizHistoryEntry {
+  id: string;
+  date: string;
+  score: number;
+  total: number;
+  pct: number;
+  timedMins: number;
+}
+
+const QUIZ_HISTORY_KEY = "kronoflow-quiz-history-v1";
 
 export function FlashcardQuizModal({
   open,
@@ -23,6 +34,20 @@ export function FlashcardQuizModal({
   const [picked, setPicked] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [wrongList, setWrongList] = useState<QuizCardInput[]>([]);
+  const [timeLimitMins, setTimeLimitMins] = useState<number>(0); // 0 = unlimited
+  const [secsLeft, setSecsLeft] = useState<number>(0);
+  const [timedOut, setTimedOut] = useState(false);
+  const [history, setHistory] = useState<QuizHistoryEntry[]>([]);
+  const [savedAttempt, setSavedAttempt] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(QUIZ_HISTORY_KEY);
+      if (raw) setHistory(JSON.parse(raw) as QuizHistoryEntry[]);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const questions = useMemo(() => {
     if (!open || cards.length < 2) return [];
@@ -42,18 +67,64 @@ export function FlashcardQuizModal({
     });
   }, [open, cards, seed]);
 
+  const finished = (questions.length > 0 && idx >= questions.length) || timedOut;
+
+  useEffect(() => {
+    if (!open || timeLimitMins <= 0 || finished || questions.length === 0) return;
+    const id = setInterval(() => {
+      setSecsLeft((prev) => {
+        if (prev <= 1) {
+          setTimedOut(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [open, timeLimitMins, finished, questions.length]);
+
+  useEffect(() => {
+    if (!finished || savedAttempt || questions.length === 0) return;
+    setSavedAttempt(true);
+    const entry: QuizHistoryEntry = {
+      id: `${Date.now()}`,
+      date: new Date().toLocaleString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      score,
+      total: questions.length,
+      pct: Math.round((score / questions.length) * 100),
+      timedMins: timeLimitMins,
+    };
+    setHistory((prev) => {
+      const next = [entry, ...prev].slice(0, 5);
+      try {
+        localStorage.setItem(QUIZ_HISTORY_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, [finished, savedAttempt, questions.length, score, timeLimitMins]);
+
   if (!open) return null;
 
-  const resetQuiz = () => {
+  const resetQuiz = (nextMins = timeLimitMins) => {
     setSeed((s) => s + 1);
     setIdx(0);
     setPicked(null);
     setScore(0);
     setWrongList([]);
+    setTimedOut(false);
+    setSavedAttempt(false);
+    setTimeLimitMins(nextMins);
+    setSecsLeft(nextMins * 60);
   };
 
   const cur = questions[idx] ?? null;
-  const finished = questions.length > 0 && idx >= questions.length;
 
   return (
     <div
@@ -64,20 +135,33 @@ export function FlashcardQuizModal({
         className="max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-3">
           <div className="flex items-center gap-2">
             <Trophy className="h-4 w-4 text-amber-500" />
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-              Trắc nghiệm nhanh A/B/C/D từ Flashcards
+              Thi thử Trắc nghiệm A/B/C/D
             </h3>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <select
+              value={timeLimitMins}
+              onChange={(e) => resetQuiz(Number(e.target.value))}
+              title="Chọn chế độ bấm giờ thi thử"
+              className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-[11px] text-[var(--text-primary)]"
+            >
+              <option value={0}>Không giới hạn giờ</option>
+              <option value={5}>Bấm giờ 5 phút</option>
+              <option value={10}>Bấm giờ 10 phút</option>
+              <option value={15}>Bấm giờ 15 phút</option>
+            </select>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {cards.length < 2 ? (
@@ -86,6 +170,11 @@ export function FlashcardQuizModal({
           </p>
         ) : finished ? (
           <div className="space-y-4 py-4 text-center">
+            {timedOut && (
+              <div className="inline-flex items-center gap-1 rounded-full bg-rose-500/15 px-3 py-1 text-[11px] font-semibold text-rose-500">
+                <Clock className="h-3.5 w-3.5" /> Hết giờ làm bài — hệ thống đã tự nộp!
+              </div>
+            )}
             <div className="font-mono text-3xl font-bold text-[var(--accent)]">
               {score} / {questions.length}
             </div>
@@ -103,9 +192,26 @@ export function FlashcardQuizModal({
                 ))}
               </div>
             )}
+            {history.length > 0 && (
+              <div className="space-y-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3 text-left text-[11px]">
+                <div className="flex items-center gap-1 font-semibold text-[var(--text-muted)]">
+                  <History className="h-3.5 w-3.5" /> Lịch sử thi thử gần đây
+                </div>
+                {history.map((h) => (
+                  <div key={h.id} className="flex items-center justify-between text-[var(--text-secondary)]">
+                    <span>
+                      {h.date} {h.timedMins > 0 ? `(${h.timedMins}p)` : "(Tự do)"}
+                    </span>
+                    <strong className="font-mono text-[var(--accent)]">
+                      {h.score}/{h.total} ({h.pct}%)
+                    </strong>
+                  </div>
+                ))}
+              </div>
+            )}
             <button
               type="button"
-              onClick={resetQuiz}
+              onClick={() => resetQuiz(timeLimitMins)}
               className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-medium"
             >
               <RotateCcw className="h-3.5 w-3.5" /> Làm lượt mới
@@ -117,7 +223,20 @@ export function FlashcardQuizModal({
               <span>
                 Câu {idx + 1} / {questions.length}
               </span>
-              <span className="font-mono font-semibold text-emerald-600">Đúng: {score}</span>
+              <div className="flex items-center gap-3">
+                {timeLimitMins > 0 && (
+                  <span
+                    className={`inline-flex items-center gap-1 font-mono font-semibold ${
+                      secsLeft <= 60 ? "animate-pulse text-rose-500" : "text-amber-600"
+                    }`}
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                    {String(Math.floor(secsLeft / 60)).padStart(2, "0")}:
+                    {String(secsLeft % 60).padStart(2, "0")}
+                  </span>
+                )}
+                <span className="font-mono font-semibold text-emerald-600">Đúng: {score}</span>
+              </div>
             </div>
 
             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-4 text-sm font-medium text-[var(--text-primary)]">
@@ -132,7 +251,8 @@ export function FlashcardQuizModal({
                 let cls =
                   "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-primary)] hover:border-[var(--accent)]";
                 if (picked) {
-                  if (isRight) cls = "border-emerald-500 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+                  if (isRight)
+                    cls = "border-emerald-500 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
                   else if (isSelected) cls = "border-rose-500 bg-rose-500/15 text-rose-600";
                 }
                 return (

@@ -9,7 +9,9 @@ import {
   GraduationCap,
   Plus,
   SlidersHorizontal,
+  Target,
   Trash2,
+  TrendingUp,
   Upload,
 } from "lucide-react";
 import type { GradeRecord } from "./ScheduleGpaPanel";
@@ -24,11 +26,12 @@ export interface ComponentScoreItem {
 export interface CourseGpaMeta {
   components: ComponentScoreItem[];
   finalExamScore: number | null;
-  finalWeightPct: number; // default 50 (50% thành phần + 50% cuối kỳ)
+  finalWeightPct: number;
   excludeFromGpa: boolean;
 }
 
 type GpaScaleMode = "linear" | "step";
+type DisplayPrecision = "exact" | "2" | "3";
 
 const STORAGE_KEY = "kronoflow-gpa-meta-v1";
 const SCALE_KEY = "kronoflow-gpa-scale-v1";
@@ -45,9 +48,10 @@ function isDefaultExcludedCourse(courseName: string): boolean {
   );
 }
 
-function toGpa4(s10: number, mode: GpaScaleMode): number {
+// Exact unrounded 4.0 conversion (no premature rounding!)
+function toGpa4Exact(s10: number, mode: GpaScaleMode): number {
   if (mode === "linear") {
-    return Math.round(s10 * 0.4 * 100) / 100;
+    return s10 * 0.4;
   }
   if (s10 >= 8.5) return 4.0;
   if (s10 >= 8.0) return 3.5;
@@ -57,6 +61,15 @@ function toGpa4(s10: number, mode: GpaScaleMode): number {
   if (s10 >= 5.0) return 1.5;
   if (s10 >= 4.0) return 1.0;
   return 0.0;
+}
+
+function fmtExact(val: number, precision: DisplayPrecision): string {
+  if (!isFinite(val)) return "0";
+  if (precision === "2") return val.toFixed(2);
+  if (precision === "3") return val.toFixed(3);
+  // Strip IEEE-754 noise (e.g. 3.7200000000000002 -> "3.72") without rounding real digits like 3.736
+  const clean = Number(val.toFixed(6));
+  return String(clean);
 }
 
 function toLetter(s10: number, mode: GpaScaleMode): string {
@@ -110,9 +123,10 @@ function calcComponentAvg(components: ComponentScoreItem[]): number | null {
   const sumW = valid.reduce((a, b) => a + b.weight, 0);
   if (sumW <= 0) return null;
   const weighted = valid.reduce((a, b) => a + b.score * b.weight, 0);
-  return Math.round((weighted / sumW) * 100) / 100;
+  return weighted / sumW;
 }
 
+// Keep full unrounded floating-point precision through all weighted sums
 function computeWeightedStats(
   list: GradeRecord[],
   metaMap: Record<string, CourseGpaMeta>,
@@ -126,15 +140,11 @@ function computeWeightedStats(
   const credits = included.reduce((a, b) => a + b.credits, 0);
   if (credits <= 0) return { credits: 0, gpa10: 0, gpa4: 0, count: included.length };
   const w10 = included.reduce((a, b) => a + b.score10 * b.credits, 0);
-  const gpa10Raw = w10 / credits;
-  const gpa4Raw =
-    scale === "linear"
-      ? gpa10Raw * 0.4
-      : included.reduce((a, b) => a + toGpa4(b.score10, scale) * b.credits, 0) / credits;
+  const w4 = included.reduce((a, b) => a + toGpa4Exact(b.score10, scale) * b.credits, 0);
   return {
     credits,
-    gpa10: Math.round(gpa10Raw * 100) / 100,
-    gpa4: Math.round(gpa4Raw * 100) / 100,
+    gpa10: w10 / credits,
+    gpa4: w4 / credits,
     count: included.length,
   };
 }
@@ -156,7 +166,6 @@ function parsePortalTranscript(raw: string): ParsedImportRow[] {
     const line = rawLine.trim();
     if (!line) continue;
 
-    // Detect semester header e.g. "Học kỳ 2 - Năm học 2025 - 2026"
     const semMatch = line.match(/Học kỳ\s*\d+\s*[-–]\s*Năm học\s*20\d{2}\s*[-–]\s*20\d{2}/i);
     if (semMatch && semMatch[0]) {
       currentSem = semMatch[0].replace(/\s+/g, " ").trim();
@@ -165,12 +174,10 @@ function parsePortalTranscript(raw: string): ParsedImportRow[] {
 
     if (line.startsWith("-") || /^Stt\b/i.test(line)) continue;
 
-    // Split by tab (copy from Excel/portal) or comma
     const cols = line.includes("\t")
       ? line.split("\t").map((x) => x.trim())
       : line.split(",").map((x) => x.replace(/^"|"$/g, "").trim());
 
-    // Portal Excel format: [Stt, Mã MH, Nhóm, Tên môn học, Số tín chỉ, Điểm thi, Điểm TK (10), ...]
     if (cols.length >= 7 && /^\d+$/.test(cols[0] ?? "")) {
       const name = cols[3] ?? "";
       const cr = Number(cols[4] ?? 0);
@@ -198,6 +205,7 @@ export function GpaMultiYearBoard({
   onRefresh?: () => void;
 }) {
   const [scaleMode, setScaleMode] = useState<GpaScaleMode>("linear");
+  const [precision, setPrecision] = useState<DisplayPrecision>("exact");
   const [groupMode, setGroupMode] = useState<"semester" | "year" | "course" | "condition">("semester");
   const [programCredits, setProgramCredits] = useState(130);
   const [metaMap, setMetaMap] = useState<Record<string, CourseGpaMeta>>({});
@@ -218,7 +226,7 @@ export function GpaMultiYearBoard({
   const [newExam, setNewExam] = useState("");
   const [addingCourse, setAddingCourse] = useState(false);
 
-  // Bulk Portal Import modal
+  // Bulk Portal Import
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
   const [importing, setImporting] = useState(false);
@@ -271,11 +279,11 @@ export function GpaMultiYearBoard({
   const saveComputedScoreToDb = async (g: GradeRecord, score10: number) => {
     setSavingScore(true);
     try {
-      const rounded = Math.round(Math.min(10, Math.max(0, score10)) * 10) / 10;
+      const clamped = Math.min(10, Math.max(0, Number(score10.toFixed(4))));
       const res = await fetch(`/api/grades/${g.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ score10: rounded }),
+        body: JSON.stringify({ score10: clamped }),
       });
       if (res.ok) onRefresh?.();
     } finally {
@@ -289,7 +297,6 @@ export function GpaMultiYearBoard({
   );
   const rank = classifyGpa4(overall.gpa4);
 
-  // Semester breakdown with running cumulative CPA (6 official portal metrics!)
   const bySemester = useMemo(() => {
     const map = new Map<string, GradeRecord[]>();
     for (const g of grades) {
@@ -306,12 +313,7 @@ export function GpaMultiYearBoard({
       accGrades.push(...items);
       const semStats = computeWeightedStats(items, metaMap, scaleMode);
       const cumStats = computeWeightedStats(accGrades, metaMap, scaleMode);
-      return {
-        name,
-        items,
-        semStats,
-        cumStats,
-      };
+      return { name, items, semStats, cumStats };
     });
   }, [grades, metaMap, scaleMode]);
 
@@ -341,6 +343,29 @@ export function GpaMultiYearBoard({
     [grades, metaMap]
   );
 
+  // Courses currently in progress (score10 === 0 or finalExamScore === null with component scores)
+  const inProgressTargets = useMemo(() => {
+    return grades
+      .map((g) => {
+        const meta = metaMap[g.id];
+        const isPending = g.score10 === 0 || (meta && meta.finalExamScore === null);
+        if (!isPending) return null;
+        const qt = meta ? calcComponentAvg(meta.components) : null;
+        if (qt === null) return null;
+        const wFin = (meta?.finalWeightPct ?? 50) / 100;
+        return {
+          grade: g,
+          qt,
+          wFin,
+          needAPlus: (9.0 - qt * (1 - wFin)) / wFin,
+          needA: (8.5 - qt * (1 - wFin)) / wFin,
+          needBPlus: (8.0 - qt * (1 - wFin)) / wFin,
+          needB: (7.0 - qt * (1 - wFin)) / wFin,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+  }, [grades, metaMap]);
+
   const simulated = useMemo(() => {
     const modified = grades.map((g) =>
       g.id === retakeId ? { ...g, score10: Math.min(10, Math.max(0, retakeScore)) } : g
@@ -350,15 +375,12 @@ export function GpaMultiYearBoard({
     const totCr = base.credits + addCr;
     if (totCr <= 0) return { gpa4: 0, gpa10: 0, delta: 0 };
     const newGpa10 = (base.gpa10 * base.credits + futureScore10 * addCr) / totCr;
-    const addGpa4 = toGpa4(futureScore10, scaleMode);
     const newGpa4 =
-      scaleMode === "linear"
-        ? Math.round(newGpa10 * 0.4 * 100) / 100
-        : Math.round(((base.gpa4 * base.credits + addGpa4 * addCr) / totCr) * 100) / 100;
+      (base.gpa4 * base.credits + toGpa4Exact(futureScore10, scaleMode) * addCr) / totCr;
     return {
-      gpa10: Math.round(newGpa10 * 100) / 100,
+      gpa10: newGpa10,
       gpa4: newGpa4,
-      delta: Math.round((newGpa4 - overall.gpa4) * 100) / 100,
+      delta: newGpa4 - overall.gpa4,
     };
   }, [grades, retakeId, retakeScore, futureCredits, futureScore10, metaMap, scaleMode, overall.gpa4]);
 
@@ -372,9 +394,7 @@ export function GpaMultiYearBoard({
       const wFin = newFinalWeight / 100;
       const computedTk10 =
         qt !== null && exNum !== null && !isNaN(exNum)
-          ? Math.round((qt * (1 - wFin) + exNum * wFin) * 10) / 10
-          : qt !== null && exNum === null
-          ? 0
+          ? Number((qt * (1 - wFin) + exNum * wFin).toFixed(4))
           : 0;
       const semesterLabel = `${newHk} - Năm học ${newYear}`;
       const res = await fetch("/api/grades", {
@@ -439,10 +459,9 @@ export function GpaMultiYearBoard({
           const json = await res.json();
           const createdId = json?.data?.id as string | undefined;
           if (createdId) {
-            // Back-calculate implied 50% QT from TK10 and examScore if available
             const impliedQt =
               row.examScore !== null
-                ? Math.min(10, Math.max(0, Math.round((row.score10 * 2 - row.examScore) * 10) / 10))
+                ? Math.min(10, Math.max(0, Number((row.score10 * 2 - row.examScore).toFixed(2))))
                 : row.score10;
             nextMeta[createdId] = {
               components: [{ id: "qt", label: "Quá trình", score: impliedQt, weight: 1 }],
@@ -465,14 +484,14 @@ export function GpaMultiYearBoard({
   };
 
   const exportTranscriptCsv = () => {
-    const header = "Nam hoc,Hoc ky,Mon hoc,Tin chi,Tinh GPA,Diem TK 10,Diem TK 4,Diem chu\n";
+    const header = "Nam hoc,Hoc ky,Mon hoc,Tin chi,Tinh GPA,Diem TK 10,Diem TK 4 (thuc),Diem chu\n";
     const rows = grades
       .map((g) => {
         const m = getCourseMeta(g);
-        return `"${extractAcademicYear(g.semester)}","${g.semester.replaceAll('"', '""')}","${g.courseName.replaceAll('"', '""')}",${g.credits},"${m.excludeFromGpa ? "Khong" : "Co"}",${g.score10},${toGpa4(g.score10, scaleMode)},${toLetter(g.score10, scaleMode)}`;
+        return `"${extractAcademicYear(g.semester)}","${g.semester.replaceAll('"', '""')}","${g.courseName.replaceAll('"', '""')}",${g.credits},"${m.excludeFromGpa ? "Khong" : "Co"}",${g.score10},${fmtExact(toGpa4Exact(g.score10, scaleMode), precision)},${toLetter(g.score10, scaleMode)}`;
       })
       .join("\n");
-    const summary = `\n"TONG KET TICH LUY","","",${overall.credits},"",${overall.gpa10},${overall.gpa4},"${rank.label}"`;
+    const summary = `\n"TONG KET TICH LUY","","",${overall.credits},"",${fmtExact(overall.gpa10, precision)},${fmtExact(overall.gpa4, precision)},"${rank.label}"`;
     const blob = new Blob(["\uFEFF" + header + rows + summary], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -484,6 +503,7 @@ export function GpaMultiYearBoard({
 
   const progressPct = Math.min(100, Math.round((overall.credits / Math.max(1, programCredits)) * 100));
   const activeGrade = grades.find((g) => g.id === activeCourseId) ?? null;
+  const trendSemesters = bySemester.filter((s) => s.semStats.credits > 0);
 
   return (
     <section className="glass-card card-lift space-y-4 p-5">
@@ -492,10 +512,10 @@ export function GpaMultiYearBoard({
           <GraduationCap className="h-4 w-4 text-[var(--accent)]" />
           <div>
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">
-              Hệ thống GPA chuẩn Tín chỉ (50% Thành phần + 50% Cuối kỳ · HK1 / HK2 / HK3)
+              Hệ thống GPA chuẩn Tín chỉ (Hệ 4 thực không làm tròn · 50/50 · HK1/HK2/HK3)
             </h3>
             <p className="text-[11px] text-[var(--text-muted)]">
-              Hỗ trợ nhiều cột điểm thành phần có hệ số riêng, tự loại trừ GDTC/GDQP và tính 6 chỉ số tích lũy từng kỳ.
+              Tính trực tiếp trên số thực <code>Điểm 10 × 0.4</code>, nhiều cột thành phần theo hệ số và tự loại trừ GDTC/GDQP.
             </p>
           </div>
         </div>
@@ -511,18 +531,27 @@ export function GpaMultiYearBoard({
                 // ignore
               }
             }}
-            title="Chọn hệ quy đổi thang 4"
-            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-primary)]"
+            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1.5 text-[11px] font-medium text-[var(--text-primary)]"
           >
-            <option value="linear">Hệ 4 tuyến tính (×0.4 · có A+)</option>
-            <option value="step">Hệ 4 bậc thang (4.0/3.5/3.0)</option>
+            <option value="linear">Hệ 4 thực (×0.4 · A+)</option>
+            <option value="step">Hệ 4 bậc thang</option>
+          </select>
+          <select
+            value={precision}
+            onChange={(e) => setPrecision(e.target.value as DisplayPrecision)}
+            title="Chọn độ chính xác hiển thị"
+            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1.5 text-[11px] font-medium text-[var(--text-secondary)]"
+          >
+            <option value="exact">Số thực nguyên bản</option>
+            <option value="3">3 chữ số thập phân</option>
+            <option value="2">2 chữ số thập phân</option>
           </select>
           <button
             type="button"
             onClick={() => setAddOpen((v) => !v)}
             className="btn-primary inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-medium"
           >
-            <Plus className="h-3.5 w-3.5" /> Thêm môn (50/50)
+            <Plus className="h-3.5 w-3.5" /> Thêm môn
           </button>
           <button
             type="button"
@@ -662,7 +691,6 @@ export function GpaMultiYearBoard({
                       prev.map((x) => (x.id === c.id ? { ...x, score: Number(e.target.value) } : x))
                     )
                   }
-                  title="Điểm (0-10)"
                   className="w-20 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 font-mono"
                 />
                 <span className="text-[10px] text-[var(--text-muted)]">× hệ số</span>
@@ -677,7 +705,6 @@ export function GpaMultiYearBoard({
                       prev.map((x) => (x.id === c.id ? { ...x, weight: Number(e.target.value) } : x))
                     )
                   }
-                  title="Hệ số hoặc % trọng số"
                   className="w-16 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 font-mono"
                 />
                 {newComps.length > 1 && (
@@ -697,25 +724,25 @@ export function GpaMultiYearBoard({
             const qt = calcComponentAvg(newComps);
             const ex = newExam.trim() !== "" ? Number(newExam) : null;
             const wFin = newFinalWeight / 100;
-            const tk10 =
-              qt !== null && ex !== null && !isNaN(ex)
-                ? Math.round((qt * (1 - wFin) + ex * wFin) * 10) / 10
-                : null;
+            const tk10 = qt !== null && ex !== null && !isNaN(ex) ? qt * (1 - wFin) + ex * wFin : null;
             return (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-[var(--bg-elevated)] px-3 py-2 text-[11px]">
                 <div>
-                  ĐTB Thành phần: <strong className="font-mono text-[var(--accent)]">{qt?.toFixed(2) ?? "--"}</strong>
+                  ĐTB Thành phần:{" "}
+                  <strong className="font-mono text-[var(--accent)]">
+                    {qt !== null ? fmtExact(qt, precision) : "--"}
+                  </strong>
                   {tk10 !== null ? (
                     <span className="ml-2">
-                      → Tổng kết: <strong className="font-mono">{tk10.toFixed(1)}</strong> (Hệ 4:{" "}
-                      <strong>{toGpa4(tk10, scaleMode).toFixed(2)}</strong> ·{" "}
+                      → Tổng kết: <strong className="font-mono">{fmtExact(tk10, precision)}</strong> (Hệ 4 thực:{" "}
+                      <strong>{fmtExact(toGpa4Exact(tk10, scaleMode), precision)}</strong> ·{" "}
                       <strong>{toLetter(tk10, scaleMode)}</strong>)
                     </span>
                   ) : qt !== null ? (
                     <span className="ml-2 text-[var(--text-muted)]">
                       Cần thi CK ≥{" "}
                       <strong className="font-mono text-emerald-600">
-                        {Math.max(0, (9.0 - qt * (1 - wFin)) / wFin).toFixed(1)}
+                        {Math.max(0, (9.0 - qt * (1 - wFin)) / wFin).toFixed(2)}
                       </strong>{" "}
                       để đạt A+ (9.0)
                     </span>
@@ -759,7 +786,7 @@ export function GpaMultiYearBoard({
             </label>
           </div>
           <p className="text-[11px] text-[var(--text-muted)]">
-            Mở file <code>Diem.xlsx</code> trong Excel, chọn toàn bộ bảng (Ctrl+A → Ctrl+C) rồi dán vào ô dưới. Hệ thống tự tách Học kỳ 1/2/3, tự bỏ qua môn 0 tín chỉ và tự đánh dấu GDTC/GDQP không tính CPA.
+            Mở bảng điểm trong Excel, chọn toàn bộ bảng (Ctrl+A → Ctrl+C) rồi dán vào ô dưới. Hệ thống tự tách Học kỳ 1/2/3, bỏ qua môn 0 tín chỉ và tự đánh dấu GDTC/GDQP không tính CPA.
           </p>
           <textarea
             rows={4}
@@ -789,19 +816,19 @@ export function GpaMultiYearBoard({
       <div className="grid gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3">
           <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-            ĐTB Tích lũy hệ 4 (CPA)
+            ĐTB Tích lũy hệ 4 (thực)
           </div>
           <div className="mt-1 font-mono text-2xl font-bold text-[var(--accent)]">
-            {overall.gpa4.toFixed(2)}
+            {fmtExact(overall.gpa4, precision)}
           </div>
           <div className={`text-[11px] font-semibold ${rank.color}`}>{rank.label}</div>
         </div>
         <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3">
           <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
-            ĐTB Tích lũy hệ 10
+            ĐTB Tích lũy hệ 10 (thực)
           </div>
           <div className="mt-1 font-mono text-2xl font-bold text-[var(--text-primary)]">
-            {overall.gpa10.toFixed(2)}
+            {fmtExact(overall.gpa10, precision)}
           </div>
           <div className="text-[11px] text-[var(--text-muted)]">
             {overall.count} môn tính GPA · {conditionCourses.length} môn ĐK
@@ -836,6 +863,110 @@ export function GpaMultiYearBoard({
         </div>
       </div>
 
+      {/* GPA TREND SPARKLINE ACROSS SEMESTERS */}
+      {trendSemesters.length >= 2 && (
+        <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3.5">
+          <div className="mb-2 flex items-center justify-between text-[11px]">
+            <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--text-primary)]">
+              <TrendingUp className="h-3.5 w-3.5 text-[var(--accent)]" />
+              Xu hướng ĐTB Học kỳ vs CPA Tích lũy (hệ 4 thực)
+            </span>
+            <span className="text-[10px] text-[var(--text-muted)]">
+              Đường liền: ĐTB HK · Đường đứt: CPA tích lũy
+            </span>
+          </div>
+          {(() => {
+            const w = 520;
+            const h = 84;
+            const padX = 24;
+            const padY = 12;
+            const n = trendSemesters.length;
+            const xAt = (i: number) =>
+              n === 1 ? w / 2 : padX + (i / (n - 1)) * (w - padX * 2);
+            const yAt = (v: number) =>
+              h - padY - (Math.min(4, Math.max(0, v)) / 4) * (h - padY * 2);
+            const semPts = trendSemesters
+              .map((s, i) => `${xAt(i)},${yAt(s.semStats.gpa4)}`)
+              .join(" ");
+            const cumPts = trendSemesters
+              .map((s, i) => `${xAt(i)},${yAt(s.cumStats.gpa4)}`)
+              .join(" ");
+            return (
+              <svg viewBox={`0 0 ${w} ${h}`} className="h-24 w-full">
+                <polyline fill="none" stroke="var(--accent)" strokeWidth="2.2" points={semPts} />
+                <polyline
+                  fill="none"
+                  stroke="#10b981"
+                  strokeWidth="1.8"
+                  strokeDasharray="4 3"
+                  points={cumPts}
+                />
+                {trendSemesters.map((s, i) => (
+                  <g key={s.name}>
+                    <circle cx={xAt(i)} cy={yAt(s.semStats.gpa4)} r="3.5" fill="var(--accent)" />
+                    <text
+                      x={xAt(i)}
+                      y={yAt(s.semStats.gpa4) - 6}
+                      textAnchor="middle"
+                      fontSize="9"
+                      fill="currentColor"
+                      className="font-mono text-[var(--text-primary)]"
+                    >
+                      {fmtExact(s.semStats.gpa4, "2")}
+                    </text>
+                  </g>
+                ))}
+              </svg>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* IN-PROGRESS COURSES FINAL EXAM TARGET SUMMARY */}
+      {inProgressTargets.length > 0 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5 text-xs">
+          <div className="mb-2 flex items-center gap-1.5 font-semibold text-amber-700 dark:text-amber-400">
+            <Target className="h-3.5 w-3.5" />
+            Môn đang học chưa thi cuối kỳ — Cần thi tối thiểu bao nhiêu?
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px]">
+              <thead>
+                <tr className="border-b border-amber-500/20 text-[10px] text-[var(--text-muted)]">
+                  <th className="py-1 pr-2">Môn học</th>
+                  <th className="py-1 pr-2 text-right">ĐTB QT</th>
+                  <th className="py-1 pr-2 text-right">Đạt A+ (9.0)</th>
+                  <th className="py-1 pr-2 text-right">Đạt A (8.5)</th>
+                  <th className="py-1 pr-2 text-right">Đạt B+ (8.0)</th>
+                  <th className="py-1 text-right">Đạt B (7.0)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-amber-500/10">
+                {inProgressTargets.map((row) => (
+                  <tr key={row.grade.id}>
+                    <td className="py-1.5 pr-2 font-medium text-[var(--text-primary)]">
+                      {row.grade.courseName}
+                    </td>
+                    <td className="py-1.5 pr-2 text-right font-mono">{fmtExact(row.qt, "2")}</td>
+                    {[row.needAPlus, row.needA, row.needBPlus, row.needB].map((val, idx) => (
+                      <td key={idx} className="py-1.5 pr-2 text-right font-mono">
+                        {val > 10 ? (
+                          <span className="text-rose-500">&gt;10</span>
+                        ) : val <= 0 ? (
+                          <span className="text-emerald-600">Đạt</span>
+                        ) : (
+                          <span>{val.toFixed(1)}</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* VIEW MODE TABS */}
       <div className="flex flex-wrap gap-1.5">
         {(
@@ -863,7 +994,7 @@ export function GpaMultiYearBoard({
 
       {grades.length === 0 ? (
         <p className="rounded-xl border border-dashed border-[var(--border-subtle)] p-4 text-center text-xs text-[var(--text-muted)]">
-          Chưa có học phần nào. Bạn có thể bấm <strong>Thêm môn (50/50)</strong> hoặc <strong>Nhập bảng điểm</strong> từ file Excel cổng trường ở góc trên.
+          Chưa có học phần nào. Bạn có thể bấm <strong>Thêm môn</strong> hoặc <strong>Nhập bảng điểm</strong> từ Excel cổng trường ở góc trên.
         </p>
       ) : groupMode === "semester" ? (
         <div className="space-y-2.5">
@@ -891,7 +1022,7 @@ export function GpaMultiYearBoard({
                     <span className="text-[var(--text-muted)]">ĐTB học kỳ (4 / 10): </span>
                     <strong className="font-mono text-[var(--accent)]">
                       {sem.semStats.credits > 0
-                        ? `${sem.semStats.gpa4.toFixed(2)} / ${sem.semStats.gpa10.toFixed(2)}`
+                        ? `${fmtExact(sem.semStats.gpa4, precision)} / ${fmtExact(sem.semStats.gpa10, precision)}`
                         : "—"}
                     </strong>
                   </div>
@@ -899,7 +1030,7 @@ export function GpaMultiYearBoard({
                     <span className="text-[var(--text-muted)]">ĐTB tích lũy (4 / 10): </span>
                     <strong className="font-mono text-[var(--text-primary)]">
                       {sem.cumStats.credits > 0
-                        ? `${sem.cumStats.gpa4.toFixed(2)} / ${sem.cumStats.gpa10.toFixed(2)}`
+                        ? `${fmtExact(sem.cumStats.gpa4, precision)} / ${fmtExact(sem.cumStats.gpa10, precision)}`
                         : "—"}
                     </strong>
                   </div>
@@ -926,12 +1057,12 @@ export function GpaMultiYearBoard({
                 <div className="min-w-0">
                   <div className="truncate font-semibold text-[var(--text-primary)]">{yr.name}</div>
                   <div className="text-[11px] text-[var(--text-muted)]">
-                    {yr.stats.count} môn tính GPA · {yr.stats.credits} TC · Hệ 10: {yr.stats.gpa10.toFixed(2)}
+                    {yr.stats.count} môn tính GPA · {yr.stats.credits} TC · Hệ 10: {fmtExact(yr.stats.gpa10, precision)}
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="font-mono text-base font-bold text-[var(--accent)]">
-                    {yr.stats.gpa4.toFixed(2)}
+                    {fmtExact(yr.stats.gpa4, precision)}
                   </div>
                   <div className={`text-[10px] font-semibold ${c.color}`}>{c.label}</div>
                 </div>
@@ -958,7 +1089,9 @@ export function GpaMultiYearBoard({
                   </div>
                 </div>
                 <span className="font-mono font-bold text-emerald-600">
-                  {g.score10 > 0 ? `${g.score10.toFixed(1)} (${toLetter(g.score10, scaleMode)})` : "Đang học"}
+                  {g.score10 > 0
+                    ? `${fmtExact(g.score10, precision)} (${toLetter(g.score10, scaleMode)})`
+                    : "Đang học"}
                 </span>
               </div>
             ))}
@@ -973,7 +1106,7 @@ export function GpaMultiYearBoard({
                 <th className="py-2 pr-2">Học kỳ</th>
                 <th className="py-2 pr-2 text-right">TC</th>
                 <th className="py-2 pr-2 text-right">TK (10)</th>
-                <th className="py-2 pr-2 text-right">TK (4)</th>
+                <th className="py-2 pr-2 text-right">TK (4 thực)</th>
                 <th className="py-2 pr-2 text-right">Chữ</th>
                 <th className="py-2 text-right">Chi tiết 50/50</th>
               </tr>
@@ -994,10 +1127,10 @@ export function GpaMultiYearBoard({
                     <td className="py-2 pr-2 text-[11px] text-[var(--text-muted)]">{g.semester}</td>
                     <td className="py-2 pr-2 text-right font-mono">{g.credits}</td>
                     <td className="py-2 pr-2 text-right font-mono">
-                      {g.score10 > 0 ? g.score10.toFixed(1) : "—"}
+                      {g.score10 > 0 ? fmtExact(g.score10, precision) : "Đang học"}
                     </td>
                     <td className="py-2 pr-2 text-right font-mono font-semibold text-[var(--accent)]">
-                      {g.score10 > 0 ? toGpa4(g.score10, scaleMode).toFixed(2) : "—"}
+                      {g.score10 > 0 ? fmtExact(toGpa4Exact(g.score10, scaleMode), precision) : "—"}
                     </td>
                     <td className="py-2 pr-2 text-right font-mono font-bold">
                       {g.score10 > 0 ? toLetter(g.score10, scaleMode) : "—"}
@@ -1024,10 +1157,7 @@ export function GpaMultiYearBoard({
         const meta = getCourseMeta(activeGrade);
         const qt = calcComponentAvg(meta.components);
         const wFin = meta.finalWeightPct / 100;
-        const tk10 =
-          qt !== null && meta.finalExamScore !== null
-            ? Math.round((qt * (1 - wFin) + meta.finalExamScore * wFin) * 10) / 10
-            : null;
+        const tk10 = qt !== null && meta.finalExamScore !== null ? qt * (1 - wFin) + meta.finalExamScore * wFin : null;
         return (
           <div className="space-y-3 rounded-2xl border border-[var(--accent)]/40 bg-[var(--bg-canvas)] p-4 text-xs">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1036,7 +1166,7 @@ export function GpaMultiYearBoard({
                   Chi tiết điểm thành phần: {activeGrade.courseName}
                 </div>
                 <div className="text-[11px] text-[var(--text-muted)]">
-                  Thành phần ({100 - meta.finalWeightPct}%) gồm nhiều cột theo hệ số + Cuối kỳ ({meta.finalWeightPct}%)
+                  Thành phần ({100 - meta.finalWeightPct}%) nhiều cột theo hệ số + Cuối kỳ ({meta.finalWeightPct}%)
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -1044,17 +1174,13 @@ export function GpaMultiYearBoard({
                   <input
                     type="checkbox"
                     checked={meta.excludeFromGpa}
-                    onChange={(e) =>
-                      updateCourseMeta(activeGrade, { excludeFromGpa: e.target.checked })
-                    }
+                    onChange={(e) => updateCourseMeta(activeGrade, { excludeFromGpa: e.target.checked })}
                   />
                   Không tính vào CPA
                 </label>
                 <select
                   value={meta.finalWeightPct}
-                  onChange={(e) =>
-                    updateCourseMeta(activeGrade, { finalWeightPct: Number(e.target.value) })
-                  }
+                  onChange={(e) => updateCourseMeta(activeGrade, { finalWeightPct: Number(e.target.value) })}
                   className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-1 text-[11px]"
                 >
                   <option value={50}>50% QT / 50% CK</option>
@@ -1162,7 +1288,7 @@ export function GpaMultiYearBoard({
                 />
                 {qt !== null && (
                   <span className="text-[11px] text-[var(--text-muted)]">
-                    ĐTB Thành phần: <strong className="font-mono text-[var(--text-primary)]">{qt.toFixed(2)}</strong>
+                    ĐTB Thành phần: <strong className="font-mono text-[var(--text-primary)]">{fmtExact(qt, precision)}</strong>
                   </span>
                 )}
               </div>
@@ -1175,7 +1301,7 @@ export function GpaMultiYearBoard({
                 >
                   {savingScore
                     ? "Đang cập nhật..."
-                    : `Lưu điểm TK ${tk10.toFixed(1)} (${toGpa4(tk10, scaleMode).toFixed(2)} · ${toLetter(tk10, scaleMode)})`}
+                    : `Lưu TK ${fmtExact(tk10, precision)} (Hệ 4: ${fmtExact(toGpa4Exact(tk10, scaleMode), precision)} · ${toLetter(tk10, scaleMode)})`}
                 </button>
               )}
             </div>
@@ -1190,12 +1316,12 @@ export function GpaMultiYearBoard({
                     ["B (7.0)", 7.0],
                   ] as const
                 ).map(([lbl, target]) => {
-                  const need = Math.round(((target - qt * (1 - wFin)) / wFin) * 100) / 100;
+                  const need = (target - qt * (1 - wFin)) / wFin;
                   return (
                     <div key={lbl} className="rounded-lg bg-[var(--bg-surface)] px-2.5 py-1.5">
                       <div className="text-[10px] text-[var(--text-muted)]">Đạt {lbl}</div>
                       <div className="font-mono font-semibold text-[var(--accent)]">
-                        {need > 10 ? `> 10 (${need.toFixed(1)})` : need <= 0 ? "Đã đạt" : `CK ≥ ${need.toFixed(1)}`}
+                        {need > 10 ? `> 10 (${need.toFixed(2)})` : need <= 0 ? "Đã đạt" : `CK ≥ ${need.toFixed(2)}`}
                       </div>
                     </div>
                   );
@@ -1216,9 +1342,9 @@ export function GpaMultiYearBoard({
             </div>
             <div className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 font-mono text-xs font-semibold text-[var(--accent)]">
               <Award className="h-3.5 w-3.5" />
-              CPA dự kiến: {simulated.gpa4.toFixed(2)} (Hệ 10: {simulated.gpa10.toFixed(2)}){" "}
+              CPA dự kiến: {fmtExact(simulated.gpa4, precision)} (Hệ 10: {fmtExact(simulated.gpa10, precision)}){" "}
               <span className={simulated.delta >= 0 ? "text-emerald-600" : "text-rose-500"}>
-                ({simulated.delta >= 0 ? `+${simulated.delta.toFixed(2)}` : simulated.delta.toFixed(2)})
+                ({simulated.delta >= 0 ? `+${fmtExact(simulated.delta, "3")}` : fmtExact(simulated.delta, "3")})
               </span>
             </div>
           </div>

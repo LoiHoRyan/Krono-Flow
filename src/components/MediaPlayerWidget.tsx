@@ -153,6 +153,23 @@ export function MediaPlayerWidget({
   const [linkTitle, setLinkTitle] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [activeLink, setActiveLink] = useState<SavedMediaLink | null>(null);
+  const [sleepSecsLeft, setSleepSecsLeft] = useState(0);
+
+  useEffect(() => {
+    if (sleepSecsLeft <= 0) return;
+    const id = setInterval(() => {
+      setSleepSecsLeft((prev) => {
+        if (prev <= 1) {
+          if (audioRef.current) audioRef.current.pause();
+          setPlaying(false);
+          setActiveLink(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [sleepSecsLeft]);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const tracksRef = useRef<LocalTrack[]>([]);
@@ -344,6 +361,23 @@ export function MediaPlayerWidget({
             </span>
           </div>
           <div className="flex items-center gap-1">
+            <select
+              value={sleepSecsLeft > 0 ? Math.ceil(sleepSecsLeft / 60) : 0}
+              onChange={(e) => setSleepSecsLeft(Number(e.target.value) * 60)}
+              title="Hẹn giờ tự tắt nhạc"
+              className="rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--text-secondary)]"
+            >
+              <option value={0}>Hẹn tắt</option>
+              <option value={15}>15p</option>
+              <option value={25}>25p</option>
+              <option value={45}>45p</option>
+              <option value={60}>60p</option>
+            </select>
+            {sleepSecsLeft > 0 && (
+              <span className="font-mono text-[10px] font-semibold text-amber-600">
+                {fmtSec(sleepSecsLeft)}
+              </span>
+            )}
             <button
               type="button"
               onClick={onToggleOpen}

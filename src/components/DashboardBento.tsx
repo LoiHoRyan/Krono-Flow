@@ -827,6 +827,61 @@ export function DashboardBento({
         onRefresh={onRefresh}
       />
 
+      {/* THẺ ƯU TIÊN LÀM TRƯỚC HÔM NAY */}
+      {!cleanMode && (() => {
+        const prioOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+        const topTasks = todos
+          .filter((t) => !t.isCompleted)
+          .sort((a, b) => {
+            const pa = prioOrder[a.priority] ?? 2;
+            const pb = prioOrder[b.priority] ?? 2;
+            if (pa !== pb) return pa - pb;
+            return (a.dueDate ?? "9999").localeCompare(b.dueDate ?? "9999");
+          })
+          .slice(0, 3);
+        const nextEx = [...exams]
+          .filter((ex) => new Date(ex.examDate).getTime() >= Date.now() - 86400000)
+          .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime())[0];
+        if (topTasks.length === 0 && !nextEx) return null;
+        return (
+          <div className="glass-card rounded-2xl px-4 py-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold text-[var(--text-primary)]">
+                Ưu tiên làm trước hôm nay
+              </span>
+              {nextEx && (
+                <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-600 dark:text-rose-400">
+                  Kỳ thi gần nhất: {nextEx.title} (còn{" "}
+                  {Math.max(0, Math.ceil((new Date(nextEx.examDate).getTime() - Date.now()) / 86400000))} ngày)
+                </span>
+              )}
+            </div>
+            {topTasks.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {topTasks.map((t) => (
+                  <span
+                    key={t.id}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1 text-[11px] text-[var(--text-primary)]"
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        t.priority === "high" ? "bg-rose-500" : t.priority === "medium" ? "bg-amber-500" : "bg-sky-500"
+                      }`}
+                    />
+                    <span className="max-w-[200px] truncate">{t.title}</span>
+                    {t.dueDate && (
+                      <span className="font-mono text-[10px] text-[var(--text-muted)]">
+                        {t.dueDate.slice(5, 10)}
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* THANH CÂN BẰNG THỜI GIAN THEO MÔN HỌC */}
       {!cleanMode && subjects.length > 0 && (() => {
         const subMins = subjects

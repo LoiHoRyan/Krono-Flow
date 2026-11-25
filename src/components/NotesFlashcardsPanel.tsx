@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   FileText,
   Layers,
@@ -269,6 +269,21 @@ export function NotesFlashcardsPanel({
   const [handsFreePlaying, setHandsFreePlaying] = useState(false);
   const [fileImportOpen, setFileImportOpen] = useState(false);
   const [quizModalOpen, setQuizModalOpen] = useState(false);
+  const [autoScrollSpeed, setAutoScrollSpeed] = useState<0 | 1 | 2 | 3>(0);
+  const [selCardFront, setSelCardFront] = useState("");
+  const [selCardBack, setSelCardBack] = useState("");
+  const [selCardOpen, setSelCardOpen] = useState(false);
+  const readerScrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!readingNote || autoScrollSpeed === 0) return;
+    const step = autoScrollSpeed === 1 ? 1 : autoScrollSpeed === 2 ? 2 : 4;
+    const id = setInterval(() => {
+      const el = readerScrollRef.current;
+      if (el) el.scrollTop += step;
+    }, 50);
+    return () => clearInterval(id);
+  }, [readingNote, autoScrollSpeed]);
 
   useEffect(() => {
     try {
@@ -2492,6 +2507,7 @@ ${note.content}`, count: 5 }),
           onClick={() => setReadingNote(null)}
         >
           <div
+            ref={readerScrollRef}
             onScroll={(e) => {
               const el = e.currentTarget;
               const max = Math.max(1, el.scrollHeight - el.clientHeight);
@@ -2504,6 +2520,52 @@ ${note.content}`, count: 5 }),
             <div className="sticky -top-6 -mx-6 mb-4 h-1 bg-[var(--bg-elevated)]">
               <div className="h-full bg-[var(--accent)] transition-all" style={{ width: `${readProgress}%` }} />
             </div>
+            {selCardOpen && (
+              <div className="mb-3 space-y-2 rounded-xl border border-[var(--accent)]/40 bg-[var(--bg-canvas)] p-3 text-xs">
+                <div className="flex items-center justify-between font-semibold text-[var(--text-primary)]">
+                  <span>Tạo nhanh Flashcard từ ghi chú</span>
+                  <button type="button" onClick={() => setSelCardOpen(false)} className="text-[var(--text-muted)]">
+                    Đóng
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={selCardFront}
+                  onChange={(e) => setSelCardFront(e.target.value)}
+                  placeholder="Mặt trước (Câu hỏi / Thuật ngữ)..."
+                  className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs"
+                />
+                <textarea
+                  rows={2}
+                  value={selCardBack}
+                  onChange={(e) => setSelCardBack(e.target.value)}
+                  placeholder="Mặt sau (Định nghĩa / Đáp án đã bôi đen)..."
+                  className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!selCardFront.trim() || !selCardBack.trim()) return;
+                    const res = await fetch("/api/flashcards", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        front: selCardFront.trim().slice(0, 400),
+                        back: selCardBack.trim().slice(0, 1000),
+                        subjectId: readingNote.subjectId ?? null,
+                      }),
+                    });
+                    if (res.ok) {
+                      setSelCardOpen(false);
+                      onRefresh();
+                    }
+                  }}
+                  className="btn-primary rounded-lg px-3 py-1 text-xs font-medium"
+                >
+                  Lưu thẻ Flashcard
+                </button>
+              </div>
+            )}
             <div className="flex items-start justify-between gap-3 border-b border-[var(--border-subtle)] pb-3">
               <h3 className="text-xl font-medium">
                 {readingNote.title}
@@ -2559,6 +2621,32 @@ ${note.content}`, count: 5 }),
                   )}
                 >
                   {blindRecall ? "Tắt tự viết" : "Tự viết lại"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAutoScrollSpeed((s) => ((s + 1) % 4) as 0 | 1 | 2 | 3)}
+                  title="Tự động cuộn chậm khi đọc ghi chú dài"
+                  className={cn(
+                    "rounded-lg border px-2 py-1 text-[11px]",
+                    autoScrollSpeed > 0
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                      : "border-[var(--border-subtle)]"
+                  )}
+                >
+                  {autoScrollSpeed === 0 ? "Tự cuộn" : `Cuộn ×${autoScrollSpeed}`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const selected = window.getSelection()?.toString().trim() ?? "";
+                    setSelCardBack(selected);
+                    setSelCardFront("");
+                    setSelCardOpen(true);
+                  }}
+                  title="Bôi đen một đoạn rồi bấm để tạo nhanh thẻ Flashcard"
+                  className="rounded-lg border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2 py-1 text-[11px] font-medium text-[var(--accent)]"
+                >
+                  + Thẻ từ bôi đen
                 </button>
                 <button
                   type="button"
