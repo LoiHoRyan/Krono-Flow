@@ -47,6 +47,9 @@ import {
   Search,
   LayoutGrid,
   BookMarked,
+  ChevronsLeft,
+  ChevronsRight,
+  Maximize2,
 } from "lucide-react";
 import { cn, formatDuration, normalizeVi } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -75,6 +78,7 @@ import { StickyNotesOverlay } from "@/components/StickyNotesOverlay";
 import { ProStudySuiteModal } from "@/components/ProStudySuiteModal";
 import { TechFinanceLabModal } from "@/components/TechFinanceLabModal";
 import { ExamPacerMeetingModal } from "@/components/ExamPacerMeetingModal";
+import { QuickPortalAndDailyModal } from "@/components/QuickPortalAndDailyModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -325,6 +329,28 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [proSuiteOpen, setProSuiteOpen] = useState(false);
   const [techLabOpen, setTechLabOpen] = useState(false);
   const [pacerOpen, setPacerOpen] = useState(false);
+  const [portalsOpen, setPortalsOpen] = useState(false);
+  const [toolbarCollapsed, setToolbarCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      setToolbarCollapsed(localStorage.getItem("kronoflow-toolbar-collapsed") === "on");
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleToolbarCollapsed = () => {
+    setToolbarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("kronoflow-toolbar-collapsed", next ? "on" : "off");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
   const [showExamPill, setShowExamPill] = useState(true);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
   const [privacyMode, setPrivacyMode] = useState(false);
@@ -542,6 +568,21 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         const tabList: TabId[] = ["dashboard", "focus", "schedule", "planner", "goals", "habits", "roadmaps", "knowledge"];
         const target = tabList[Number(e.key) - 1];
         if (target) setTab(target);
+      } else if (e.altKey && e.key.toLowerCase() === "h") {
+        e.preventDefault();
+        toggleToolbarCollapsed();
+      } else if (e.altKey && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        setToolbarCollapsed((v) => {
+          const next = !v;
+          try {
+            localStorage.setItem("kronoflow-toolbar-collapsed", next ? "on" : "off");
+          } catch {
+            // ignore
+          }
+          setSidebarMode(next ? "hidden" : "full");
+          return next;
+        });
       } else if (e.altKey && e.key.toLowerCase() === "t") {
         e.preventDefault();
         setDockOpen((v) => !v);
@@ -670,6 +711,15 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onToggleMedia={() => setMediaOpen((v) => !v)}
         onOpenTechLab={() => setTechLabOpen(true)}
         onOpenPacer={() => setPacerOpen(true)}
+        onOpenPortals={() => setPortalsOpen(true)}
+      />
+      <QuickPortalAndDailyModal
+        open={portalsOpen}
+        onClose={() => setPortalsOpen(false)}
+        todos={props.todos}
+        notes={props.notes}
+        sessions={props.sessions}
+        exams={props.exams}
       />
       <TechFinanceLabModal open={techLabOpen} onClose={() => setTechLabOpen(false)} />
       <ExamPacerMeetingModal open={pacerOpen} onClose={() => setPacerOpen(false)} />
@@ -976,6 +1026,8 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
 
           <div className="flex items-center gap-2">
             {tab !== "focus" && <MiniTimerBadge onOpenFocus={() => setTab("focus")} />}
+            {!toolbarCollapsed && (
+              <>
             <button
               type="button"
               onClick={() => setPadOpen(true)}
@@ -1140,6 +1192,45 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               {headerGoalPct}%
             </span>
             <LanguageToggle />
+              </>
+            )}
+            {toolbarCollapsed && (
+              <button
+                type="button"
+                onClick={() => setDockOpen(true)}
+                title="Kho Công cụ Học tập (Alt+T)"
+                className="inline-flex items-center gap-1 rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2.5 py-1.5 text-xs font-medium text-[var(--accent)] hover:opacity-90"
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span>Công cụ</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={toggleToolbarCollapsed}
+              title={toolbarCollapsed ? "Mở rộng thanh công cụ (Alt+H)" : "Thu gọn thanh công cụ (Alt+H)"}
+              className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              {toolbarCollapsed ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
+              <span className="hidden xl:inline">{toolbarCollapsed ? "Mở rộng" : "Thu gọn"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !toolbarCollapsed;
+                setToolbarCollapsed(next);
+                try {
+                  localStorage.setItem("kronoflow-toolbar-collapsed", next ? "on" : "off");
+                } catch {
+                  // ignore
+                }
+                setSidebarMode(next ? "hidden" : "full");
+              }}
+              title="Chế độ Không gian Siêu Tối giản: thu gọn cả Sidebar & Header (Alt+Z)"
+              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] lg:inline-flex"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
             <button
               type="button"
               onClick={() => setTab("settings")}

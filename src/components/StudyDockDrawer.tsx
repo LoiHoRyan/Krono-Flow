@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Bookmark,
   BookMarked,
   ClipboardCheck,
   LayoutGrid,
@@ -30,6 +31,7 @@ export function StudyDockDrawer({
   onToggleMedia,
   onOpenTechLab,
   onOpenPacer,
+  onOpenPortals,
 }: {
   open: boolean;
   onClose: () => void;
@@ -44,6 +46,7 @@ export function StudyDockDrawer({
   onToggleMedia: () => void;
   onOpenTechLab: () => void;
   onOpenPacer: () => void;
+  onOpenPortals: () => void;
 }) {
   if (!open) return null;
 
@@ -103,6 +106,13 @@ export function StudyDockDrawer({
       icon: Timer,
       color: "text-orange-500",
       onClick: onOpenPacer,
+    },
+    {
+      title: "Cổng Học tập, Ảnh Kế hoạch & Mốc Ghi chú",
+      desc: "Ghim link trường/LMS, xuất ảnh Checklist PNG, mốc ghi chú & so sánh tuần",
+      icon: Bookmark,
+      color: "text-blue-500",
+      onClick: onOpenPortals,
     },
     {
       title: "Giấy nhớ Dán nổi (Sticky Notes)",
