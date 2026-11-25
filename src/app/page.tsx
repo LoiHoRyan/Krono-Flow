@@ -49,6 +49,7 @@ import {
   PenTool,
   Search,
   Wrench,
+  LayoutGrid,
 } from "lucide-react";
 import { cn, formatDuration, normalizeVi } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -72,6 +73,9 @@ import { EyeCareToggle } from "@/components/EyeCareToggle";
 import { StudyWhiteboardModal } from "@/components/StudyWhiteboardModal";
 import { GlobalSpotlightModal } from "@/components/GlobalSpotlightModal";
 import { StudentUtilitiesModal } from "@/components/StudentUtilitiesModal";
+import { StudyDockDrawer } from "@/components/StudyDockDrawer";
+import { StickyNotesOverlay } from "@/components/StickyNotesOverlay";
+import { ProStudySuiteModal } from "@/components/ProStudySuiteModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -317,6 +321,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [whiteboardOpen, setWhiteboardOpen] = useState(false);
   const [spotlightOpen, setSpotlightOpen] = useState(false);
   const [utilsOpen, setUtilsOpen] = useState(false);
+  const [dockOpen, setDockOpen] = useState(false);
+  const [stickyOpen, setStickyOpen] = useState(false);
+  const [proSuiteOpen, setProSuiteOpen] = useState(false);
   const [showExamPill, setShowExamPill] = useState(true);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
   const [privacyMode, setPrivacyMode] = useState(false);
@@ -534,6 +541,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         const tabList: TabId[] = ["dashboard", "focus", "schedule", "planner", "goals", "habits", "roadmaps", "knowledge"];
         const target = tabList[Number(e.key) - 1];
         if (target) setTab(target);
+      } else if (e.altKey && e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        setDockOpen((v) => !v);
       } else if (e.altKey && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setSpotlightOpen((v) => !v);
@@ -645,6 +655,29 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       <StudyWhiteboardModal open={whiteboardOpen} onClose={() => setWhiteboardOpen(false)} />
       <GlobalSpotlightModal open={spotlightOpen} onClose={() => setSpotlightOpen(false)} subjects={props.subjects} todos={props.todos} notes={props.notes} flashcards={props.flashcards} exams={props.exams} onJumpTab={(t) => setTab(t)} />
       <StudentUtilitiesModal open={utilsOpen} onClose={() => setUtilsOpen(false)} subjects={props.subjects} />
+      <StudyDockDrawer
+        open={dockOpen}
+        onClose={() => setDockOpen(false)}
+        onOpenSpotlight={() => setSpotlightOpen(true)}
+        onOpenWhiteboard={() => setWhiteboardOpen(true)}
+        onOpenAllocator={() => setAllocatorOpen(true)}
+        onOpenToolkit={() => setToolkitOpen(true)}
+        onOpenUtils={() => setUtilsOpen(true)}
+        onOpenProSuite={() => setProSuiteOpen(true)}
+        onToggleSticky={() => setStickyOpen((v) => !v)}
+        onOpenStandby={() => setStandbyOpen(true)}
+        onToggleMedia={() => setMediaOpen((v) => !v)}
+      />
+      <StickyNotesOverlay open={stickyOpen} onClose={() => setStickyOpen(false)} />
+      <ProStudySuiteModal
+        open={proSuiteOpen}
+        onClose={() => setProSuiteOpen(false)}
+        userName={props.user?.name ?? "KronoFlow"}
+        todos={props.todos}
+        grades={props.grades}
+        sessions={props.sessions}
+        flashcardCount={props.flashcards.length}
+      />
       <MediaPlayerWidget open={mediaOpen} onToggleOpen={() => setMediaOpen((v) => !v)} />
       <LastMinuteCramModal
         open={cramOpen}
@@ -1046,6 +1079,15 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
               <Search className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setDockOpen(true)}
+              title="Kho Công cụ Học tập (Alt+T)"
+              className="inline-flex items-center gap-1 rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2 py-1.5 text-xs font-medium text-[var(--accent)] hover:opacity-90"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Công cụ</span>
             </button>
             <EyeCareToggle />
             <button
