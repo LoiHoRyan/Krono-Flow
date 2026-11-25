@@ -9,7 +9,7 @@ const createGradeSchema = z.object({
   courseName: z.string().trim().min(1).max(120),
   credits: z.coerce.number().int().min(1).max(20),
   score10: z.coerce.number().min(0).max(10),
-  semester: z.string().trim().min(1).max(30).default("HK1"),
+  semester: z.string().trim().min(1).max(60).default("Học kỳ 1 - Năm học 2025 - 2026"),
 });
 
 export async function GET() {

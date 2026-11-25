@@ -1251,7 +1251,7 @@ export function ScheduleGpaPanel({
           </ul>
         )}
       </section>
-      <GpaMultiYearBoard grades={grades} />
+      <GpaMultiYearBoard grades={grades} onRefresh={onRefresh} />
     </div>
   );
 }
