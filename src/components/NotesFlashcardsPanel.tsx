@@ -39,6 +39,8 @@ import { MarkdownView } from "./MarkdownView";
 import { PdfStudyReaderModal } from "./PdfStudyReaderModal";
 import { playUiTick } from "@/lib/ui-sounds";
 import type { SubjectOption } from "./PomodoroTimer";
+import { FlashcardFileImportModal } from "./FlashcardFileImportModal";
+import { FlashcardQuizModal } from "./FlashcardQuizModal";
 
 export interface NoteRecord {
   id: string;
@@ -265,6 +267,8 @@ export function NotesFlashcardsPanel({
   const [reviewedToday, setReviewedToday] = useState<string[]>([]);
   const [hideResolvedMistakes, setHideResolvedMistakes] = useState(false);
   const [handsFreePlaying, setHandsFreePlaying] = useState(false);
+  const [fileImportOpen, setFileImportOpen] = useState(false);
+  const [quizModalOpen, setQuizModalOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -1161,6 +1165,22 @@ ${note.content}`, count: 5 }),
                 <Volume2 className="h-3.5 w-3.5" />
                 {handsFreePlaying ? "Đang nghe rảnh tay (Dừng)" : "Nghe rảnh tay"}
               </button>
+              <button
+                type="button"
+                onClick={() => setFileImportOpen(true)}
+                className="inline-flex items-center gap-1 rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-medium text-[var(--accent)] hover:opacity-90"
+              >
+                Nhập tệp (.CSV/.TXT/.JSON)
+              </button>
+              {flashcards.length >= 2 && (
+                <button
+                  type="button"
+                  onClick={() => setQuizModalOpen(true)}
+                  className="inline-flex items-center gap-1 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-600 dark:text-amber-400"
+                >
+                  Trắc nghiệm A/B/C/D
+                </button>
+              )}
             </>
           )}
         </div>
@@ -2715,6 +2735,18 @@ ${note.content}`, count: 5 }),
           </div>
         </div>
       )}
+      <FlashcardFileImportModal
+        open={fileImportOpen}
+        onClose={() => setFileImportOpen(false)}
+        subjects={subjects}
+        existingFronts={flashcards.map((c) => c.front)}
+        onImported={onRefresh}
+      />
+      <FlashcardQuizModal
+        open={quizModalOpen}
+        onClose={() => setQuizModalOpen(false)}
+        cards={deck.length >= 2 ? deck : flashcards}
+      />
     </div>
   );
 }

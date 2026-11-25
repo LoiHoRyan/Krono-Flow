@@ -22,6 +22,8 @@ export interface ScheduleSlotRecord {
   color: string;
 }
 
+import { GpaMultiYearBoard } from "./GpaMultiYearBoard";
+
 export interface GradeRecord {
   id: string;
   courseName: string;
@@ -1249,6 +1251,7 @@ export function ScheduleGpaPanel({
           </ul>
         )}
       </section>
+      <GpaMultiYearBoard grades={grades} />
     </div>
   );
 }

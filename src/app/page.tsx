@@ -44,6 +44,7 @@ import {
   Flame,
   RefreshCw,
   Monitor,
+  Music2,
 } from "lucide-react";
 import { cn, formatDuration, normalizeVi } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -60,6 +61,7 @@ import { OnboardingModal } from "@/components/OnboardingModal";
 import { CheatSheetModal } from "@/components/CheatSheetModal";
 import { LastMinuteCramModal } from "@/components/LastMinuteCramModal";
 import { StandbyClockModal } from "@/components/StandbyClockModal";
+import { MediaPlayerWidget } from "@/components/MediaPlayerWidget";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -299,6 +301,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [cheatOpen, setCheatOpen] = useState(false);
   const [cramOpen, setCramOpen] = useState(false);
   const [standbyOpen, setStandbyOpen] = useState(false);
+  const [mediaOpen, setMediaOpen] = useState(false);
   const [showExamPill, setShowExamPill] = useState(true);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
   const [privacyMode, setPrivacyMode] = useState(false);
@@ -614,6 +617,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       )}
       <CheatSheetModal open={cheatOpen} onClose={() => setCheatOpen(false)} />
       <StandbyClockModal open={standbyOpen} onClose={() => setStandbyOpen(false)} />
+      <MediaPlayerWidget open={mediaOpen} onToggleOpen={() => setMediaOpen((v) => !v)} />
       <LastMinuteCramModal
         open={cramOpen}
         notes={props.notes}
@@ -962,6 +966,18 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] xl:inline-flex"
             >
               <Monitor className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setMediaOpen((v) => !v)}
+              title="Trình phát Nhạc tập trung (YouTube/TikTok/FB/IG & tệp máy tính)"
+              className={`rounded-xl border p-1.5 transition ${
+                mediaOpen
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                  : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              }`}
+            >
+              <Music2 className="h-4 w-4" />
             </button>
             <button
               type="button"
