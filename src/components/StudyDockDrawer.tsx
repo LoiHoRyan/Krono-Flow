@@ -10,6 +10,8 @@ import {
   Presentation,
   Search,
   StickyNote,
+  Cpu,
+  Timer,
   Wrench,
   X,
 } from "lucide-react";
@@ -26,6 +28,8 @@ export function StudyDockDrawer({
   onToggleSticky,
   onOpenStandby,
   onToggleMedia,
+  onOpenTechLab,
+  onOpenPacer,
 }: {
   open: boolean;
   onClose: () => void;
@@ -38,6 +42,8 @@ export function StudyDockDrawer({
   onToggleSticky: () => void;
   onOpenStandby: () => void;
   onToggleMedia: () => void;
+  onOpenTechLab: () => void;
+  onOpenPacer: () => void;
 }) {
   if (!open) return null;
 
@@ -83,6 +89,20 @@ export function StudyDockDrawer({
       icon: Wrench,
       color: "text-violet-500",
       onClick: onOpenUtils,
+    },
+    {
+      title: "Phòng Lab Kỹ thuật, Big-O, Tài chính & JSON",
+      desc: "Hệ cơ số DEC/BIN/HEX, Big-O TLE, Lãi kép FV/PV & JSON",
+      icon: Cpu,
+      color: "text-teal-500",
+      onClick: onOpenTechLab,
+    },
+    {
+      title: "Chia chặng Bài thi, Biên bản Họp & Kho Lệnh",
+      desc: "Đồng hồ nhiều phần thi, Biên bản Markdown & Lệnh Git/SQL",
+      icon: Timer,
+      color: "text-orange-500",
+      onClick: onOpenPacer,
     },
     {
       title: "Giấy nhớ Dán nổi (Sticky Notes)",

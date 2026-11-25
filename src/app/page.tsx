@@ -8,7 +8,6 @@ import {
   CheckSquare,
   Map as MapIcon,
   BarChart3,
-  BookMarked,
   Sparkles,
   Target,
   Wallet,
@@ -45,11 +44,9 @@ import {
   RefreshCw,
   Monitor,
   Music2,
-  ClipboardCheck,
-  PenTool,
   Search,
-  Wrench,
   LayoutGrid,
+  BookMarked,
 } from "lucide-react";
 import { cn, formatDuration, normalizeVi } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -76,6 +73,8 @@ import { StudentUtilitiesModal } from "@/components/StudentUtilitiesModal";
 import { StudyDockDrawer } from "@/components/StudyDockDrawer";
 import { StickyNotesOverlay } from "@/components/StickyNotesOverlay";
 import { ProStudySuiteModal } from "@/components/ProStudySuiteModal";
+import { TechFinanceLabModal } from "@/components/TechFinanceLabModal";
+import { ExamPacerMeetingModal } from "@/components/ExamPacerMeetingModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -324,6 +323,8 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [dockOpen, setDockOpen] = useState(false);
   const [stickyOpen, setStickyOpen] = useState(false);
   const [proSuiteOpen, setProSuiteOpen] = useState(false);
+  const [techLabOpen, setTechLabOpen] = useState(false);
+  const [pacerOpen, setPacerOpen] = useState(false);
   const [showExamPill, setShowExamPill] = useState(true);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }));
   const [privacyMode, setPrivacyMode] = useState(false);
@@ -667,7 +668,11 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onToggleSticky={() => setStickyOpen((v) => !v)}
         onOpenStandby={() => setStandbyOpen(true)}
         onToggleMedia={() => setMediaOpen((v) => !v)}
+        onOpenTechLab={() => setTechLabOpen(true)}
+        onOpenPacer={() => setPacerOpen(true)}
       />
+      <TechFinanceLabModal open={techLabOpen} onClose={() => setTechLabOpen(false)} />
+      <ExamPacerMeetingModal open={pacerOpen} onClose={() => setPacerOpen(false)} />
       <StickyNotesOverlay open={stickyOpen} onClose={() => setStickyOpen(false)} />
       <ProStudySuiteModal
         open={proSuiteOpen}
@@ -1039,38 +1044,6 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               }`}
             >
               <Music2 className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setAllocatorOpen(true)}
-              title="Sổ tay Công thức & Phân bổ giờ ôn thi"
-              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] lg:inline-flex"
-            >
-              <BookMarked className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setToolkitOpen(true)}
-              title="Bộ công cụ Ôn thi (Phiếu A4, Làm đề, So sánh, Chống cấm thi, Chốt ngày)"
-              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] lg:inline-flex"
-            >
-              <ClipboardCheck className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setWhiteboardOpen(true)}
-              title="Bảng Nháp Vẽ tay (Whiteboard)"
-              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] xl:inline-flex"
-            >
-              <PenTool className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setUtilsOpen(true)}
-              title="Tiện ích Sinh viên (Trích dẫn, Xếp lịch, Chia tiền nhóm, Checklist thi, Cà phê)"
-              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] xl:inline-flex"
-            >
-              <Wrench className="h-4 w-4" />
             </button>
             <button
               type="button"
