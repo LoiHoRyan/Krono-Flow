@@ -47,9 +47,9 @@ import {
   Search,
   LayoutGrid,
   BookMarked,
-  ChevronsLeft,
   ChevronsRight,
   Maximize2,
+  Moon,
 } from "lucide-react";
 import { cn, formatDuration, normalizeVi } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -221,6 +221,7 @@ interface WorkspaceProps {
   borderRadius: string;
   wallpaper: string;
   onApplyLocalTheme: (t: string, w: string, acc: string | null, f: string, r: string) => void;
+  onApplyLocalAvatar: (url: string | null) => void;
   onLogout: () => void;
   onRefresh: () => void;
 }
@@ -1034,8 +1035,14 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
 
           <div className="flex items-center gap-2">
             {tab !== "focus" && <MiniTimerBadge onOpenFocus={() => setTab("focus")} />}
-            {!toolbarCollapsed && (
-              <>
+            <div
+              className={cn(
+                "flex items-center gap-2 overflow-hidden transition-all duration-300 ease-in-out",
+                toolbarCollapsed
+                  ? "pointer-events-none max-w-0 scale-95 opacity-0"
+                  : "max-w-[1150px] scale-100 opacity-100"
+              )}
+            >
             <button
               type="button"
               onClick={() => setPadOpen(true)}
@@ -1200,8 +1207,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
               {headerGoalPct}%
             </span>
             <LanguageToggle />
-              </>
-            )}
+            </div>
             {toolbarCollapsed && (
               <button
                 type="button"
@@ -1215,11 +1221,33 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             )}
             <button
               type="button"
+              onClick={() => {
+                const isDark = props.themeId !== "pure-white" && !props.themeId.includes("light") && !props.themeId.includes("paper") && !props.themeId.includes("latte") && !props.themeId.includes("mint") && !props.themeId.includes("rose") && !props.themeId.includes("sky") && !props.themeId.includes("sand");
+                const nextTheme = isDark ? "pure-white" : "true-black";
+                props.onApplyLocalTheme(nextTheme, props.wallpaper, props.customAccent, props.fontStyle, props.borderRadius);
+                fetch("/api/user", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ theme: nextTheme }),
+                }).catch(() => {});
+              }}
+              title="Chuyển nhanh Giao diện Sáng / Tối 1 chạm"
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              <Moon className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
               onClick={toggleToolbarCollapsed}
               title={toolbarCollapsed ? "Mở rộng thanh công cụ (Alt+H)" : "Thu gọn thanh công cụ (Alt+H)"}
-              className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1.5 text-xs text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
-              {toolbarCollapsed ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
+              <ChevronsRight
+                className={cn(
+                  "h-4 w-4 transition-transform duration-300 ease-in-out",
+                  toolbarCollapsed ? "rotate-180" : "rotate-0"
+                )}
+              />
               <span className="hidden xl:inline">{toolbarCollapsed ? "Mở rộng" : "Thu gọn"}</span>
             </button>
             <button
@@ -1446,6 +1474,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
             <StudioSettingsPanel
               user={props.user}
               onApplyLocalTheme={props.onApplyLocalTheme}
+              onApplyLocalAvatar={props.onApplyLocalAvatar}
               onExportBackup={handleExportBackup}
               onOpenOnboarding={() => setOnboardingOpen(true)}
               onRefresh={props.onRefresh}
@@ -2014,6 +2043,9 @@ function AppShell() {
         fontStyle={fontStyle}
         borderRadius={borderRadius}
         wallpaper={wallpaper}
+        onApplyLocalAvatar={(url) => {
+          setUser((prev) => (prev ? { ...prev, avatarUrl: url } : prev));
+        }}
         onApplyLocalTheme={(tId, wp, acc, f, r) => {
           setThemeId(tId);
           setWallpaper(wp);

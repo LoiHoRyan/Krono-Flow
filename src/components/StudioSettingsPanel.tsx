@@ -41,6 +41,7 @@ export interface ExtendedUserProfile extends UserProfile {
 export function StudioSettingsPanel({
   user,
   onApplyLocalTheme,
+  onApplyLocalAvatar,
   onExportBackup,
   onOpenOnboarding,
   onRefresh,
@@ -53,6 +54,7 @@ export function StudioSettingsPanel({
     fontStyle: string,
     borderRadius: string
   ) => void;
+  onApplyLocalAvatar?: (avatarUrl: string | null) => void;
   onExportBackup: () => void;
   onOpenOnboarding?: () => void;
   onRefresh: () => void;
@@ -65,6 +67,12 @@ export function StudioSettingsPanel({
   const [fontStyle, setFontStyle] = useState(user?.fontStyle ?? "editorial");
   const [borderRadius, setBorderRadius] = useState(user?.borderRadius ?? "normal");
   const [avatarUrlInput, setAvatarUrlInput] = useState("");
+  const [localAvatar, setLocalAvatar] = useState<string | null>(user?.avatarUrl ?? null);
+  const [avatarSaving, setAvatarSaving] = useState(false);
+
+  useEffect(() => {
+    setLocalAvatar(user?.avatarUrl ?? null);
+  }, [user?.avatarUrl]);
   const [customUrl, setCustomUrl] = useState(
     user?.wallpaper?.startsWith("http") ? user.wallpaper : ""
   );
@@ -204,14 +212,26 @@ export function StudioSettingsPanel({
   };
 
   const updateAvatar = async (url: string | null) => {
-    await fetch("/api/user", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ avatarUrl: url }),
-    });
-    setSavedMsg("Đã cập nhật ảnh đại diện!");
-    onRefresh();
-    setTimeout(() => setSavedMsg(null), 2200);
+    setLocalAvatar(url);
+    onApplyLocalAvatar?.(url);
+    setAvatarSaving(true);
+    try {
+      const res = await fetch("/api/user", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarUrl: url }),
+      });
+      if (res.ok) {
+        setSavedMsg("Đã cập nhật ảnh đại diện!");
+      } else {
+        setSavedMsg("Không thể lưu ảnh đại diện lên máy chủ, vui lòng thử lại.");
+      }
+    } catch {
+      setSavedMsg("Lỗi kết nối khi lưu ảnh đại diện.");
+    } finally {
+      setAvatarSaving(false);
+      setTimeout(() => setSavedMsg(null), 2200);
+    }
   };
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -347,9 +367,9 @@ export function StudioSettingsPanel({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="relative h-16 w-16 overflow-hidden rounded-full border-2 border-[var(--accent)] bg-[var(--bg-elevated)]">
-              {user?.avatarUrl ? (
+              {localAvatar ? (
                 <img
-                  src={user.avatarUrl}
+                  src={localAvatar}
                   alt="Avatar"
                   className="h-full w-full object-cover"
                 />
@@ -361,7 +381,7 @@ export function StudioSettingsPanel({
             </div>
             <div>
               <h3 className="text-base font-medium text-[var(--text-primary)]">
-                Ảnh đại diện (Avatar Studio)
+                Ảnh đại diện (Avatar Studio){avatarSaving ? " · Đang lưu..." : ""}
               </h3>
               <p className="text-xs text-[var(--text-muted)]">
                 Tải ảnh từ máy tính, dán URL hoặc chọn 1 trong 12 biểu tượng bên dưới
@@ -380,7 +400,7 @@ export function StudioSettingsPanel({
                 className="hidden"
               />
             </label>
-            {user?.avatarUrl && (
+            {localAvatar && (
               <button
                 type="button"
                 onClick={() => updateAvatar(null)}
@@ -401,7 +421,7 @@ export function StudioSettingsPanel({
               title={av.label}
               className={cn(
                 "h-11 w-11 overflow-hidden rounded-full border-2 p-0.5",
-                user?.avatarUrl === av.url
+                localAvatar === av.url
                   ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/30"
                   : "border-transparent hover:border-[var(--border-subtle)]"
               )}

@@ -1,23 +1,27 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Bookmark,
   BookMarked,
   ClipboardCheck,
+  Cpu,
   LayoutGrid,
+  Lock,
   Monitor,
   Music2,
   PenTool,
   Presentation,
   Search,
+  Star,
   StickyNote,
-  Cpu,
   Timer,
-  Lock,
   Wrench,
   X,
   Zap,
 } from "lucide-react";
+
+const PINS_KEY = "kronoflow-dock-pins-v1";
 
 export function StudyDockDrawer({
   open,
@@ -54,10 +58,34 @@ export function StudyDockDrawer({
   onOpenMindRead: () => void;
   onOpenLifePin: () => void;
 }) {
+  const [pinned, setPinned] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PINS_KEY);
+      if (raw) setPinned(JSON.parse(raw) as string[]);
+    } catch {
+      // ignore
+    }
+  }, []);
+
   if (!open) return null;
+
+  const togglePin = (id: string) => {
+    setPinned((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [id, ...prev];
+      try {
+        localStorage.setItem(PINS_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
 
   const actions = [
     {
+      id: "spotlight",
       title: "Tìm kiếm Toàn cục (Alt+K)",
       desc: "Tìm xuyên suốt Ghi chú, Flashcard, Công thức, Todo, Kỳ thi",
       icon: Search,
@@ -65,6 +93,7 @@ export function StudyDockDrawer({
       onClick: onOpenSpotlight,
     },
     {
+      id: "prosuite",
       title: "Thuyết trình, Tiểu luận, Eisenhower & Học bổng",
       desc: "Teleprompter, Soát bài, Ma trận 4 ô, Ngủ 90p & Thẻ PNG",
       icon: Presentation,
@@ -72,6 +101,7 @@ export function StudyDockDrawer({
       onClick: onOpenProSuite,
     },
     {
+      id: "toolkit",
       title: "Bộ công cụ Ôn thi thực chiến",
       desc: "Phiếu A4, Làm đề, So sánh, D-14, Chống cấm thi & Chốt ngày",
       icon: ClipboardCheck,
@@ -79,6 +109,7 @@ export function StudyDockDrawer({
       onClick: onOpenToolkit,
     },
     {
+      id: "allocator",
       title: "Sổ tay Công thức & Phân bổ giờ ôn",
       desc: "Lưu công thức theo môn & chia giờ ôn theo độ tự tin",
       icon: BookMarked,
@@ -86,6 +117,7 @@ export function StudyDockDrawer({
       onClick: onOpenAllocator,
     },
     {
+      id: "whiteboard",
       title: "Bảng Nháp Vẽ tay (Whiteboard)",
       desc: "Vẽ sơ đồ cây CTDL, lưu đồ, nháp toán & lưu ảnh PNG",
       icon: PenTool,
@@ -93,6 +125,7 @@ export function StudyDockDrawer({
       onClick: onOpenWhiteboard,
     },
     {
+      id: "utils",
       title: "Tiện ích Sinh viên",
       desc: "Trích dẫn APA/IEEE, Lịch 1 ngày, Chia tiền nhóm, Cà phê",
       icon: Wrench,
@@ -100,6 +133,7 @@ export function StudyDockDrawer({
       onClick: onOpenUtils,
     },
     {
+      id: "techlab",
       title: "Phòng Lab Kỹ thuật, Big-O, Tài chính & JSON",
       desc: "Hệ cơ số DEC/BIN/HEX, Big-O TLE, Lãi kép FV/PV & JSON",
       icon: Cpu,
@@ -107,6 +141,7 @@ export function StudyDockDrawer({
       onClick: onOpenTechLab,
     },
     {
+      id: "pacer",
       title: "Chia chặng Bài thi, Biên bản Họp & Kho Lệnh",
       desc: "Đồng hồ nhiều phần thi, Biên bản Markdown & Lệnh Git/SQL",
       icon: Timer,
@@ -114,6 +149,7 @@ export function StudyDockDrawer({
       onClick: onOpenPacer,
     },
     {
+      id: "portals",
       title: "Cổng Học tập, Ảnh Kế hoạch & Mốc Ghi chú",
       desc: "Ghim link trường/LMS, xuất ảnh Checklist PNG, mốc ghi chú & so sánh tuần",
       icon: Bookmark,
@@ -121,6 +157,7 @@ export function StudyDockDrawer({
       onClick: onOpenPortals,
     },
     {
+      id: "mindread",
       title: "Đọc nhanh RSVP, Từ vựng, Sơ đồ Cây & Bốc thăm",
       desc: "Đọc 200-600 WPM, phát âm từ vựng, cây tư duy & chia nhóm",
       icon: Zap,
@@ -128,6 +165,7 @@ export function StudyDockDrawer({
       onClick: onOpenMindRead,
     },
     {
+      id: "lifepin",
       title: "Tiến độ Học kỳ, Hũ Tiết kiệm, Hít thở & Khóa PIN",
       desc: "Thanh tiến độ kỳ học, mục tiêu tiết kiệm, thở 4-7-8 & PIN 4 số",
       icon: Lock,
@@ -135,6 +173,7 @@ export function StudyDockDrawer({
       onClick: onOpenLifePin,
     },
     {
+      id: "sticky",
       title: "Giấy nhớ Dán nổi (Sticky Notes)",
       desc: "Ghi chú dán nhanh màu pastel ngay góc màn hình",
       icon: StickyNote,
@@ -142,6 +181,7 @@ export function StudyDockDrawer({
       onClick: onToggleSticky,
     },
     {
+      id: "media",
       title: "Trình phát Nhạc Tập trung",
       desc: "Phát tệp máy tính & link YouTube / TikTok / FB / IG",
       icon: Music2,
@@ -149,6 +189,7 @@ export function StudyDockDrawer({
       onClick: onToggleMedia,
     },
     {
+      id: "standby",
       title: "Đồng hồ để bàn chờ (Alt+S)",
       desc: "Màn hình chờ tối giản kèm đếm ngược kỳ thi gần nhất",
       icon: Monitor,
@@ -156,6 +197,12 @@ export function StudyDockDrawer({
       onClick: onOpenStandby,
     },
   ];
+
+  const sortedActions = [...actions].sort((a, b) => {
+    const pa = pinned.includes(a.id) ? 0 : 1;
+    const pb = pinned.includes(b.id) ? 0 : 1;
+    return pa - pb;
+  });
 
   return (
     <div
@@ -174,7 +221,7 @@ export function StudyDockDrawer({
                 Kho Công cụ Học tập (Study Dock · Alt+T)
               </h3>
               <p className="text-[11px] text-[var(--text-muted)]">
-                Mở nhanh toàn bộ tiện ích trên cả máy tính lẫn điện thoại.
+                Nhấn dấu sao ⭐ để ghim công cụ hay dùng lên hàng đầu tiên.
               </p>
             </div>
           </div>
@@ -188,26 +235,45 @@ export function StudyDockDrawer({
         </div>
 
         <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-          {actions.map((act) => {
+          {sortedActions.map((act) => {
             const Icon = act.icon;
+            const isPinned = pinned.includes(act.id);
             return (
-              <button
-                key={act.title}
-                type="button"
-                onClick={() => {
-                  onClose();
-                  act.onClick();
-                }}
-                className="flex items-start gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-3 text-left transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/40"
+              <div
+                key={act.id}
+                className={`relative flex items-start gap-3 rounded-xl border p-3 transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/40 ${
+                  isPinned
+                    ? "border-amber-500/40 bg-amber-500/5"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-canvas)]"
+                }`}
               >
-                <div className={`mt-0.5 rounded-lg bg-[var(--bg-surface)] p-2 ${act.color}`}>
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs font-semibold text-[var(--text-primary)]">{act.title}</div>
-                  <div className="mt-0.5 text-[11px] text-[var(--text-muted)]">{act.desc}</div>
-                </div>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    act.onClick();
+                  }}
+                  className="flex min-w-0 flex-1 items-start gap-3 text-left"
+                >
+                  <div className={`mt-0.5 rounded-lg bg-[var(--bg-surface)] p-2 ${act.color}`}>
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1 pr-5">
+                    <div className="text-xs font-semibold text-[var(--text-primary)]">{act.title}</div>
+                    <div className="mt-0.5 text-[11px] text-[var(--text-muted)]">{act.desc}</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => togglePin(act.id)}
+                  title={isPinned ? "Bỏ ghim" : "Ghim lên đầu"}
+                  className={`absolute right-2.5 top-2.5 rounded p-1 transition ${
+                    isPinned ? "text-amber-500" : "text-[var(--text-muted)] opacity-50 hover:opacity-100"
+                  }`}
+                >
+                  <Star className={`h-3.5 w-3.5 ${isPinned ? "fill-amber-500" : ""}`} />
+                </button>
+              </div>
             );
           })}
         </div>

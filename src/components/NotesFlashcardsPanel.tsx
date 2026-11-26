@@ -271,6 +271,20 @@ export function NotesFlashcardsPanel({
   const [fileImportOpen, setFileImportOpen] = useState(false);
   const [quizModalOpen, setQuizModalOpen] = useState(false);
   const [typingModalOpen, setTypingModalOpen] = useState(false);
+  const [dailyCardGoal, setDailyCardGoal] = useState(20);
+  const [todayCardsDone, setTodayCardsDone] = useState(0);
+
+  useEffect(() => {
+    try {
+      const g = Number(localStorage.getItem("kronoflow-daily-card-goal") || "20");
+      if (!isNaN(g) && g > 0) setDailyCardGoal(g);
+      const todayKey = `kronoflow-cards-done-${new Date().toISOString().slice(0, 10)}`;
+      const c = Number(localStorage.getItem(todayKey) || "0");
+      if (!isNaN(c) && c >= 0) setTodayCardsDone(c);
+    } catch {
+      // ignore
+    }
+  }, []);
   const [autoScrollSpeed, setAutoScrollSpeed] = useState<0 | 1 | 2 | 3>(0);
   const [selCardFront, setSelCardFront] = useState("");
   const [selCardBack, setSelCardBack] = useState("");
@@ -818,6 +832,15 @@ ${note.content}`, count: 5 }),
   }, [subTab, deck.length]);
 
   const updateMastery = async (card: FlashcardRecord, delta: number) => {
+    setTodayCardsDone((prev) => {
+      const next = prev + 1;
+      try {
+        localStorage.setItem(`kronoflow-cards-done-${new Date().toISOString().slice(0, 10)}`, String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
     const next = Math.max(0, Math.min(5, card.mastery + delta));
     await fetch(`/api/flashcards/${card.id}`, {
       method: "PATCH",
@@ -1207,6 +1230,30 @@ ${note.content}`, count: 5 }),
                   Gõ đáp án
                 </button>
               )}
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-1 text-[11px]">
+                <span className="text-[var(--text-muted)]">Hôm nay:</span>
+                <strong className="font-mono text-[var(--accent)]">
+                  {todayCardsDone}/{dailyCardGoal}
+                </strong>
+                <select
+                  value={dailyCardGoal}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setDailyCardGoal(v);
+                    try {
+                      localStorage.setItem("kronoflow-daily-card-goal", String(v));
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                  title="Mục tiêu số thẻ ôn mỗi ngày"
+                  className="rounded border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-1 py-0.5 text-[10px]"
+                >
+                  <option value={20}>20 thẻ</option>
+                  <option value={30}>30 thẻ</option>
+                  <option value={50}>50 thẻ</option>
+                </select>
+              </div>
             </>
           )}
         </div>

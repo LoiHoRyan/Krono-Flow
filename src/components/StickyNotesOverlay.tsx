@@ -46,8 +46,6 @@ export function StickyNotesOverlay({
     }
   }, []);
 
-  if (!open) return null;
-
   const save = (next: StickyItem[]) => {
     setStickies(next);
     try {
@@ -64,7 +62,13 @@ export function StickyNotesOverlay({
   };
 
   return (
-    <div className="no-print fixed bottom-5 right-5 z-[60] w-[min(92vw,320px)] space-y-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 p-3 shadow-2xl backdrop-blur">
+    <div
+      className={`no-print fixed bottom-5 right-5 z-[60] w-[min(92vw,320px)] space-y-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 p-3 shadow-2xl backdrop-blur transition-all duration-300 ease-out ${
+        open
+          ? "translate-y-0 scale-100 opacity-100"
+          : "pointer-events-none translate-y-4 scale-95 opacity-0"
+      }`}
+    >
       <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-primary)]">
           <StickyNote className="h-3.5 w-3.5 text-amber-500" />
