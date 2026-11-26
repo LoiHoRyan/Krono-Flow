@@ -13,8 +13,10 @@ import {
   StickyNote,
   Cpu,
   Timer,
+  Lock,
   Wrench,
   X,
+  Zap,
 } from "lucide-react";
 
 export function StudyDockDrawer({
@@ -32,6 +34,8 @@ export function StudyDockDrawer({
   onOpenTechLab,
   onOpenPacer,
   onOpenPortals,
+  onOpenMindRead,
+  onOpenLifePin,
 }: {
   open: boolean;
   onClose: () => void;
@@ -47,6 +51,8 @@ export function StudyDockDrawer({
   onOpenTechLab: () => void;
   onOpenPacer: () => void;
   onOpenPortals: () => void;
+  onOpenMindRead: () => void;
+  onOpenLifePin: () => void;
 }) {
   if (!open) return null;
 
@@ -113,6 +119,20 @@ export function StudyDockDrawer({
       icon: Bookmark,
       color: "text-blue-500",
       onClick: onOpenPortals,
+    },
+    {
+      title: "Đọc nhanh RSVP, Từ vựng, Sơ đồ Cây & Bốc thăm",
+      desc: "Đọc 200-600 WPM, phát âm từ vựng, cây tư duy & chia nhóm",
+      icon: Zap,
+      color: "text-fuchsia-500",
+      onClick: onOpenMindRead,
+    },
+    {
+      title: "Tiến độ Học kỳ, Hũ Tiết kiệm, Hít thở & Khóa PIN",
+      desc: "Thanh tiến độ kỳ học, mục tiêu tiết kiệm, thở 4-7-8 & PIN 4 số",
+      icon: Lock,
+      color: "text-emerald-600",
+      onClick: onOpenLifePin,
     },
     {
       title: "Giấy nhớ Dán nổi (Sticky Notes)",

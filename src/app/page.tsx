@@ -79,6 +79,8 @@ import { ProStudySuiteModal } from "@/components/ProStudySuiteModal";
 import { TechFinanceLabModal } from "@/components/TechFinanceLabModal";
 import { ExamPacerMeetingModal } from "@/components/ExamPacerMeetingModal";
 import { QuickPortalAndDailyModal } from "@/components/QuickPortalAndDailyModal";
+import { MindReadVocabModal } from "@/components/MindReadVocabModal";
+import { LifeBalancePinModal } from "@/components/LifeBalancePinModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -330,6 +332,8 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [techLabOpen, setTechLabOpen] = useState(false);
   const [pacerOpen, setPacerOpen] = useState(false);
   const [portalsOpen, setPortalsOpen] = useState(false);
+  const [mindReadOpen, setMindReadOpen] = useState(false);
+  const [lifePinOpen, setLifePinOpen] = useState(false);
   const [toolbarCollapsed, setToolbarCollapsed] = useState(false);
 
   useEffect(() => {
@@ -712,7 +716,11 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onOpenTechLab={() => setTechLabOpen(true)}
         onOpenPacer={() => setPacerOpen(true)}
         onOpenPortals={() => setPortalsOpen(true)}
+        onOpenMindRead={() => setMindReadOpen(true)}
+        onOpenLifePin={() => setLifePinOpen(true)}
       />
+      <MindReadVocabModal open={mindReadOpen} onClose={() => setMindReadOpen(false)} onRefresh={props.onRefresh} />
+      <LifeBalancePinModal open={lifePinOpen} onClose={() => setLifePinOpen(false)} />
       <QuickPortalAndDailyModal
         open={portalsOpen}
         onClose={() => setPortalsOpen(false)}
