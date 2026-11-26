@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import {
   LayoutDashboard,
   Timer,
@@ -47,9 +47,9 @@ import {
   Search,
   LayoutGrid,
   BookMarked,
-  ChevronsRight,
   Maximize2,
   Moon,
+  ChevronUp,
 } from "lucide-react";
 import { cn, formatDuration, normalizeVi } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -229,6 +229,15 @@ interface WorkspaceProps {
 function KronoFlowWorkspace(props: WorkspaceProps) {
   const { lang, t } = useLang();
   const [tab, setTabRaw] = useState<TabId>("dashboard");
+  const prevTabRef = useRef<TabId>("dashboard");
+  const lastTabRef = useRef<TabId>("dashboard");
+
+  useEffect(() => {
+    if (lastTabRef.current !== tab) {
+      prevTabRef.current = lastTabRef.current;
+      lastTabRef.current = tab;
+    }
+  }, [tab]);
   const [isOffline, setIsOffline] = useState(false);
   const [hiddenTabs, setHiddenTabs] = useState<string[]>([]);
   const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
@@ -573,6 +582,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         const tabList: TabId[] = ["dashboard", "focus", "schedule", "planner", "goals", "habits", "roadmaps", "knowledge"];
         const target = tabList[Number(e.key) - 1];
         if (target) setTab(target);
+      } else if (e.altKey && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setTab(prevTabRef.current);
       } else if (e.altKey && e.key.toLowerCase() === "h") {
         e.preventDefault();
         toggleToolbarCollapsed();
@@ -1011,302 +1023,338 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       </aside>
 
       <div className="min-w-0 flex-1 pb-24 lg:pb-10">
-        <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/90 px-4 py-3 backdrop-blur-md sm:px-8">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={cycleSidebar}
-              title="Đổi chế độ thanh bên: Đầy đủ → Thu gọn Icon → Ẩn (Phím B)"
-              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] lg:inline-flex"
-            >
-              {sidebarMode === "hidden" ? (
-                <PanelLeftOpen className="h-4 w-4" />
-              ) : (
-                <PanelLeftClose className="h-4 w-4" />
-              )}
-            </button>
-            <div>
-              <h2 className="text-base font-medium text-[var(--text-primary)]">
-                {t(`nav_${tab}`)}
-              </h2>
-              <p className="text-xs text-[var(--text-muted)]">{t(`nav_${tab}_desc`)}</p>
+        <header className="sticky top-0 z-20 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]/92 px-4 py-2.5 backdrop-blur-md sm:px-8">
+          {/* TẦNG 1: THANH CHÍNH CỐ ĐỊNH, GỌN GÀNG & CÂN ĐỐI */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <button
+                type="button"
+                onClick={cycleSidebar}
+                title="Đổi chế độ thanh bên: Đầy đủ → Thu gọn Icon → Ẩn (Phím B)"
+                className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] lg:inline-flex"
+              >
+                {sidebarMode === "hidden" ? (
+                  <PanelLeftOpen className="h-4 w-4" />
+                ) : (
+                  <PanelLeftClose className="h-4 w-4" />
+                )}
+              </button>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="truncate text-base font-semibold text-[var(--text-primary)]">
+                    {t(`nav_${tab}`)}
+                  </h2>
+                  <span
+                    title={props.dbStatus === "connected" ? `Đã đồng bộ PostgreSQL (${lastSyncedAt})` : "Đang ngoại tuyến"}
+                    className={cn(
+                      "h-2 w-2 shrink-0 rounded-full",
+                      props.dbStatus === "connected" ? "bg-emerald-500" : "bg-amber-500 animate-pulse"
+                    )}
+                  />
+                </div>
+                <p className="truncate text-xs text-[var(--text-muted)]">{t(`nav_${tab}_desc`)}</p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            {tab !== "focus" && <MiniTimerBadge onOpenFocus={() => setTab("focus")} />}
-            <div
-              className={cn(
-                "flex items-center gap-2 overflow-hidden transition-all duration-300 ease-in-out",
-                toolbarCollapsed
-                  ? "pointer-events-none max-w-0 scale-95 opacity-0"
-                  : "max-w-[1150px] scale-100 opacity-100"
-              )}
-            >
-            <button
-              type="button"
-              onClick={() => setPadOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-            >
-              <NotebookPen className="h-3.5 w-3.5" />
-              <span className="hidden md:inline">Nháp</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCheatOpen(true)}
-              title="Kho công thức & đoạn mã tra nhanh"
-              className="hidden items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] md:inline-flex"
-            >
-              <Code2 className="h-3.5 w-3.5" />
-              <span>Công thức</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCramOpen(true)}
-              title="Chế độ Ôn gấp trước giờ thi 15 phút"
-              className="hidden items-center gap-1 rounded-xl border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300 xl:inline-flex"
-            >
-              <Flame className="h-3.5 w-3.5" />
-              <span>Ôn gấp 15p</span>
-            </button>
-            {showExamPill && (() => {
-              const nowT = Date.now();
-              const nextEx = [...props.exams]
-                .filter((ex) => new Date(ex.examDate).getTime() >= nowT - 86400000)
-                .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime())[0];
-              if (!nextEx) return null;
-              const days = Math.max(0, Math.ceil((new Date(nextEx.examDate).getTime() - nowT) / 86400000));
-              return (
-                <button
-                  type="button"
-                  onClick={() => setTab("dashboard")}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setShowExamPill(false);
-                  }}
-                  title={`${nextEx.title} (${nextEx.examDate.slice(0, 10)}) — Nhấp phải để ẩn`}
-                  className="hidden items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-500/20 dark:text-rose-400 2xl:inline-flex"
-                >
-                  <span className="max-w-[110px] truncate">{nextEx.title}</span>
-                  <span className="font-mono font-bold">· {days === 0 ? "Hôm nay" : `${days}d`}</span>
-                </button>
-              );
-            })()}
-            <button
-              type="button"
-              onClick={() => setStandbyOpen(true)}
-              title="Mở Đồng hồ để bàn chờ (Alt+S)"
-              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] xl:inline-flex"
-            >
-              <Monitor className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setMediaOpen((v) => !v)}
-              title="Trình phát Nhạc tập trung (YouTube/TikTok/FB/IG & tệp máy tính)"
-              className={`rounded-xl border p-1.5 transition ${
-                mediaOpen
-                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
-                  : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              }`}
-            >
-              <Music2 className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setSpotlightOpen(true)}
-              title="Tìm kiếm toàn cục (Alt+K)"
-              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-            >
-              <Search className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setDockOpen(true)}
-              title="Kho Công cụ Học tập (Alt+T)"
-              className="inline-flex items-center gap-1 rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2 py-1.5 text-xs font-medium text-[var(--accent)] hover:opacity-90"
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Công cụ</span>
-            </button>
-            <EyeCareToggle />
-            <button
-              type="button"
-              onClick={cycleFontScale}
-              title={`Chỉnh cỡ chữ toàn trang (Hiện tại: ${fontScale})`}
-              className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-            >
-              <span>Aa</span>
-              <span className="hidden font-mono text-[10px] text-[var(--accent)] sm:inline">{fontScale}</span>
-            </button>
-            <button
-              type="button"
-              onClick={cycleWarm}
-              title={`Lọc ánh sáng xanh êm mắt (${warmLevel}%)`}
-              className={cn(
-                "rounded-xl border p-1.5 text-xs transition-colors",
-                warmLevel > 0
-                  ? "border-amber-500/50 bg-amber-500/15 text-amber-600"
-                  : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)] hover:border-[var(--accent)]"
-              )}
-            >
-              <Sun className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setPrivacyMode((v) => !v)}
-              title="Chế độ riêng tư làm mờ điểm & tài chính (Phím P)"
-              className={cn(
-                "rounded-xl border p-1.5 text-xs transition-colors",
-                privacyMode
-                  ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
-                  : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)] hover:border-[var(--accent)]"
-              )}
-            >
-              {privacyMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const next = !dndMode;
-                setDndMode(next);
-                localStorage.setItem("kronoflow-dnd", next ? "on" : "off");
-                notify(next ? "Đã bật chế độ Im lặng (DND)" : "Đã tắt chế độ Im lặng");
-              }}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setFabLeft((v) => !v);
-              }}
-              title="Bật/Tắt Im lặng không làm phiền (Chuột phải để đổi góc nút nổi AI)"
-              className={cn(
-                "rounded-xl border p-1.5 text-xs transition-colors",
-                dndMode
-                  ? "border-rose-500/50 bg-rose-500/15 text-rose-500"
-                  : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)] hover:border-[var(--accent)]"
-              )}
-            >
-              {dndMode ? <BellOff className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
-            </button>
-            <span
-              title="Tiến độ mục tiêu tập trung hôm nay"
-              className="hidden items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1 font-mono text-[11px] font-medium text-[var(--accent)] md:inline-flex"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4 -rotate-90">
-                <circle cx="12" cy="12" r="9" fill="none" stroke="var(--border-subtle)" strokeWidth="3" />
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="9"
-                  fill="none"
-                  stroke={headerGoalPct >= 100 ? "#10b981" : "var(--accent)"}
-                  strokeWidth="3"
-                  strokeDasharray={`${Math.round((headerGoalPct / 100) * 56.5)} 56.5`}
-                  strokeLinecap="round"
-                />
-              </svg>
-              {headerGoalPct}%
-            </span>
-            <LanguageToggle />
-            </div>
-            {toolbarCollapsed && (
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+              {tab !== "focus" && <MiniTimerBadge onOpenFocus={() => setTab("focus")} />}
+              <button
+                type="button"
+                onClick={() => setSpotlightOpen(true)}
+                title="Tìm kiếm toàn cục (Alt+K)"
+                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2 text-[var(--text-secondary)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <Search className="h-4 w-4" />
+              </button>
               <button
                 type="button"
                 onClick={() => setDockOpen(true)}
                 title="Kho Công cụ Học tập (Alt+T)"
-                className="inline-flex items-center gap-1 rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2.5 py-1.5 text-xs font-medium text-[var(--accent)] hover:opacity-90"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2.5 py-1.5 text-xs font-semibold text-[var(--accent)] transition hover:opacity-90"
               >
                 <LayoutGrid className="h-3.5 w-3.5" />
-                <span>Công cụ</span>
+                <span className="hidden sm:inline">Công cụ</span>
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                const isDark = props.themeId !== "pure-white" && !props.themeId.includes("light") && !props.themeId.includes("paper") && !props.themeId.includes("latte") && !props.themeId.includes("mint") && !props.themeId.includes("rose") && !props.themeId.includes("sky") && !props.themeId.includes("sand");
-                const nextTheme = isDark ? "pure-white" : "true-black";
-                props.onApplyLocalTheme(nextTheme, props.wallpaper, props.customAccent, props.fontStyle, props.borderRadius);
-                fetch("/api/user", {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ theme: nextTheme }),
-                }).catch(() => {});
-              }}
-              title="Chuyển nhanh Giao diện Sáng / Tối 1 chạm"
-              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-            >
-              <Moon className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={toggleToolbarCollapsed}
-              title={toolbarCollapsed ? "Mở rộng thanh công cụ (Alt+H)" : "Thu gọn thanh công cụ (Alt+H)"}
-              className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1.5 text-xs text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
-            >
-              <ChevronsRight
-                className={cn(
-                  "h-4 w-4 transition-transform duration-300 ease-in-out",
-                  toolbarCollapsed ? "rotate-180" : "rotate-0"
+              <button
+                type="button"
+                onClick={() => {
+                  const isDark =
+                    props.themeId !== "pure-white" &&
+                    !props.themeId.includes("light") &&
+                    !props.themeId.includes("paper") &&
+                    !props.themeId.includes("latte") &&
+                    !props.themeId.includes("mint") &&
+                    !props.themeId.includes("rose") &&
+                    !props.themeId.includes("sky") &&
+                    !props.themeId.includes("sand");
+                  const nextTheme = isDark ? "pure-white" : "true-black";
+                  props.onApplyLocalTheme(
+                    nextTheme,
+                    props.wallpaper,
+                    props.customAccent,
+                    props.fontStyle,
+                    props.borderRadius
+                  );
+                  fetch("/api/user", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ theme: nextTheme }),
+                  }).catch(() => {});
+                }}
+                title="Chuyển nhanh Giao diện Sáng / Tối 1 chạm"
+                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2 text-[var(--text-secondary)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <Moon className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={toggleToolbarCollapsed}
+                title={toolbarCollapsed ? "Mở rộng thanh tiện ích (Alt+H)" : "Thu gọn thanh tiện ích lên trên (Alt+H)"}
+                className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                <ChevronUp
+                  className={cn(
+                    "h-4 w-4 transition-transform duration-300 ease-out",
+                    toolbarCollapsed ? "rotate-180" : "rotate-0"
+                  )}
+                />
+                <span className="hidden md:inline">{toolbarCollapsed ? "Mở rộng" : "Thu gọn"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !toolbarCollapsed;
+                  setToolbarCollapsed(next);
+                  try {
+                    localStorage.setItem("kronoflow-toolbar-collapsed", next ? "on" : "off");
+                  } catch {
+                    // ignore
+                  }
+                  setSidebarMode(next ? "hidden" : "full");
+                }}
+                title="Chế độ Siêu Tối giản: thu gọn cả Sidebar & Header (Alt+Z)"
+                className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2 text-[var(--text-secondary)] transition hover:border-[var(--accent)] hover:text-[var(--accent)] lg:inline-flex"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab("settings")}
+                title={props.user?.name ?? "Hồ sơ & Cài đặt"}
+                className="h-8 w-8 overflow-hidden rounded-full border border-[var(--border-subtle)] bg-[var(--bg-elevated)] transition hover:border-[var(--accent)]"
+              >
+                {props.user?.avatarUrl ? (
+                  <img src={props.user.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-[11px] font-semibold text-[var(--accent)]">
+                    {(props.user?.name ?? "KF").slice(0, 2).toUpperCase()}
+                  </span>
                 )}
-              />
-              <span className="hidden xl:inline">{toolbarCollapsed ? "Mở rộng" : "Thu gọn"}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const next = !toolbarCollapsed;
-                setToolbarCollapsed(next);
-                try {
-                  localStorage.setItem("kronoflow-toolbar-collapsed", next ? "on" : "off");
-                } catch {
-                  // ignore
-                }
-                setSidebarMode(next ? "hidden" : "full");
-              }}
-              title="Chế độ Không gian Siêu Tối giản: thu gọn cả Sidebar & Header (Alt+Z)"
-              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)] lg:inline-flex"
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("settings")}
-              title={props.user?.name ?? "Hồ sơ"}
-              className="h-8 w-8 overflow-hidden rounded-full border border-[var(--border-subtle)] bg-[var(--bg-elevated)]"
-            >
-              {props.user?.avatarUrl ? (
-                <img src={props.user.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-[11px] font-semibold text-[var(--accent)]">
-                  {(props.user?.name ?? "KF").slice(0, 2).toUpperCase()}
-                </span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setHelpOpen(true)}
-              title="Phím tắt (?)"
-              className="hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-1.5 text-[var(--text-secondary)] hover:border-[var(--accent)] sm:inline-flex"
-            >
-              <HelpCircle className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setCmdOpen(true)}
-              className="hidden items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:border-[var(--accent)] sm:inline-flex"
-            >
-              <Command className="h-3.5 w-3.5" />
-              <kbd className="rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 font-mono text-[10px]">
-                Ctrl+K
-              </kbd>
-            </button>
-            <button
-              type="button"
-              onClick={handleSafeLogout}
-              className="rounded-xl border border-[var(--border-subtle)] p-2 text-[var(--text-secondary)] hover:text-rose-500 lg:hidden"
-              title={t("logout")}
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
+              </button>
+              <button
+                type="button"
+                onClick={handleSafeLogout}
+                className="rounded-xl border border-[var(--border-subtle)] p-2 text-[var(--text-secondary)] hover:text-rose-500 lg:hidden"
+                title={t("logout")}
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* TẦNG 2: THANH TIỆN ÍCH PHỤ CHIA 3 CỤM — TRƯỢT LÊN NHẸ NHÀNG & MỜ DẦN KHI THU GỌN */}
+          <div
+            className={cn(
+              "grid transition-all duration-300 ease-out",
+              toolbarCollapsed
+                ? "pointer-events-none grid-rows-[0fr] -translate-y-2 opacity-0"
+                : "grid-rows-[1fr] translate-y-0 opacity-100"
+            )}
+          >
+            <div className="overflow-hidden">
+              <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border-subtle)]/70 pt-2.5">
+                {/* CỤM 1: HỌC NHANH */}
+                <div className="flex flex-wrap items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)]/70 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setPadOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)] transition hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]"
+                  >
+                    <NotebookPen className="h-3.5 w-3.5" />
+                    <span>Nháp</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCheatOpen(true)}
+                    title="Kho công thức & đoạn mã tra nhanh"
+                    className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)] transition hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]"
+                  >
+                    <Code2 className="h-3.5 w-3.5" />
+                    <span>Công thức</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCramOpen(true)}
+                    title="Chế độ Ôn gấp trước giờ thi 15 phút"
+                    className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-500/20 dark:text-amber-300"
+                  >
+                    <Flame className="h-3.5 w-3.5" />
+                    <span>Ôn gấp 15p</span>
+                  </button>
+                  {showExamPill && (() => {
+                    const nowT = Date.now();
+                    const nextEx = [...props.exams]
+                      .filter((ex) => new Date(ex.examDate).getTime() >= nowT - 86400000)
+                      .sort((a, b) => new Date(a.examDate).getTime() - new Date(b.examDate).getTime())[0];
+                    if (!nextEx) return null;
+                    const days = Math.max(0, Math.ceil((new Date(nextEx.examDate).getTime() - nowT) / 86400000));
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setTab("dashboard")}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setShowExamPill(false);
+                        }}
+                        title={`${nextEx.title} (${nextEx.examDate.slice(0, 10)}) — Nhấp phải để ẩn`}
+                        className="inline-flex items-center gap-1 rounded-lg bg-rose-500/10 px-2 py-1 text-[11px] font-medium text-rose-600 transition hover:bg-rose-500/20 dark:text-rose-400"
+                      >
+                        <span className="max-w-[110px] truncate">{nextEx.title}</span>
+                        <span className="font-mono font-bold">· {days === 0 ? "Hôm nay" : `${days}d`}</span>
+                      </button>
+                    );
+                  })()}
+                </div>
+
+                {/* CỤM 2: TIỆN ÍCH & PHÍM TẮT */}
+                <div className="flex flex-wrap items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)]/70 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setMediaOpen((v) => !v)}
+                    title="Trình phát Nhạc tập trung (YouTube/TikTok/FB/IG & tệp máy tính)"
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition",
+                      mediaOpen
+                        ? "bg-[var(--accent-soft)] font-medium text-[var(--accent)]"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]"
+                    )}
+                  >
+                    <Music2 className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Nhạc</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStandbyOpen(true)}
+                    title="Mở Đồng hồ để bàn chờ (Alt+S)"
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)] transition hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]"
+                  >
+                    <Monitor className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Đồng hồ chờ</span>
+                  </button>
+                  <EyeCareToggle />
+                  <button
+                    type="button"
+                    onClick={() => setHelpOpen(true)}
+                    title="Phím tắt (?)"
+                    className="rounded-lg p-1.5 text-[var(--text-secondary)] transition hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]"
+                  >
+                    <HelpCircle className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCmdOpen(true)}
+                    title="Bảng lệnh nhanh (Ctrl+K)"
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)] transition hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]"
+                  >
+                    <Command className="h-3.5 w-3.5" />
+                    <kbd className="rounded bg-[var(--bg-elevated)] px-1 py-0.5 font-mono text-[10px]">
+                      Ctrl+K
+                    </kbd>
+                  </button>
+                </div>
+
+                {/* CỤM 3: HIỂN THỊ & MÔI TRƯỜNG */}
+                <div className="flex flex-wrap items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)]/70 p-1">
+                  <button
+                    type="button"
+                    onClick={cycleFontScale}
+                    title={`Chỉnh cỡ chữ toàn trang (Hiện tại: ${fontScale})`}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]"
+                  >
+                    <span>Aa</span>
+                    <span className="font-mono text-[10px] text-[var(--accent)]">{fontScale}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cycleWarm}
+                    title={`Lọc ánh sáng xanh êm mắt (${warmLevel}%)`}
+                    className={cn(
+                      "rounded-lg p-1.5 text-xs transition",
+                      warmLevel > 0
+                        ? "bg-amber-500/15 text-amber-600"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]"
+                    )}
+                  >
+                    <Sun className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrivacyMode((v) => !v)}
+                    title="Chế độ riêng tư làm mờ điểm & tài chính (Phím P)"
+                    className={cn(
+                      "rounded-lg p-1.5 text-xs transition",
+                      privacyMode
+                        ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]"
+                    )}
+                  >
+                    {privacyMode ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !dndMode;
+                      setDndMode(next);
+                      localStorage.setItem("kronoflow-dnd", next ? "on" : "off");
+                      notify(next ? "Đã bật chế độ Im lặng (DND)" : "Đã tắt chế độ Im lặng");
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setFabLeft((v) => !v);
+                    }}
+                    title="Bật/Tắt Im lặng không làm phiền (Chuột phải để đổi góc nút nổi AI)"
+                    className={cn(
+                      "rounded-lg p-1.5 text-xs transition",
+                      dndMode
+                        ? "bg-rose-500/15 text-rose-500"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]"
+                    )}
+                  >
+                    {dndMode ? <BellOff className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
+                  </button>
+                  <span
+                    title="Tiến độ mục tiêu tập trung hôm nay"
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 font-mono text-[11px] font-medium text-[var(--accent)]"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 -rotate-90">
+                      <circle cx="12" cy="12" r="9" fill="none" stroke="var(--border-subtle)" strokeWidth="3" />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="9"
+                        fill="none"
+                        stroke={headerGoalPct >= 100 ? "#10b981" : "var(--accent)"}
+                        strokeWidth="3"
+                        strokeDasharray={`${Math.round((headerGoalPct / 100) * 56.5)} 56.5`}
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    {headerGoalPct}%
+                  </span>
+                  <LanguageToggle />
+                </div>
+              </div>
+            </div>
           </div>
         </header>
 
