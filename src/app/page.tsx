@@ -84,6 +84,7 @@ import { LifeBalancePinModal } from "@/components/LifeBalancePinModal";
 import { WrappedDiffRotationModal } from "@/components/WrappedDiffRotationModal";
 import { AcademicLifeHubModal } from "@/components/AcademicLifeHubModal";
 import { RubricQaWorldModal } from "@/components/RubricQaWorldModal";
+import { CramTimeBlockReportModal } from "@/components/CramTimeBlockReportModal";
 import { BackToTopPill } from "@/components/BackToTopPill";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
@@ -351,6 +352,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [wrappedDiffOpen, setWrappedDiffOpen] = useState(false);
   const [academicHubOpen, setAcademicHubOpen] = useState(false);
   const [rubricQaOpen, setRubricQaOpen] = useState(false);
+  const [cramReportOpen, setCramReportOpen] = useState(false);
   const [crispBorder, setCrispBorder] = useState(false);
 
   useEffect(() => {
@@ -739,7 +741,30 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       <TopFocusBar />
       <ConfettiBurst triggerKey={confettiKey} />
       <QuickScratchpad open={padOpen} onClose={() => setPadOpen(false)} />
-      <ShortcutsModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <ShortcutsModal
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        onTrigger={(act) => {
+          if (act === "spotlight") setSpotlightOpen(true);
+          else if (act === "dock") setDockOpen(true);
+          else if (act === "standby") setStandbyOpen(true);
+          else if (act === "ai") setAiOpen(true);
+          else if (act === "quick") setQuickOpen(true);
+          else if (act === "pad") setPadOpen((v) => !v);
+          else if (act === "toolbar") toggleToolbarCollapsed();
+          else if (act === "zen") {
+            setToolbarCollapsed((v) => {
+              const next = !v;
+              setSidebarMode(next ? "hidden" : "full");
+              return next;
+            });
+          } else if (act === "sidebar") {
+            setSidebarMode((m) => (m === "full" ? "compact" : m === "compact" ? "hidden" : "full"));
+          } else if (act === "prevtab") setTab(prevTabRef.current);
+          else if (act === "privacy") setPrivacyMode((v) => !v);
+          else if (act === "cmd") setCmdOpen(true);
+        }}
+      />
       <AiCopilotDrawer
         open={aiOpen}
         onClose={() => setAiOpen(false)}
@@ -791,12 +816,24 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onOpenWrappedDiff={() => setWrappedDiffOpen(true)}
         onOpenAcademicHub={() => setAcademicHubOpen(true)}
         onOpenRubricQa={() => setRubricQaOpen(true)}
+        onOpenCramReport={() => setCramReportOpen(true)}
       />
       <RubricQaWorldModal
         open={rubricQaOpen}
         onClose={() => setRubricQaOpen(false)}
         exams={props.exams}
         subjects={props.subjects}
+      />
+      <CramTimeBlockReportModal
+        open={cramReportOpen}
+        onClose={() => setCramReportOpen(false)}
+        userName={props.user?.name ?? "KronoFlow"}
+        subjects={props.subjects}
+        flashcards={props.flashcards}
+        mistakes={props.mistakes}
+        sessions={props.sessions}
+        todos={props.todos}
+        grades={props.grades}
       />
       <BackToTopPill />
       <AcademicLifeHubModal

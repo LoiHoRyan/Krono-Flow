@@ -7,6 +7,7 @@ import {
   BookMarked,
   ClipboardCheck,
   Compass,
+  Flame,
   Cpu,
   LayoutGrid,
   Lock,
@@ -57,6 +58,7 @@ export function StudyDockDrawer({
   onOpenWrappedDiff,
   onOpenAcademicHub,
   onOpenRubricQa,
+  onOpenCramReport,
 }: {
   open: boolean;
   onClose: () => void;
@@ -77,6 +79,7 @@ export function StudyDockDrawer({
   onOpenWrappedDiff: () => void;
   onOpenAcademicHub: () => void;
   onOpenRubricQa: () => void;
+  onOpenCramReport: () => void;
 }) {
   const [pinned, setPinned] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -124,6 +127,15 @@ export function StudyDockDrawer({
       icon: Search,
       color: "text-sky-500",
       onClick: onOpenSpotlight,
+    },
+    {
+      id: "cramreport",
+      cat: "exam",
+      title: "Ôn cấp tốc 15p, Time-Blocking & Báo cáo Tuần",
+      desc: "Luyện Flashcard + Lỗi sai 15 phút, khóa giờ học 24h & xuất báo cáo A4/MD",
+      icon: Flame,
+      color: "text-orange-500",
+      onClick: onOpenCramReport,
     },
     {
       id: "rubricqa",
@@ -255,7 +267,7 @@ export function StudyDockDrawer({
       id: "media",
       cat: "life",
       title: "Trình phát Nhạc Tập trung",
-      desc: "Phát tệp máy tính & link YouTube / TikTok / FB / IG",
+      desc: "Tìm 30 kết quả, Lặp 1, Hàng đợi, Spotify/SoundCloud & Âm nền offline",
       icon: Music2,
       color: "text-pink-500",
       onClick: onToggleMedia,
