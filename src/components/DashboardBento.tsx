@@ -1,6 +1,6 @@
 "use client";
 
-import { kfNotify } from "@/lib/notify";
+import { kfNotify, kfConfirm, kfPrompt } from "@/lib/notify";
 
 import { cn } from "@/lib/utils";
 
@@ -171,7 +171,7 @@ export function DashboardBento({
   };
 
   const handleClearRecentSessions = async () => {
-    if (!window.confirm(`Xóa toàn bộ ${sessions.length} phiên học trong lịch sử?`)) return;
+    if (!(await kfConfirm(`Xóa toàn bộ ${sessions.length} phiên học trong lịch sử?`))) return;
     const res = await fetch("/api/sessions", { method: "DELETE" });
     if (res.ok) onRefresh();
   };
@@ -230,8 +230,8 @@ export function DashboardBento({
     }
   }, []);
 
-  const addCustomQuote = () => {
-    const q = window.prompt("Nhập câu trích dẫn / châm ngôn cá nhân của bạn:");
+  const addCustomQuote = async () => {
+    const q = await kfPrompt("Nhập câu trích dẫn / châm ngôn cá nhân của bạn:");
     if (!q || !q.trim()) return;
     const next = [q.trim(), ...customQuotes].slice(0, 15);
     setCustomQuotes(next);
@@ -262,7 +262,7 @@ export function DashboardBento({
   };
 
   const handleExamToGpa = async (ex: ExamRecord) => {
-    const raw = window.prompt(`Nhập điểm hệ 10 đạt được cho "${ex.title}" (VD: 8.5):`, "8.5");
+    const raw = await kfPrompt(`Nhập điểm hệ 10 đạt được cho "${ex.title}" (VD: 8.5):`, "8.5");
     if (!raw) return;
     const score = Number(raw);
     if (isNaN(score) || score < 0 || score > 10) return;

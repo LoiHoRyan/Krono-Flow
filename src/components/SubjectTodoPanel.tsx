@@ -1,5 +1,7 @@
 "use client";
 
+import { kfConfirm, kfPrompt } from "@/lib/notify";
+
 import { useState, useEffect } from "react";
 import {
   Plus,
@@ -98,9 +100,9 @@ export function SubjectTodoPanel({
     }
   }, []);
 
-  const attachTodoLink = (todoId: string) => {
+  const attachTodoLink = async (todoId: string) => {
     const cur = todoLinks[todoId] ?? "";
-    const url = window.prompt("Dán liên kết tài liệu / đề bài cho công việc này (để trống để xóa):", cur);
+    const url = await kfPrompt("Dán liên kết tài liệu / đề bài cho công việc này (để trống để xóa):", cur);
     if (url === null) return;
     const next = { ...todoLinks };
     if (url.trim()) next[todoId] = url.trim();
@@ -321,7 +323,7 @@ export function SubjectTodoPanel({
     e.preventDefault();
     if (!subjectName.trim()) return;
     const dupSub = subjects.find((s) => normalizeVi(s.name) === normalizeVi(subjectName.trim()));
-    if (dupSub && !window.confirm(`Môn "${dupSub.name}" đã tồn tại. Bạn vẫn muốn tạo thêm?`)) return;
+    if (dupSub && !(await kfConfirm(`Môn "${dupSub.name}" đã tồn tại. Bạn vẫn muốn tạo thêm?`))) return;
     const res = await fetch("/api/subjects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -342,7 +344,7 @@ export function SubjectTodoPanel({
     const relTodos = todos.filter((t) => t.subjectId === id).length;
     const relSess = sessions.filter((s) => s.subjectId === id).length;
     const msg = `Xóa môn "${sub?.name ?? ""}"? Hiện có ${relTodos} công việc và ${relSess} phiên học gắn với môn này.`;
-    if (!window.confirm(msg)) return;
+    if (!(await kfConfirm(msg))) return;
     await fetch(`/api/subjects/${id}`, { method: "DELETE" });
     onRefresh();
   };
@@ -843,7 +845,7 @@ export function SubjectTodoPanel({
                     type="button"
                     onClick={async () => {
                       const doneList = todos.filter((t) => t.isCompleted);
-                      if (!window.confirm(`Dọn sạch ${doneList.length} công việc đã hoàn thành?`)) return;
+                      if (!(await kfConfirm(`Dọn sạch ${doneList.length} công việc đã hoàn thành?`))) return;
                       await Promise.all(doneList.map((d) => fetch(`/api/todos/${d.id}`, { method: "DELETE" })));
                       onRefresh();
                     }}

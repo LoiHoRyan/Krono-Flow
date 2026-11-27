@@ -1,5 +1,7 @@
 "use client";
 
+import { kfConfirm } from "@/lib/notify";
+
 import { useState } from "react";
 import { CheckCircle2, Circle, Clock, Download, Map, Plus, Sparkles, Trash2, Upload,
   Maximize2,
@@ -81,7 +83,7 @@ export function RoadmapPanel({
   };
 
   const handleDeleteRoadmap = async (id: string, rmTitle: string) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa lộ trình "${rmTitle}" không?`)) return;
+    if (!(await kfConfirm(`Bạn có chắc muốn xóa lộ trình "${rmTitle}" không?`))) return;
     await fetch(`/api/roadmaps/${id}`, { method: "DELETE" });
     onRefresh();
   };

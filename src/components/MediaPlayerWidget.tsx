@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeftRight,
@@ -735,7 +737,7 @@ export function MediaPlayerWidget({
       {/* FLOATING MINI-PLAYER PILL when minimized & active */}
       {!open && nowPlayingTitle && (
         <div
-          className={`no-print fixed bottom-4 z-50 flex max-w-[300px] items-center gap-2 rounded-full border border-[var(--accent)]/40 bg-[var(--bg-surface)]/95 px-3 py-1.5 shadow-xl backdrop-blur-md transition-all ${
+          className={`no-print fixed bottom-20 lg:bottom-4 z-50 flex max-w-[300px] items-center gap-2 rounded-full border border-[var(--accent)]/40 bg-[var(--bg-surface)]/95 px-3 py-1.5 shadow-xl backdrop-blur-md transition-all ${
             dockRight ? "right-20" : "left-4"
           }`}
         >
@@ -781,7 +783,7 @@ export function MediaPlayerWidget({
         style={panelPosStyle}
         className={`no-print fixed z-50 flex max-h-[78vh] w-[92vw] max-w-[420px] flex-col rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]/98 shadow-2xl backdrop-blur-md ${
           dragging ? "transition-none" : "transition-opacity duration-200"
-        } ${!pos ? (dockRight ? "bottom-4 right-4" : "bottom-4 left-4") : ""} ${
+        } ${!pos ? (dockRight ? "bottom-20 right-4 lg:bottom-4" : "bottom-20 left-4 lg:bottom-4") : ""} ${
           open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         }`}
         aria-hidden={!open}
@@ -1348,6 +1350,62 @@ export function MediaPlayerWidget({
                     {mf === "all" ? "Mọi tâm trạng" : MOOD_LABELS[mf]}
                   </button>
                 ))}
+              </div>
+
+                            {/* Backup / Restore Personal Links JSON */}
+              <div className="flex items-center justify-between gap-1.5 text-[10px]">
+                <span className="text-[var(--text-muted)]">Sao lưu danh sách cá nhân:</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const blob = new Blob([JSON.stringify(savedLinks, null, 2)], { type: "application/json" });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `kronoflow-playlist-${new Date().toISOString().slice(0, 10)}.json`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      kfNotify(`Đã xuất ${savedLinks.length} liên kết nhạc ra tệp JSON!`);
+                    }}
+                    className="rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-0.5 font-semibold hover:border-[var(--accent)]"
+                  >
+                    Xuất JSON
+                  </button>
+                  <label className="cursor-pointer rounded-md border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2 py-0.5 font-semibold hover:border-[var(--accent)]">
+                    Nhập JSON
+                    <input
+                      type="file"
+                      accept="application/json,.json"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          try {
+                            const arr = JSON.parse(String(reader.result ?? "[]")) as unknown;
+                            if (!Array.isArray(arr)) throw new Error("invalid");
+                            const valid = arr.filter(
+                              (x): x is SavedMediaLink =>
+                                Boolean(x) &&
+                                typeof x === "object" &&
+                                typeof (x as SavedMediaLink).url === "string" &&
+                                typeof (x as SavedMediaLink).title === "string"
+                            );
+                            const merged = [...valid, ...savedLinks.filter((s) => !valid.some((v) => v.url === s.url))];
+                            persistLinks(merged);
+                            kfNotify(`Đã nhập ${valid.length} liên kết nhạc vào danh sách!`);
+                          } catch {
+                            kfNotify("Tệp JSON danh sách nhạc không hợp lệ.", "warn");
+                          }
+                        };
+                        reader.readAsText(f);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
 
               {/* Platform Filter Pills */}

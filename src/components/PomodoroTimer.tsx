@@ -1,5 +1,7 @@
 "use client";
 
+import { kfConfirm, kfPrompt } from "@/lib/notify";
+
 import { useEffect, useState } from "react";
 import {
   Play,
@@ -209,7 +211,7 @@ export function PomodoroTimer({
   };
 
   const handleClearAllSessions = async () => {
-    if (!window.confirm(`Xóa toàn bộ ${sessions.length} phiên trong lịch sử học tập? Thao tác này không thể hoàn tác.`)) {
+    if (!(await kfConfirm(`Xóa toàn bộ ${sessions.length} phiên trong lịch sử học tập? Thao tác này không thể hoàn tác.`))) {
       return;
     }
     const res = await fetch("/api/sessions", { method: "DELETE" });
@@ -220,7 +222,7 @@ export function PomodoroTimer({
   };
 
   const handleEditSessionNote = async (s: SessionLogItem) => {
-    const nextNote = window.prompt("Chỉnh sửa ghi chú cho phiên học này:", s.notes ?? "");
+    const nextNote = await kfPrompt("Chỉnh sửa ghi chú cho phiên học này:", s.notes ?? "");
     if (nextNote === null) return;
     const res = await fetch(`/api/sessions/${s.id}`, {
       method: "PATCH",

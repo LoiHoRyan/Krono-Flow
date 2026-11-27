@@ -6,6 +6,7 @@ import {
   Bookmark,
   BookMarked,
   ClipboardCheck,
+  Coffee,
   Compass,
   Flame,
   Cpu,
@@ -59,6 +60,7 @@ export function StudyDockDrawer({
   onOpenAcademicHub,
   onOpenRubricQa,
   onOpenCramReport,
+  onOpenMicroBreak,
 }: {
   open: boolean;
   onClose: () => void;
@@ -80,6 +82,7 @@ export function StudyDockDrawer({
   onOpenAcademicHub: () => void;
   onOpenRubricQa: () => void;
   onOpenCramReport: () => void;
+  onOpenMicroBreak: () => void;
 }) {
   const [pinned, setPinned] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -127,6 +130,15 @@ export function StudyDockDrawer({
       icon: Search,
       color: "text-sky-500",
       onClick: onOpenSpotlight,
+    },
+    {
+      id: "microbreak",
+      cat: "life",
+      title: "Nghỉ 2p, Mốc thi 7-3-1 & Đếm từ/Nói",
+      desc: "Hướng dẫn nghỉ giải lao 2 phút, mốc ôn thi D-7/D-3/D-1 & tính phút thuyết trình",
+      icon: Coffee,
+      color: "text-amber-600",
+      onClick: onOpenMicroBreak,
     },
     {
       id: "cramreport",

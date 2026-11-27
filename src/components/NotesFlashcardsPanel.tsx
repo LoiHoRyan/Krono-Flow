@@ -1,6 +1,6 @@
 "use client";
 
-import { kfNotify } from "@/lib/notify";
+import { kfNotify, kfConfirm } from "@/lib/notify";
 
 import { useState, useEffect, useRef } from "react";
 import {
@@ -1080,7 +1080,7 @@ ${note.content}`, count: 5 }),
               type="button"
               onClick={async () => {
                 const open = mistakes.filter((m) => !m.resolved);
-                if (!window.confirm(`Đánh dấu đã hiểu vững toàn bộ ${open.length} lỗi sai hiện tại?`)) return;
+                if (!(await kfConfirm(`Đánh dấu đã hiểu vững toàn bộ ${open.length} lỗi sai hiện tại?`))) return;
                 await Promise.all(
                   open.map((m) =>
                     fetch(`/api/mistakes/${m.id}`, {

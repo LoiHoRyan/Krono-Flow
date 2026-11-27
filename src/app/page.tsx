@@ -1,5 +1,7 @@
 "use client";
 
+import { kfConfirm } from "@/lib/notify";
+
 import { useCallback, useEffect, useState, useRef } from "react";
 import {
   LayoutDashboard,
@@ -86,6 +88,8 @@ import { AcademicLifeHubModal } from "@/components/AcademicLifeHubModal";
 import { RubricQaWorldModal } from "@/components/RubricQaWorldModal";
 import { CramTimeBlockReportModal } from "@/components/CramTimeBlockReportModal";
 import { GlobalToastBridge } from "@/components/GlobalToastBridge";
+import { GlobalDialogBridge } from "@/components/GlobalDialogBridge";
+import { MicroBreakExamMilestonesModal } from "@/components/MicroBreakExamMilestonesModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -233,8 +237,18 @@ interface WorkspaceProps {
 
 function KronoFlowWorkspace(props: WorkspaceProps) {
   const { lang, t } = useLang();
+  const timer = useTimer();
   const [tab, setTabRaw] = useState<TabId>("dashboard");
   const prevTabRef = useRef<TabId>("dashboard");
+  useEffect(() => {
+    if (!timer.isRunning) return;
+    const onUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onUnload);
+    return () => window.removeEventListener("beforeunload", onUnload);
+  }, [timer.isRunning]);
   const lastTabRef = useRef<TabId>("dashboard");
 
   useEffect(() => {
@@ -353,6 +367,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [academicHubOpen, setAcademicHubOpen] = useState(false);
   const [rubricQaOpen, setRubricQaOpen] = useState(false);
   const [cramReportOpen, setCramReportOpen] = useState(false);
+  const [microBreakOpen, setMicroBreakOpen] = useState(false);
   const [crispBorder, setCrispBorder] = useState(false);
 
   useEffect(() => {
@@ -433,9 +448,9 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [wideLayout, setWideLayout] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  const handleSafeLogout = () => {
+  const handleSafeLogout = async () => {
     const hasDraft = Boolean(localStorage.getItem("kronoflow-draft-note"));
-    if (hasDraft && !window.confirm("Bạn đang có bản nháp Ghi chú chưa lưu. Vẫn muốn đăng xuất?")) {
+    if (hasDraft && !(await kfConfirm("Bạn đang có bản nháp Ghi chú chưa lưu. Vẫn muốn đăng xuất?"))) {
       return;
     }
     props.onLogout();
@@ -615,6 +630,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         setDockOpen(false);
         setSpotlightOpen(false);
         setCramReportOpen(false);
+        setMicroBreakOpen(false);
         setRubricQaOpen(false);
         setAcademicHubOpen(false);
         setWrappedDiffOpen(false);
@@ -656,11 +672,10 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       } else if (e.key.toLowerCase() === "p" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         setPrivacyMode((v) => !v);
-      } else if (e.altKey && /^[1-8]$/.test(e.key)) {
+      } else if (e.altKey && e.code === "Space") {
         e.preventDefault();
-        const tabList: TabId[] = ["dashboard", "focus", "schedule", "planner", "goals", "habits", "roadmaps", "knowledge"];
-        const target = tabList[Number(e.key) - 1];
-        if (target) setTab(target);
+        if (timer.isRunning) timer.pause();
+        else timer.start();
       } else if (e.altKey && e.key.toLowerCase() === "b") {
         e.preventDefault();
         setTab(prevTabRef.current);
@@ -837,12 +852,19 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onOpenAcademicHub={() => setAcademicHubOpen(true)}
         onOpenRubricQa={() => setRubricQaOpen(true)}
         onOpenCramReport={() => setCramReportOpen(true)}
+        onOpenMicroBreak={() => setMicroBreakOpen(true)}
       />
       <RubricQaWorldModal
         open={rubricQaOpen}
         onClose={() => setRubricQaOpen(false)}
         exams={props.exams}
         subjects={props.subjects}
+      />
+      <MicroBreakExamMilestonesModal
+        open={microBreakOpen}
+        onClose={() => setMicroBreakOpen(false)}
+        exams={props.exams}
+        notes={props.notes}
       />
       <CramTimeBlockReportModal
         open={cramReportOpen}
@@ -856,6 +878,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         grades={props.grades}
       />
       <GlobalToastBridge />
+      <GlobalDialogBridge />
       <AcademicLifeHubModal
         open={academicHubOpen}
         onClose={() => setAcademicHubOpen(false)}
