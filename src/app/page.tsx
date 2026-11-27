@@ -82,6 +82,7 @@ import { QuickPortalAndDailyModal } from "@/components/QuickPortalAndDailyModal"
 import { MindReadVocabModal } from "@/components/MindReadVocabModal";
 import { LifeBalancePinModal } from "@/components/LifeBalancePinModal";
 import { WrappedDiffRotationModal } from "@/components/WrappedDiffRotationModal";
+import { AcademicLifeHubModal } from "@/components/AcademicLifeHubModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -346,6 +347,31 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [mindReadOpen, setMindReadOpen] = useState(false);
   const [lifePinOpen, setLifePinOpen] = useState(false);
   const [wrappedDiffOpen, setWrappedDiffOpen] = useState(false);
+  const [academicHubOpen, setAcademicHubOpen] = useState(false);
+  const [crispBorder, setCrispBorder] = useState(false);
+
+  useEffect(() => {
+    try {
+      const cb = localStorage.getItem("kronoflow-crisp-border") === "on";
+      setCrispBorder(cb);
+      document.documentElement.dataset.crispBorder = cb ? "on" : "off";
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const toggleCrispBorder = () => {
+    setCrispBorder((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("kronoflow-crisp-border", next ? "on" : "off");
+        document.documentElement.dataset.crispBorder = next ? "on" : "off";
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
   const [uiDensity, setUiDensity] = useState<"compact" | "cozy" | "spacious">("cozy");
 
   useEffect(() => {
@@ -760,6 +786,16 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onOpenMindRead={() => setMindReadOpen(true)}
         onOpenLifePin={() => setLifePinOpen(true)}
         onOpenWrappedDiff={() => setWrappedDiffOpen(true)}
+        onOpenAcademicHub={() => setAcademicHubOpen(true)}
+      />
+      <AcademicLifeHubModal
+        open={academicHubOpen}
+        onClose={() => setAcademicHubOpen(false)}
+        userName={props.user?.name ?? "KronoFlow"}
+        subjects={props.subjects}
+        sessions={props.sessions}
+        grades={props.grades}
+        expenses={props.expenses}
       />
       <WrappedDiffRotationModal
         open={wrappedDiffOpen}
@@ -1330,6 +1366,19 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                     className="rounded-lg px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]"
                   >
                     {uiDensity === "compact" ? "Gọn" : uiDensity === "spacious" ? "Thoáng" : "Cân bằng"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleCrispBorder}
+                    title="Chuyển độ tương phản viền thẻ (Viền mảnh / Viền rõ)"
+                    className={cn(
+                      "rounded-lg px-2 py-1 text-[11px] font-medium transition",
+                      crispBorder
+                        ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]"
+                    )}
+                  >
+                    {crispBorder ? "Viền rõ" : "Viền mảnh"}
                   </button>
                   <button
                     type="button"

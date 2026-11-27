@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  BarChart2,
   Bookmark,
   BookMarked,
   ClipboardCheck,
@@ -42,6 +43,7 @@ export function StudyDockDrawer({
   onOpenMindRead,
   onOpenLifePin,
   onOpenWrappedDiff,
+  onOpenAcademicHub,
 }: {
   open: boolean;
   onClose: () => void;
@@ -60,6 +62,7 @@ export function StudyDockDrawer({
   onOpenMindRead: () => void;
   onOpenLifePin: () => void;
   onOpenWrappedDiff: () => void;
+  onOpenAcademicHub: () => void;
 }) {
   const [pinned, setPinned] = useState<string[]>([]);
 
@@ -182,6 +185,14 @@ export function StudyDockDrawer({
       icon: Sparkles,
       color: "text-purple-500",
       onClick: onOpenWrappedDiff,
+    },
+    {
+      id: "academichub",
+      title: "Hiệu suất Điểm, Ngân sách 50/30/20, Mẫu Email & Hành chính",
+      desc: "Giờ học ↔ GPA, chia quỹ tháng, mẫu email SV, hạn tín chỉ & thẻ share PNG",
+      icon: BarChart2,
+      color: "text-cyan-600",
+      onClick: onOpenAcademicHub,
     },
     {
       id: "sticky",
