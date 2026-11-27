@@ -221,7 +221,17 @@ export function ExamPacerMeetingModal({
         {/* TAB 1: MULTI-SECTION EXAM PACER */}
         {tab === "pacer" && (
           <div className="mt-4 space-y-3 text-xs">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--accent)]/35 bg-[var(--accent-soft)] p-4">
+            {(() => {
+              const totalSec = Math.max(1, (activeSec?.minutes ?? 30) * 60);
+              const ratioLeft = secsLeft / totalSec;
+              const warnCls =
+                secsLeft <= 300 || ratioLeft <= 0.25
+                  ? "border-rose-500/45 bg-rose-500/12"
+                  : ratioLeft <= 0.5
+                  ? "border-amber-500/45 bg-amber-500/12"
+                  : "border-[var(--accent)]/35 bg-[var(--accent-soft)]";
+              return (
+            <div className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 transition-colors ${warnCls}`}>
               <div>
                 <div className="text-[11px] font-medium text-[var(--text-secondary)]">
                   Chặng {secIdx + 1}/{sections.length}: <strong>{activeSec?.name ?? "Hoàn tất"}</strong>
@@ -250,6 +260,8 @@ export function ExamPacerMeetingModal({
                 </button>
               </div>
             </div>
+              );
+            })()}
 
             <div className="space-y-1.5">
               {sections.map((s, i) => (

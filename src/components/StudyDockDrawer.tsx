@@ -13,6 +13,7 @@ import {
   PenTool,
   Presentation,
   Search,
+  Sparkles,
   Star,
   StickyNote,
   Timer,
@@ -40,6 +41,7 @@ export function StudyDockDrawer({
   onOpenPortals,
   onOpenMindRead,
   onOpenLifePin,
+  onOpenWrappedDiff,
 }: {
   open: boolean;
   onClose: () => void;
@@ -57,6 +59,7 @@ export function StudyDockDrawer({
   onOpenPortals: () => void;
   onOpenMindRead: () => void;
   onOpenLifePin: () => void;
+  onOpenWrappedDiff: () => void;
 }) {
   const [pinned, setPinned] = useState<string[]>([]);
 
@@ -171,6 +174,14 @@ export function StudyDockDrawer({
       icon: Lock,
       color: "text-emerald-600",
       onClick: onOpenLifePin,
+    },
+    {
+      id: "wrapped",
+      title: "Tổng kết Học kỳ, So sánh Văn bản & Xoay vòng Nhóm",
+      desc: "Xuất ảnh Semester Wrapped PNG, Diff 2 bản nháp & Lịch trực nhóm",
+      icon: Sparkles,
+      color: "text-purple-500",
+      onClick: onOpenWrappedDiff,
     },
     {
       id: "sticky",

@@ -81,6 +81,7 @@ import { ExamPacerMeetingModal } from "@/components/ExamPacerMeetingModal";
 import { QuickPortalAndDailyModal } from "@/components/QuickPortalAndDailyModal";
 import { MindReadVocabModal } from "@/components/MindReadVocabModal";
 import { LifeBalancePinModal } from "@/components/LifeBalancePinModal";
+import { WrappedDiffRotationModal } from "@/components/WrappedDiffRotationModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -344,6 +345,33 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [portalsOpen, setPortalsOpen] = useState(false);
   const [mindReadOpen, setMindReadOpen] = useState(false);
   const [lifePinOpen, setLifePinOpen] = useState(false);
+  const [wrappedDiffOpen, setWrappedDiffOpen] = useState(false);
+  const [uiDensity, setUiDensity] = useState<"compact" | "cozy" | "spacious">("cozy");
+
+  useEffect(() => {
+    try {
+      const d = localStorage.getItem("kronoflow-ui-density");
+      if (d === "compact" || d === "cozy" || d === "spacious") {
+        setUiDensity(d);
+        document.documentElement.dataset.uiDensity = d;
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const cycleUiDensity = () => {
+    setUiDensity((cur) => {
+      const next = cur === "cozy" ? "compact" : cur === "compact" ? "spacious" : "cozy";
+      try {
+        localStorage.setItem("kronoflow-ui-density", next);
+        document.documentElement.dataset.uiDensity = next;
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
   const [toolbarCollapsed, setToolbarCollapsed] = useState(false);
 
   useEffect(() => {
@@ -731,6 +759,17 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onOpenPortals={() => setPortalsOpen(true)}
         onOpenMindRead={() => setMindReadOpen(true)}
         onOpenLifePin={() => setLifePinOpen(true)}
+        onOpenWrappedDiff={() => setWrappedDiffOpen(true)}
+      />
+      <WrappedDiffRotationModal
+        open={wrappedDiffOpen}
+        onClose={() => setWrappedDiffOpen(false)}
+        userName={props.user?.name ?? "KronoFlow"}
+        sessions={props.sessions}
+        subjects={props.subjects}
+        grades={props.grades}
+        todos={props.todos}
+        flashcardCount={props.flashcards.length}
       />
       <MindReadVocabModal open={mindReadOpen} onClose={() => setMindReadOpen(false)} onRefresh={props.onRefresh} />
       <LifeBalancePinModal open={lifePinOpen} onClose={() => setLifePinOpen(false)} />
@@ -859,7 +898,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                         className={cn(
                           "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] font-medium",
                           tab === item.id
-                            ? "bg-[var(--accent-soft)] text-[var(--accent)] shadow-sm"
+                            ? "border-l-[3px] border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] shadow-sm"
                             : "text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
                         )}
                       >
@@ -912,7 +951,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                             "flex flex-1 items-center rounded-xl text-left text-[13px] font-medium",
                             sidebarMode === "full" ? "gap-2.5 px-3 py-2" : "justify-center p-2.5",
                             tab === item.id
-                              ? "bg-[var(--accent-soft)] text-[var(--accent)] shadow-sm"
+                              ? "border-l-[3px] border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] shadow-sm"
                               : "text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]"
                           )}
                         >
@@ -1283,6 +1322,14 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                   >
                     <span>Aa</span>
                     <span className="font-mono text-[10px] text-[var(--accent)]">{fontScale}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cycleUiDensity}
+                    title="Đổi độ thoáng giao diện (Gọn / Cân bằng / Thoáng)"
+                    className="rounded-lg px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-surface)] hover:text-[var(--accent)]"
+                  >
+                    {uiDensity === "compact" ? "Gọn" : uiDensity === "spacious" ? "Thoáng" : "Cân bằng"}
                   </button>
                   <button
                     type="button"
