@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  ArrowLeftRight,
   ExternalLink,
   FolderOpen,
   Link2,
@@ -12,6 +13,7 @@ import {
   Play,
   Plus,
   Repeat,
+  Search,
   Shuffle,
   SkipBack,
   SkipForward,
@@ -34,6 +36,15 @@ interface SavedMediaLink {
   platform: "youtube" | "tiktok" | "facebook" | "instagram" | "audio" | "other";
 }
 
+interface OnlineSearchHit {
+  id: string;
+  title: string;
+  author: string;
+  thumbnail: string;
+  url: string;
+  kind: "video" | "playlist";
+}
+
 interface ParsedEmbed {
   platform: SavedMediaLink["platform"];
   embedUrl: string | null;
@@ -54,43 +65,59 @@ const DEFAULT_LINKS: SavedMediaLink[] = [
     url: "https://www.youtube.com/watch?v=4oStw0r33so",
     platform: "youtube",
   },
+  {
+    id: "preset-rain",
+    title: "Tiếng mưa đêm & Piano thư giãn",
+    url: "https://www.youtube.com/watch?v=mPZkdNFkNps",
+    platform: "youtube",
+  },
+  {
+    id: "preset-synth",
+    title: "Synthwave Radio — Chill Code Beats",
+    url: "https://www.youtube.com/watch?v=4xDzrJKXOOY",
+    platform: "youtube",
+  },
 ];
 
-function parseMediaLink(raw: string): ParsedEmbed {
+function parseMediaLink(raw: string, loopOne: boolean): ParsedEmbed {
   const url = raw.trim();
   if (!url) {
     return { platform: "other", embedUrl: null, directAudioUrl: null, label: "Liên kết" };
   }
 
-  // Direct audio file link
   if (/\.(mp3|wav|ogg|m4a|flac|aac)(\?.*)?$/i.test(url)) {
     return { platform: "audio", embedUrl: null, directAudioUrl: url, label: "Tệp âm thanh" };
   }
 
-  // YouTube watch / shorts / youtu.be / playlist / embed
   const ytPlaylist = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
   const ytVideo =
     url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/) ??
     null;
+
   if (ytVideo && ytVideo[1]) {
-    const listQ = ytPlaylist && ytPlaylist[1] ? `&list=${ytPlaylist[1]}` : "";
+    const vid = ytVideo[1];
+    const loopParams = loopOne
+      ? `&loop=1&playlist=${vid}`
+      : ytPlaylist && ytPlaylist[1]
+      ? `&list=${ytPlaylist[1]}`
+      : "";
     return {
       platform: "youtube",
-      embedUrl: `https://www.youtube.com/embed/${ytVideo[1]}?rel=0${listQ}`,
+      embedUrl: `https://www.youtube.com/embed/${vid}?autoplay=1&rel=0${loopParams}`,
       directAudioUrl: null,
       label: "YouTube",
     };
   }
   if (ytPlaylist && ytPlaylist[1] && /youtube\.com|youtu\.be/i.test(url)) {
+    const loopQ = loopOne ? "&loop=1" : "";
     return {
       platform: "youtube",
-      embedUrl: `https://www.youtube.com/embed/videoseries?list=${ytPlaylist[1]}`,
+      embedUrl: `https://www.youtube.com/embed/videoseries?list=${ytPlaylist[1]}&autoplay=1${loopQ}`,
       directAudioUrl: null,
       label: "YouTube Playlist",
     };
   }
 
-  // TikTok
   if (/tiktok\.com/i.test(url)) {
     const ttId = url.match(/\/video\/(\d+)/);
     return {
@@ -101,7 +128,6 @@ function parseMediaLink(raw: string): ParsedEmbed {
     };
   }
 
-  // Facebook
   if (/facebook\.com|fb\.watch/i.test(url)) {
     return {
       platform: "facebook",
@@ -111,7 +137,6 @@ function parseMediaLink(raw: string): ParsedEmbed {
     };
   }
 
-  // Instagram
   if (/instagram\.com/i.test(url)) {
     const ig = url.match(/instagram\.com\/(p|reel|tv)\/([a-zA-Z0-9_-]+)/i);
     return {
@@ -139,37 +164,36 @@ export function MediaPlayerWidget({
   open: boolean;
   onToggleOpen: () => void;
 }) {
-  const [sourceTab, setSourceTab] = useState<"local" | "link">("link");
+  const [sourceTab, setSourceTab] = useState<"search" | "link" | "local">("search");
+  const [dockRight, setDockRight] = useState(false);
+
+  // Local audio playlist
   const [tracks, setTracks] = useState<LocalTrack[]>([]);
   const [trackIdx, setTrackIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [loopMode, setLoopMode] = useState<"all" | "one">("all");
+  const [loopMode, setLoopMode] = useState<"all" | "one">("one");
   const [shuffle, setShuffle] = useState(false);
   const [volume, setVolume] = useState(0.75);
   const [curTime, setCurTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
+  // Online links + Loop 1
   const [savedLinks, setSavedLinks] = useState<SavedMediaLink[]>(DEFAULT_LINKS);
+  const [linkFilter, setLinkFilter] = useState<"all" | "youtube" | "tiktok" | "facebook" | "instagram">("all");
   const [linkTitle, setLinkTitle] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [activeLink, setActiveLink] = useState<SavedMediaLink | null>(null);
+  const [loopLink, setLoopLink] = useState(true); // Default ON so pasted link loops cleanly instead of jumping!
   const [sleepSecsLeft, setSleepSecsLeft] = useState(0);
 
-  useEffect(() => {
-    if (sleepSecsLeft <= 0) return;
-    const id = setInterval(() => {
-      setSleepSecsLeft((prev) => {
-        if (prev <= 1) {
-          if (audioRef.current) audioRef.current.pause();
-          setPlaying(false);
-          setActiveLink(null);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(id);
-  }, [sleepSecsLeft]);
+  // Multi-platform Online Search
+  const [searchPlatform, setSearchPlatform] = useState<
+    "yt-video" | "yt-playlist" | "tiktok" | "facebook" | "instagram"
+  >("yt-video");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchHits, setSearchHits] = useState<OnlineSearchHit[]>([]);
+  const [fallbackSearchUrl, setFallbackSearchUrl] = useState("");
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const tracksRef = useRef<LocalTrack[]>([]);
@@ -191,6 +215,22 @@ export function MediaPlayerWidget({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (sleepSecsLeft <= 0) return;
+    const id = setInterval(() => {
+      setSleepSecsLeft((prev) => {
+        if (prev <= 1) {
+          if (audioRef.current) audioRef.current.pause();
+          setPlaying(false);
+          setActiveLink(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [sleepSecsLeft]);
 
   const persistLinks = (next: SavedMediaLink[]) => {
     setSavedLinks(next);
@@ -251,8 +291,7 @@ export function MediaPlayerWidget({
   const nextTrack = () => {
     if (tracks.length === 0) return;
     if (shuffle && tracks.length > 1) {
-      const rand = Math.floor(Math.random() * tracks.length);
-      setTrackIdx(rand);
+      setTrackIdx(Math.floor(Math.random() * tracks.length));
     } else {
       setTrackIdx((i) => (i + 1) % tracks.length);
     }
@@ -276,31 +315,82 @@ export function MediaPlayerWidget({
     });
   };
 
-  const handleAddLink = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = linkUrl.trim();
-    if (!trimmed) return;
-    const parsed = parseMediaLink(trimmed);
+  const playAndSaveLink = (title: string, url: string) => {
+    const parsed = parseMediaLink(url, loopLink);
+    const existing = savedLinks.find((x) => x.url === url);
+    if (existing) {
+      setActiveLink(existing);
+      return;
+    }
     const item: SavedMediaLink = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      title: linkTitle.trim() || `${parsed.label} — ${trimmed.slice(0, 32)}`,
-      url: trimmed,
+      title: title.trim() || `${parsed.label} — ${url.slice(0, 32)}`,
+      url: url.trim(),
       platform: parsed.platform,
     };
-    const next = [item, ...savedLinks];
-    persistLinks(next);
+    persistLinks([item, ...savedLinks]);
     setActiveLink(item);
-    setLinkTitle("");
-    setLinkUrl("");
-    setSourceTab("link");
   };
 
-  const activeEmbed = activeLink ? parseMediaLink(activeLink.url) : null;
+  const handleAddLink = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!linkUrl.trim()) return;
+    playAndSaveLink(linkTitle, linkUrl.trim());
+    setLinkTitle("");
+    setLinkUrl("");
+  };
+
+  const handleOnlineSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+
+    if (searchPlatform === "tiktok") {
+      window.open(`https://www.tiktok.com/search?q=${encodeURIComponent(q)}`, "kf_search_popout", "width=520,height=680");
+      return;
+    }
+    if (searchPlatform === "facebook") {
+      window.open(`https://www.facebook.com/search/videos/?q=${encodeURIComponent(q)}`, "kf_search_popout", "width=520,height=680");
+      return;
+    }
+    if (searchPlatform === "instagram") {
+      const tag = q.replace(/\s+/g, "");
+      window.open(`https://www.instagram.com/explore/tags/${encodeURIComponent(tag)}/`, "kf_search_popout", "width=520,height=680");
+      return;
+    }
+
+    setSearching(true);
+    setSearchHits([]);
+    try {
+      const kind = searchPlatform === "yt-playlist" ? "playlist" : "video";
+      const res = await fetch(`/api/media-search?q=${encodeURIComponent(q)}&type=${kind}`);
+      if (res.ok) {
+        const json = (await res.json()) as { data?: OnlineSearchHit[]; fallbackUrl?: string };
+        setSearchHits(Array.isArray(json.data) ? json.data : []);
+        setFallbackSearchUrl(json.fallbackUrl ?? "");
+      }
+    } catch {
+      setFallbackSearchUrl(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const stepSavedLink = (delta: number) => {
+    if (savedLinks.length === 0) return;
+    const curIdx = activeLink ? savedLinks.findIndex((x) => x.id === activeLink.id) : -1;
+    const nextIdx = curIdx === -1 ? 0 : (curIdx + delta + savedLinks.length) % savedLinks.length;
+    const target = savedLinks[nextIdx];
+    if (target) setActiveLink(target);
+  };
+
+  const activeEmbed = activeLink ? parseMediaLink(activeLink.url, loopLink) : null;
   const hasActiveMedia = Boolean(currentTrack || activeLink);
+  const filteredSaved = savedLinks.filter((l) => linkFilter === "all" || l.platform === linkFilter);
+  const sidePos = dockRight ? "right-4" : "left-4";
 
   return (
     <>
-      {/* Persistent audio element stays mounted across tab switches */}
       <audio
         ref={audioRef}
         onTimeUpdate={(e) => setCurTime(e.currentTarget.currentTime)}
@@ -316,9 +406,10 @@ export function MediaPlayerWidget({
         className="hidden"
       />
 
-      {/* Persistent floating mini-pill when panel is closed but media is active */}
       {!open && hasActiveMedia && (
-        <div className="fixed bottom-4 left-4 z-40 flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 px-3 py-1.5 text-xs shadow-lg backdrop-blur">
+        <div
+          className={`no-print fixed bottom-4 ${sidePos} z-40 flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 px-3 py-1.5 text-xs shadow-lg backdrop-blur`}
+        >
           <Music2 className="h-3.5 w-3.5 animate-pulse text-[var(--accent)]" />
           <span className="max-w-[160px] truncate font-medium text-[var(--text-primary)]">
             {sourceTab === "local" && currentTrack
@@ -345,11 +436,11 @@ export function MediaPlayerWidget({
         </div>
       )}
 
-      {/* Keep panel mounted (hidden via CSS when closed) so YouTube iframe keeps playing! */}
+      {/* Keep mounted so YouTube iframe continues playing seamlessly when minimized */}
       <div
         className={
           open
-            ? "fixed bottom-4 left-4 z-50 w-[min(94vw,400px)] rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 shadow-2xl"
+            ? `no-print fixed bottom-4 ${sidePos} z-50 max-h-[86vh] w-[min(95vw,440px)] overflow-y-auto rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)]/95 p-4 shadow-2xl backdrop-blur-md transition-all duration-300`
             : "pointer-events-none fixed -left-[9999px] top-0 h-1 w-1 overflow-hidden opacity-0"
         }
       >
@@ -357,7 +448,7 @@ export function MediaPlayerWidget({
           <div className="flex items-center gap-2">
             <Music2 className="h-4 w-4 text-[var(--accent)]" />
             <span className="text-xs font-semibold text-[var(--text-primary)]">
-              Trình phát Nhạc Tập trung
+              Trình phát Nhạc Đa nền tảng
             </span>
           </div>
           <div className="flex items-center gap-1">
@@ -378,6 +469,14 @@ export function MediaPlayerWidget({
                 {fmtSec(sleepSecsLeft)}
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => setDockRight((v) => !v)}
+              title="Đổi góc hiển thị (Trái / Phải)"
+              className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]"
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+            </button>
             <button
               type="button"
               onClick={onToggleOpen}
@@ -402,33 +501,223 @@ export function MediaPlayerWidget({
           </div>
         </div>
 
-        <div className="mt-2.5 flex gap-1.5 rounded-xl bg-[var(--bg-elevated)] p-1 text-[11px] font-medium">
+        {/* ACTIVE EMBED PLAYER (ALWAYS VISIBLE ABOVE TABS WHEN PLAYING A LINK) */}
+        {activeLink && activeEmbed && sourceTab !== "local" && (
+          <div className="mt-3 space-y-2 rounded-xl border border-[var(--accent)]/35 bg-[var(--bg-canvas)] p-2.5">
+            <div className="flex items-center justify-between gap-1.5 text-[11px]">
+              <span className="truncate font-semibold text-[var(--text-primary)]">
+                [{activeEmbed.label}] {activeLink.title}
+              </span>
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => stepSavedLink(-1)}
+                  title="Bài trước"
+                  className="rounded-md p-1 text-[var(--text-muted)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)]"
+                >
+                  <SkipBack className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => stepSavedLink(1)}
+                  title="Bài tiếp theo"
+                  className="rounded-md p-1 text-[var(--text-muted)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)]"
+                >
+                  <SkipForward className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLoopLink((v) => !v)}
+                  title={loopLink ? "Đang bật Lặp lại 1 bài (nhấn để tắt)" : "Bật Lặp lại 1 bài (tránh tự chuyển video khác)"}
+                  className={`inline-flex items-center gap-0.5 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold transition ${
+                    loopLink
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                      : "border-[var(--border-subtle)] text-[var(--text-muted)]"
+                  }`}
+                >
+                  <Repeat className="h-3 w-3" /> {loopLink ? "Lặp 1" : "Lặp"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    window.open(activeLink.url, "kronoflow_media_popout", "width=460,height=640")
+                  }
+                  title="Mở cửa sổ nổi"
+                  className="rounded-md border border-[var(--border-subtle)] p-1 text-[var(--accent)]"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveLink(null)}
+                  className="rounded-md p-1 text-[var(--text-muted)] hover:text-rose-500"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+
+            {activeEmbed.directAudioUrl ? (
+              <audio
+                controls
+                autoPlay
+                loop={loopLink}
+                src={activeEmbed.directAudioUrl}
+                className="w-full"
+              />
+            ) : activeEmbed.embedUrl ? (
+              <div className="overflow-hidden rounded-lg bg-black/90">
+                <iframe
+                  key={`${activeLink.id}-${loopLink ? "loop" : "once"}`}
+                  src={activeEmbed.embedUrl}
+                  title={activeLink.title}
+                  className="h-44 w-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            ) : (
+              <p className="text-[11px] text-[var(--text-muted)]">
+                Nhấn biểu tượng <strong>Pop-out</strong> góc trên để phát trong cửa sổ nổi gọn.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* SOURCE MODE TABS */}
+        <div className="mt-3 flex gap-1 rounded-xl bg-[var(--bg-elevated)] p-1 text-[11px] font-medium">
+          <button
+            type="button"
+            onClick={() => setSourceTab("search")}
+            className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 ${
+              sourceTab === "search" ? "bg-[var(--bg-surface)] text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)]"
+            }`}
+          >
+            <Search className="h-3.5 w-3.5" /> Tìm Online
+          </button>
           <button
             type="button"
             onClick={() => setSourceTab("link")}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 ${
-              sourceTab === "link"
-                ? "bg-[var(--bg-surface)] text-[var(--accent)] shadow-sm"
-                : "text-[var(--text-muted)]"
+            className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 ${
+              sourceTab === "link" ? "bg-[var(--bg-surface)] text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)]"
             }`}
           >
-            <Link2 className="h-3.5 w-3.5" /> Link (YT/TT/FB/IG)
+            <Link2 className="h-3.5 w-3.5" /> Link ({savedLinks.length})
           </button>
           <button
             type="button"
             onClick={() => setSourceTab("local")}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 ${
-              sourceTab === "local"
-                ? "bg-[var(--bg-surface)] text-[var(--accent)] shadow-sm"
-                : "text-[var(--text-muted)]"
+            className={`flex flex-1 items-center justify-center gap-1 rounded-lg py-1.5 ${
+              sourceTab === "local" ? "bg-[var(--bg-surface)] text-[var(--accent)] shadow-sm" : "text-[var(--text-muted)]"
             }`}
           >
-            <FolderOpen className="h-3.5 w-3.5" /> Tệp máy tính ({tracks.length})
+            <FolderOpen className="h-3.5 w-3.5" /> Máy tính ({tracks.length})
           </button>
         </div>
 
-        {/* LINK MODE */}
-        <div className={sourceTab === "link" ? "mt-3 space-y-3" : "hidden"}>
+        {/* TAB 1: MULTI-PLATFORM ONLINE SEARCH */}
+        <div className={sourceTab === "search" ? "mt-3 space-y-2.5" : "hidden"}>
+          <div className="flex flex-wrap gap-1 text-[10px] font-medium">
+            {(
+              [
+                ["yt-video", "YouTube Video"],
+                ["yt-playlist", "YT Playlist"],
+                ["tiktok", "TikTok"],
+                ["facebook", "Facebook"],
+                ["instagram", "Instagram"],
+              ] as const
+            ).map(([k, lbl]) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => {
+                  setSearchPlatform(k);
+                  setSearchHits([]);
+                }}
+                className={`rounded-lg border px-2 py-1 ${
+                  searchPlatform === k
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                    : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)]"
+                }`}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={handleOnlineSearch} className="flex gap-1.5">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={
+                searchPlatform.startsWith("yt")
+                  ? "Tìm nhạc / video / playlist YouTube (VD: lofi piano)..."
+                  : `Nhập từ khóa tìm trên ${searchPlatform}...`
+              }
+              className="flex-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+            />
+            <button
+              type="submit"
+              disabled={searching}
+              className="btn-primary inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+            >
+              <Search className="h-3.5 w-3.5" /> {searching ? "..." : "Tìm"}
+            </button>
+          </form>
+
+          {searchPlatform.startsWith("yt") ? (
+            <div className="max-h-52 space-y-1.5 overflow-y-auto pr-1">
+              {searchHits.map((hit) => (
+                <div
+                  key={hit.id}
+                  className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2 text-xs"
+                >
+                  {hit.thumbnail && (
+                    <img
+                      src={hit.thumbnail}
+                      alt=""
+                      className="h-10 w-16 shrink-0 rounded-md object-cover"
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-semibold text-[var(--text-primary)]">{hit.title}</div>
+                    <div className="truncate text-[10px] text-[var(--text-muted)]">
+                      {hit.author} · {hit.kind === "playlist" ? "Playlist" : "Video"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => playAndSaveLink(hit.title, hit.url)}
+                    className="btn-primary shrink-0 rounded-lg px-2 py-1 text-[10px] font-medium"
+                  >
+                    Phát
+                  </button>
+                </div>
+              ))}
+              {!searching && searchHits.length === 0 && fallbackSearchUrl && (
+                <div className="rounded-xl border border-dashed border-[var(--border-subtle)] p-3 text-center text-[11px] text-[var(--text-muted)]">
+                  Không tải được kết quả trực tiếp lúc này.{" "}
+                  <a
+                    href={fallbackSearchUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-[var(--accent)] underline"
+                  >
+                    Mở tìm kiếm YouTube ngay →
+                  </a>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2.5 text-[11px] text-[var(--text-muted)]">
+              Nhấn <strong>Tìm</strong> để mở cửa sổ tìm kiếm {searchPlatform} gọn, sau đó chép link video/nhạc dán sang tab <strong>Link</strong> để phát &amp; bật nút <strong>Lặp 1</strong> nhé.
+            </p>
+          )}
+        </div>
+
+        {/* TAB 2: PASTE LINK & SAVED PLAYLIST */}
+        <div className={sourceTab === "link" ? "mt-3 space-y-2.5" : "hidden"}>
           <form onSubmit={handleAddLink} className="space-y-1.5">
             <input
               type="url"
@@ -450,70 +739,35 @@ export function MediaPlayerWidget({
                 type="submit"
                 className="btn-primary inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-medium"
               >
-                <Plus className="h-3.5 w-3.5" /> Phát & Lưu
+                <Plus className="h-3.5 w-3.5" /> Phát &amp; Lưu
               </button>
             </div>
           </form>
 
-          {activeLink && activeEmbed && (
-            <div className="space-y-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] p-2.5">
-              <div className="flex items-center justify-between gap-2 text-[11px]">
-                <span className="truncate font-semibold text-[var(--text-primary)]">
-                  [{activeEmbed.label}] {activeLink.title}
-                </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      window.open(activeLink.url, "kronoflow_media_popout", "width=460,height=640")
-                    }
-                    title="Mở cửa sổ nổi (dùng khi TikTok/FB/IG chặn nhúng)"
-                    className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] px-2 py-0.5 text-[10px] text-[var(--accent)] hover:border-[var(--accent)]"
-                  >
-                    <ExternalLink className="h-3 w-3" /> Pop-out
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveLink(null)}
-                    className="rounded-lg p-0.5 text-[var(--text-muted)] hover:text-rose-500"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {activeEmbed.directAudioUrl ? (
-                <audio controls autoPlay src={activeEmbed.directAudioUrl} className="w-full" />
-              ) : activeEmbed.embedUrl ? (
-                <div className="overflow-hidden rounded-lg bg-black/90">
-                  <iframe
-                    src={activeEmbed.embedUrl}
-                    title={activeLink.title}
-                    className="h-44 w-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
-              ) : (
-                <p className="text-[11px] text-[var(--text-muted)]">
-                  Nền tảng này không hỗ trợ nhúng trực tiếp. Nhấn <strong>Pop-out</strong> ở góc trên để phát trong cửa sổ nổi gọn nhé.
-                </p>
-              )}
-              {(activeEmbed.platform === "tiktok" ||
-                activeEmbed.platform === "facebook" ||
-                activeEmbed.platform === "instagram") && (
-                <p className="text-[10px] text-[var(--text-muted)]">
-                  Mẹo: Nếu video yêu cầu đăng nhập hoặc bị chặn khung nhúng, nhấn nút <strong>Pop-out</strong> để nghe gọn song song.
-                </p>
-              )}
+          <div className="flex flex-wrap items-center justify-between gap-1 text-[10px]">
+            <span className="inline-flex items-center gap-1 font-medium uppercase text-[var(--text-muted)]">
+              <ListMusic className="h-3 w-3" /> Đã lưu ({filteredSaved.length})
+            </span>
+            <div className="flex gap-1">
+              {(["all", "youtube", "tiktok", "facebook", "instagram"] as const).map((pf) => (
+                <button
+                  key={pf}
+                  type="button"
+                  onClick={() => setLinkFilter(pf)}
+                  className={`rounded px-1.5 py-0.5 uppercase ${
+                    linkFilter === pf
+                      ? "bg-[var(--accent)] font-semibold text-white"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  {pf === "all" ? "Tất cả" : pf === "youtube" ? "YT" : pf === "tiktok" ? "TT" : pf === "facebook" ? "FB" : "IG"}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
-          <div className="max-h-36 space-y-1 overflow-y-auto pr-1">
-            <div className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)]">
-              <ListMusic className="h-3 w-3" /> Liên kết đã lưu ({savedLinks.length})
-            </div>
-            {savedLinks.map((lk) => (
+          <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
+            {filteredSaved.map((lk) => (
               <div
                 key={lk.id}
                 className={`flex items-center justify-between gap-2 rounded-xl border px-2.5 py-1.5 text-xs ${
@@ -545,7 +799,7 @@ export function MediaPlayerWidget({
           </div>
         </div>
 
-        {/* LOCAL AUDIO FILES MODE */}
+        {/* TAB 3: LOCAL AUDIO FILES */}
         <div className={sourceTab === "local" ? "mt-3 space-y-3" : "hidden"}>
           <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-3 text-center text-xs text-[var(--text-secondary)] hover:border-[var(--accent)]">
             <FolderOpen className="mb-1 h-4 w-4 text-[var(--accent)]" />
@@ -570,7 +824,7 @@ export function MediaPlayerWidget({
               <div className="truncate text-xs font-semibold text-[var(--text-primary)]">
                 {currentTrack.name}
               </div>
-              <div className="flex items-center gap-2 text-[10px] font-mono text-[var(--text-muted)]">
+              <div className="flex items-center gap-2 font-mono text-[10px] text-[var(--text-muted)]">
                 <span>{fmtSec(curTime)}</span>
                 <input
                   type="range"
@@ -605,11 +859,7 @@ export function MediaPlayerWidget({
                   >
                     <SkipBack className="h-3.5 w-3.5" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={togglePlay}
-                    className="btn-primary rounded-full p-2"
-                  >
+                  <button type="button" onClick={togglePlay} className="btn-primary rounded-full p-2">
                     {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                   </button>
                   <button
@@ -622,14 +872,14 @@ export function MediaPlayerWidget({
                   <button
                     type="button"
                     onClick={() => setLoopMode((m) => (m === "all" ? "one" : "all"))}
-                    title={loopMode === "one" ? "Lặp 1 bài" : "Lặp danh sách"}
-                    className={`rounded-lg p-1.5 text-[10px] font-bold ${
+                    title={loopMode === "one" ? "Đang bật Lặp 1 bài" : "Đang lặp cả danh sách"}
+                    className={`inline-flex items-center gap-0.5 rounded-lg px-1.5 py-1 text-[10px] font-bold ${
                       loopMode === "one"
                         ? "bg-[var(--accent-soft)] text-[var(--accent)]"
                         : "text-[var(--text-muted)]"
                     }`}
                   >
-                    <Repeat className="h-3.5 w-3.5" />
+                    <Repeat className="h-3.5 w-3.5" /> {loopMode === "one" ? "1" : "∞"}
                   </button>
                 </div>
                 <div className="flex items-center gap-1">
