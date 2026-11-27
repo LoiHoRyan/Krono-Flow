@@ -428,3 +428,8 @@ tbody tr:hover {
   border-color: color-mix(in srgb, var(--text-primary) 20%, transparent) !important;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08) !important;
 }
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}

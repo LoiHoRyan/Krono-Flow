@@ -83,6 +83,8 @@ import { MindReadVocabModal } from "@/components/MindReadVocabModal";
 import { LifeBalancePinModal } from "@/components/LifeBalancePinModal";
 import { WrappedDiffRotationModal } from "@/components/WrappedDiffRotationModal";
 import { AcademicLifeHubModal } from "@/components/AcademicLifeHubModal";
+import { RubricQaWorldModal } from "@/components/RubricQaWorldModal";
+import { BackToTopPill } from "@/components/BackToTopPill";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -348,6 +350,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [lifePinOpen, setLifePinOpen] = useState(false);
   const [wrappedDiffOpen, setWrappedDiffOpen] = useState(false);
   const [academicHubOpen, setAcademicHubOpen] = useState(false);
+  const [rubricQaOpen, setRubricQaOpen] = useState(false);
   const [crispBorder, setCrispBorder] = useState(false);
 
   useEffect(() => {
@@ -787,7 +790,15 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onOpenLifePin={() => setLifePinOpen(true)}
         onOpenWrappedDiff={() => setWrappedDiffOpen(true)}
         onOpenAcademicHub={() => setAcademicHubOpen(true)}
+        onOpenRubricQa={() => setRubricQaOpen(true)}
       />
+      <RubricQaWorldModal
+        open={rubricQaOpen}
+        onClose={() => setRubricQaOpen(false)}
+        exams={props.exams}
+        subjects={props.subjects}
+      />
+      <BackToTopPill />
       <AcademicLifeHubModal
         open={academicHubOpen}
         onClose={() => setAcademicHubOpen(false)}
