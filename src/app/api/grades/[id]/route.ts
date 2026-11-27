@@ -1,3 +1,4 @@
+import { safeJson } from "@/lib/safe-json";
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -18,7 +19,7 @@ export async function PATCH(
 ) {
   const user = await getAuthenticatedUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const parsed = updateGradeSchema.safeParse(await req.json());
+  const parsed = updateGradeSchema.safeParse((await safeJson(req)));
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }

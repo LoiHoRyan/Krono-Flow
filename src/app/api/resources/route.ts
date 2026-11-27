@@ -1,3 +1,4 @@
+import { safeJson } from "@/lib/safe-json";
 import { NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -26,7 +27,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const user = await getAuthenticatedUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const parsed = createResourceSchema.safeParse(await req.json());
+  const parsed = createResourceSchema.safeParse((await safeJson(req)));
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Dữ liệu không hợp lệ" },

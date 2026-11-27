@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { ambientEngine, AmbientType } from "@/lib/ambient-audio";
 import { formatDuration } from "@/lib/utils";
@@ -101,6 +103,7 @@ export function TimerProvider({
         }
 
         setStatusMessage("Đã hoàn thành phiên học, phát chuông và lưu vào PostgreSQL.");
+        kfNotify(`Hoàn thành ${mins} phút tập trung! Hãy nghỉ giải lao 2 phút nhé.`);
         cb();
       }
     };

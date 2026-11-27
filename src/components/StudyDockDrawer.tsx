@@ -17,6 +17,7 @@ import {
   PenTool,
   Presentation,
   Search,
+  ShieldAlert,
   Sparkles,
   Star,
   StickyNote,
@@ -61,6 +62,7 @@ export function StudyDockDrawer({
   onOpenRubricQa,
   onOpenCramReport,
   onOpenMicroBreak,
+  onOpenRehearsalGuard,
 }: {
   open: boolean;
   onClose: () => void;
@@ -83,6 +85,7 @@ export function StudyDockDrawer({
   onOpenRubricQa: () => void;
   onOpenCramReport: () => void;
   onOpenMicroBreak: () => void;
+  onOpenRehearsalGuard: () => void;
 }) {
   const [pinned, setPinned] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -130,6 +133,15 @@ export function StudyDockDrawer({
       icon: Search,
       color: "text-sky-500",
       onClick: onOpenSpotlight,
+    },
+    {
+      id: "rehearsalguard",
+      cat: "exam",
+      title: "Tập Thuyết Trình, Chống Rớt Môn & Đọc chính tả",
+      desc: "Đồng hồ chia chặng slide + Cue Cards, tính điểm tối thiểu cuối kỳ & ghi chú giọng nói",
+      icon: ShieldAlert,
+      color: "text-rose-500",
+      onClick: onOpenRehearsalGuard,
     },
     {
       id: "microbreak",

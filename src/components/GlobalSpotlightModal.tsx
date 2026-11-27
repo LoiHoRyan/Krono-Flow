@@ -6,6 +6,10 @@ import type { SubjectOption } from "./PomodoroTimer";
 import type { TodoItem } from "./SubjectTodoPanel";
 import type { FlashcardRecord, NoteRecord } from "./NotesFlashcardsPanel";
 import type { ExamRecord } from "./DashboardBento";
+import type { GradeRecord } from "./ScheduleGpaPanel";
+import type { RoadmapRecord } from "./RoadmapPanel";
+import type { GoalRecord } from "./GoalsTimeblockPanel";
+import type { HabitRecord } from "./HabitsVaultPanel";
 
 interface FormulaItem {
   id: string;
@@ -13,6 +17,19 @@ interface FormulaItem {
   title: string;
   body: string;
 }
+
+type JumpTab =
+  | "dashboard"
+  | "focus"
+  | "schedule"
+  | "planner"
+  | "goals"
+  | "habits"
+  | "roadmaps"
+  | "knowledge"
+  | "expenses"
+  | "analytics"
+  | "settings";
 
 function norm(s: string): string {
   return s
@@ -23,6 +40,20 @@ function norm(s: string): string {
     .toLowerCase();
 }
 
+const TAB_ENTRIES: { id: JumpTab; title: string; sub: string }[] = [
+  { id: "dashboard", title: "Tổng quan (Dashboard)", sub: "Thống kê ngày, lịch thi & mục tiêu" },
+  { id: "focus", title: "Tập trung (Pomodoro / Flowtime)", sub: "Đồng hồ đếm giờ & lịch sử phiên học" },
+  { id: "schedule", title: "Lịch học & Điểm GPA", sub: "Thời khóa biểu & bảng điểm đại học" },
+  { id: "planner", title: "Môn học & Công việc (Todo)", sub: "Danh sách môn & việc cần làm" },
+  { id: "goals", title: "Mục tiêu & Khung giờ", sub: "Mục tiêu học kỳ & phân bổ giờ" },
+  { id: "habits", title: "Thói quen & Tài nguyên", sub: "Chuỗi thói quen, sách & liên kết" },
+  { id: "roadmaps", title: "Lộ trình học tập", sub: "Các chặng ôn luyện & tiến độ" },
+  { id: "knowledge", title: "Ghi chú, Flashcards & Lỗi sai", sub: "Kho kiến thức & ôn thẻ ghi nhớ" },
+  { id: "expenses", title: "Quản lý Chi tiêu", sub: "Thu chi hàng tháng của sinh viên" },
+  { id: "analytics", title: "Phân tích & Báo cáo", sub: "Biểu đồ học tập & xu hướng tuần" },
+  { id: "settings", title: "Cài đặt & Giao diện", sub: "Theme, ảnh đại diện & sao lưu" },
+];
+
 export function GlobalSpotlightModal({
   open,
   onClose,
@@ -31,6 +62,10 @@ export function GlobalSpotlightModal({
   notes,
   flashcards,
   exams,
+  grades = [],
+  roadmaps = [],
+  goals = [],
+  habits = [],
   onJumpTab,
 }: {
   open: boolean;
@@ -40,7 +75,11 @@ export function GlobalSpotlightModal({
   notes: NoteRecord[];
   flashcards: FlashcardRecord[];
   exams: ExamRecord[];
-  onJumpTab: (tab: "dashboard" | "planner" | "knowledge" | "schedule") => void;
+  grades?: GradeRecord[];
+  roadmaps?: RoadmapRecord[];
+  goals?: GoalRecord[];
+  habits?: HabitRecord[];
+  onJumpTab: (tab: JumpTab) => void;
 }) {
   const [query, setQuery] = useState("");
   const [formulas, setFormulas] = useState<FormulaItem[]>([]);
@@ -59,17 +98,27 @@ export function GlobalSpotlightModal({
   const results = useMemo(() => {
     const q = norm(query.trim());
     if (!q) return [];
-    const items: {
-      id: string;
-      group: string;
-      title: string;
-      sub: string;
-      tab: "dashboard" | "planner" | "knowledge" | "schedule";
-    }[] = [];
+    const items: { id: string; group: string; title: string; sub: string; tab: JumpTab }[] = [];
 
+    for (const tb of TAB_ENTRIES) {
+      if (norm(`${tb.title} ${tb.sub}`).includes(q)) {
+        items.push({ id: `tab-${tb.id}`, group: "Chuyển tab", title: tb.title, sub: tb.sub, tab: tb.id });
+      }
+    }
     for (const s of subjects) {
       if (norm(s.name).includes(q)) {
         items.push({ id: `sub-${s.id}`, group: "Môn học", title: s.name, sub: "Tab Môn học & Todo", tab: "planner" });
+      }
+    }
+    for (const g of grades) {
+      if (norm(`${g.courseName} ${g.semester}`).includes(q)) {
+        items.push({
+          id: `gr-${g.id}`,
+          group: "Điểm GPA",
+          title: g.courseName,
+          sub: `${g.semester} · ${g.credits} TC · Điểm ${g.score10}`,
+          tab: "schedule",
+        });
       }
     }
     for (const ex of exams) {
@@ -92,6 +141,21 @@ export function GlobalSpotlightModal({
           sub: t.isCompleted ? "Đã hoàn thành" : `Ưu tiên: ${t.priority}`,
           tab: "planner",
         });
+      }
+    }
+    for (const rm of roadmaps) {
+      if (norm(rm.title).includes(q)) {
+        items.push({ id: `rm-${rm.id}`, group: "Lộ trình", title: rm.title, sub: "Tab Lộ trình học tập", tab: "roadmaps" });
+      }
+    }
+    for (const gl of goals) {
+      if (norm(gl.title).includes(q)) {
+        items.push({ id: `gl-${gl.id}`, group: "Mục tiêu", title: gl.title, sub: "Tab Mục tiêu", tab: "goals" });
+      }
+    }
+    for (const hb of habits) {
+      if (norm(hb.title).includes(q)) {
+        items.push({ id: `hb-${hb.id}`, group: "Thói quen", title: hb.title, sub: "Tab Thói quen", tab: "habits" });
       }
     }
     for (const n of notes) {
@@ -121,56 +185,51 @@ export function GlobalSpotlightModal({
         items.push({
           id: `fm-${fm.id}`,
           group: "Công thức",
-          title: `${fm.title} (${fm.subjectName})`,
-          sub: fm.body.slice(0, 70),
-          tab: "dashboard",
+          title: fm.title,
+          sub: `${fm.subjectName} — ${fm.body.slice(0, 50)}`,
+          tab: "knowledge",
         });
       }
     }
-    return items.slice(0, 20);
-  }, [query, subjects, todos, notes, flashcards, exams, formulas]);
+    return items.slice(0, 30);
+  }, [query, subjects, todos, notes, flashcards, exams, grades, roadmaps, goals, habits, formulas]);
 
   if (!open) return null;
 
   return (
     <div
-      className="no-print fixed inset-0 z-[70] flex items-start justify-center bg-black/55 p-4 pt-16 backdrop-blur-sm"
+      className="no-print fixed inset-0 z-[80] flex items-start justify-center bg-black/55 p-4 pt-16 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-2xl"
+        className="animate-pop w-full max-w-2xl overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] px-4 py-3">
+        <div className="flex items-center gap-2.5 border-b border-[var(--border-subtle)] px-4 py-3">
           <Search className="h-4 w-4 text-[var(--accent)]" />
           <input
-            type="text"
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Tìm xuyên suốt Ghi chú, Flashcards, Công thức, Todo, Môn học, Kỳ thi..."
+            placeholder="Tìm xuyên suốt 11 Tab, Điểm GPA, Ghi chú, Flashcards, Lộ trình, Mục tiêu, Thói quen..."
             className="flex-1 bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
           />
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]"
-          >
+          <button type="button" onClick={onClose} className="rounded-lg p-1 text-[var(--text-muted)] hover:bg-[var(--bg-elevated)]">
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="max-h-[60vh] overflow-y-auto p-2">
+        <div className="max-h-[60vh] overflow-y-auto p-3">
           {!query.trim() ? (
-            <p className="px-3 py-6 text-center text-xs text-[var(--text-muted)]">
-              Gõ từ khóa (không cần dấu) để tìm tức thì trên toàn bộ dữ liệu KronoFlow. Phím tắt mở nhanh: <strong>Alt+K</strong>.
-            </p>
+            <div className="py-8 text-center text-xs text-[var(--text-muted)]">
+              Nhập từ khóa tiếng Việt (có dấu hoặc không dấu) để tìm xuyên suốt toàn bộ không gian KronoFlow.
+            </div>
           ) : results.length === 0 ? (
-            <p className="px-3 py-6 text-center text-xs text-[var(--text-muted)]">
-              Không tìm thấy mục nào khớp với &quot;{query}&quot;.
-            </p>
+            <div className="py-8 text-center text-xs text-[var(--text-muted)]">
+              Không tìm thấy kết quả nào cho &quot;{query}&quot;.
+            </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               {results.map((r) => (
                 <button
                   key={r.id}
@@ -179,16 +238,16 @@ export function GlobalSpotlightModal({
                     onJumpTab(r.tab);
                     onClose();
                   }}
-                  className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-xs hover:bg-[var(--bg-elevated)]"
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/60 px-3.5 py-2.5 text-left transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/40"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
+                      <span className="rounded bg-[var(--accent-soft)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--accent)]">
                         {r.group}
                       </span>
-                      <span className="truncate font-medium text-[var(--text-primary)]">{r.title}</span>
+                      <span className="truncate text-xs font-semibold text-[var(--text-primary)]">{r.title}</span>
                     </div>
-                    <div className="mt-0.5 truncate text-[11px] text-[var(--text-muted)]">{r.sub}</div>
+                    <p className="mt-0.5 truncate text-[11px] text-[var(--text-muted)]">{r.sub}</p>
                   </div>
                   <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" />
                 </button>

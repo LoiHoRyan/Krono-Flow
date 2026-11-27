@@ -90,6 +90,7 @@ import { CramTimeBlockReportModal } from "@/components/CramTimeBlockReportModal"
 import { GlobalToastBridge } from "@/components/GlobalToastBridge";
 import { GlobalDialogBridge } from "@/components/GlobalDialogBridge";
 import { MicroBreakExamMilestonesModal } from "@/components/MicroBreakExamMilestonesModal";
+import { PresentationPassGuardModal } from "@/components/PresentationPassGuardModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -161,6 +162,8 @@ const NAV_GROUPS: { titleVi: string; titleEn: string; ids: TabId[] }[] = [
 
 function TopFocusBar() {
   const timer = useTimer();
+  const timerRef = useRef(timer);
+  timerRef.current = timer;
   if (!timer.isRunning) return null;
   const total = Math.max(1, timer.customMinutes * 60);
   const pct = Math.min(100, Math.round(((total - timer.secondsLeft) / total) * 100));
@@ -368,6 +371,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [rubricQaOpen, setRubricQaOpen] = useState(false);
   const [cramReportOpen, setCramReportOpen] = useState(false);
   const [microBreakOpen, setMicroBreakOpen] = useState(false);
+  const [rehearsalGuardOpen, setRehearsalGuardOpen] = useState(false);
   const [crispBorder, setCrispBorder] = useState(false);
 
   useEffect(() => {
@@ -631,6 +635,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         setSpotlightOpen(false);
         setCramReportOpen(false);
         setMicroBreakOpen(false);
+        setRehearsalGuardOpen(false);
         setRubricQaOpen(false);
         setAcademicHubOpen(false);
         setWrappedDiffOpen(false);
@@ -674,8 +679,8 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         setPrivacyMode((v) => !v);
       } else if (e.altKey && e.code === "Space") {
         e.preventDefault();
-        if (timer.isRunning) timer.pause();
-        else timer.start();
+        if (timerRef.current.isRunning) timerRef.current.pause();
+        else timerRef.current.start();
       } else if (e.altKey && e.key.toLowerCase() === "b") {
         e.preventDefault();
         setTab(prevTabRef.current);
@@ -829,7 +834,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
       <StudyAllocatorModal open={allocatorOpen} onClose={() => setAllocatorOpen(false)} subjects={props.subjects} />
       <ExamToolkitModal open={toolkitOpen} onClose={() => setToolkitOpen(false)} subjects={props.subjects} notes={props.notes} mistakes={props.mistakes} exams={props.exams} />
       <StudyWhiteboardModal open={whiteboardOpen} onClose={() => setWhiteboardOpen(false)} />
-      <GlobalSpotlightModal open={spotlightOpen} onClose={() => setSpotlightOpen(false)} subjects={props.subjects} todos={props.todos} notes={props.notes} flashcards={props.flashcards} exams={props.exams} onJumpTab={(t) => setTab(t)} />
+      <GlobalSpotlightModal open={spotlightOpen} onClose={() => setSpotlightOpen(false)} subjects={props.subjects} todos={props.todos} notes={props.notes} flashcards={props.flashcards} exams={props.exams} grades={props.grades} roadmaps={props.roadmaps} goals={props.goals} habits={props.habits} onJumpTab={(t) => setTab(t)} />
       <StudentUtilitiesModal open={utilsOpen} onClose={() => setUtilsOpen(false)} subjects={props.subjects} />
       <StudyDockDrawer
         open={dockOpen}
@@ -853,12 +858,18 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onOpenRubricQa={() => setRubricQaOpen(true)}
         onOpenCramReport={() => setCramReportOpen(true)}
         onOpenMicroBreak={() => setMicroBreakOpen(true)}
+        onOpenRehearsalGuard={() => setRehearsalGuardOpen(true)}
       />
       <RubricQaWorldModal
         open={rubricQaOpen}
         onClose={() => setRubricQaOpen(false)}
         exams={props.exams}
         subjects={props.subjects}
+      />
+      <PresentationPassGuardModal
+        open={rehearsalGuardOpen}
+        onClose={() => setRehearsalGuardOpen(false)}
+        onRefresh={props.onRefresh}
       />
       <MicroBreakExamMilestonesModal
         open={microBreakOpen}
