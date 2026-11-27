@@ -85,7 +85,7 @@ import { WrappedDiffRotationModal } from "@/components/WrappedDiffRotationModal"
 import { AcademicLifeHubModal } from "@/components/AcademicLifeHubModal";
 import { RubricQaWorldModal } from "@/components/RubricQaWorldModal";
 import { CramTimeBlockReportModal } from "@/components/CramTimeBlockReportModal";
-import { BackToTopPill } from "@/components/BackToTopPill";
+import { GlobalToastBridge } from "@/components/GlobalToastBridge";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -612,28 +612,48 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         setHelpOpen(false);
         setAiOpen(false);
         setStandbyOpen(false);
+        setDockOpen(false);
+        setSpotlightOpen(false);
+        setCramReportOpen(false);
+        setRubricQaOpen(false);
+        setAcademicHubOpen(false);
+        setWrappedDiffOpen(false);
+        setMindReadOpen(false);
+        setLifePinOpen(false);
+        setPortalsOpen(false);
+        setTechLabOpen(false);
+        setPacerOpen(false);
+        setProSuiteOpen(false);
+        setUtilsOpen(false);
+        setWhiteboardOpen(false);
+        setToolkitOpen(false);
+        setAllocatorOpen(false);
+        setCheatOpen(false);
+        setReviewOpen(false);
+        setCramOpen(false);
+        setOnboardingOpen(false);
       }
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (e.key === "/") {
         e.preventDefault();
         setCmdOpen(true);
-      } else if (e.key.toLowerCase() === "n" && !e.ctrlKey && !e.metaKey) {
+      } else if (e.key.toLowerCase() === "n" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         setPadOpen((v) => !v);
-      } else if (e.key.toLowerCase() === "b" && !e.ctrlKey && !e.metaKey) {
+      } else if (e.key.toLowerCase() === "b" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         setSidebarMode((m) => (m === "full" ? "compact" : m === "compact" ? "hidden" : "full"));
-      } else if (e.key.toLowerCase() === "q" && !e.ctrlKey && !e.metaKey) {
+      } else if (e.key.toLowerCase() === "q" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         setQuickOpen((v) => !v);
       } else if (e.key === "?") {
         e.preventDefault();
         setHelpOpen((v) => !v);
-      } else if (e.key.toLowerCase() === "a" && !e.ctrlKey && !e.metaKey) {
+      } else if (e.key.toLowerCase() === "a" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         setAiOpen((v) => !v);
-      } else if (e.key.toLowerCase() === "p" && !e.ctrlKey && !e.metaKey) {
+      } else if (e.key.toLowerCase() === "p" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         setPrivacyMode((v) => !v);
       } else if (e.altKey && /^[1-8]$/.test(e.key)) {
@@ -835,7 +855,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         todos={props.todos}
         grades={props.grades}
       />
-      <BackToTopPill />
+      <GlobalToastBridge />
       <AcademicLifeHubModal
         open={academicHubOpen}
         onClose={() => setAcademicHubOpen(false)}

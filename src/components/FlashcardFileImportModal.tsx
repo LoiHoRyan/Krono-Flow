@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useState } from "react";
 import { CheckCircle2, Download, FileSpreadsheet, Trash2, Upload, X } from "lucide-react";
 import type { SubjectOption } from "./PomodoroTimer";
@@ -212,7 +214,7 @@ export function FlashcardFileImportModal({
         setProgress(i + 1);
       }
       onImported();
-      window.alert(`Đã nhập thành công ${okCount}/${filteredPreview.length} thẻ Flashcard!`);
+      kfNotify(`Đã nhập thành công ${okCount}/${filteredPreview.length} thẻ Flashcard!`);
       setPreview([]);
       setFileName("");
       onClose();

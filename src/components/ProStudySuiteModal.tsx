@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Award,
@@ -440,7 +442,7 @@ export function ProStudySuiteModal({
                   type="button"
                   onClick={() => {
                     navigator.clipboard?.writeText(essayText).catch(() => {});
-                    window.alert("Đã sao chép văn bản đã làm sạch!");
+                    kfNotify("Đã sao chép văn bản đã làm sạch!");
                   }}
                   className="btn-primary inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px]"
                 >

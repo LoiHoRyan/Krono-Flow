@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   BookA,
@@ -146,7 +148,7 @@ export function MindReadVocabModal({
       });
       if (res.ok) {
         onRefresh?.();
-        window.alert(`Đã đẩy từ "${item.word}" sang bộ Flashcards!`);
+        kfNotify(`Đã đẩy từ "${item.word}" sang bộ Flashcards!`);
       }
     } finally {
       setSyncingId(null);
@@ -380,7 +382,7 @@ export function MindReadVocabModal({
                   type="button"
                   onClick={() => {
                     navigator.clipboard?.writeText(treeRaw).catch(() => {});
-                    window.alert("Đã sao chép dàn ý!");
+                    kfNotify("Đã sao chép dàn ý!");
                   }}
                   className="inline-flex items-center gap-1 text-[var(--accent)]"
                 >

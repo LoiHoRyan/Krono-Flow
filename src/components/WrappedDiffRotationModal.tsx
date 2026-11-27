@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useMemo, useState } from "react";
 import {
   Copy,
@@ -373,7 +375,7 @@ export function WrappedDiffRotationModal({
                         ...rotationRows.map((r) => `| Tuần ${r.week} | ${r.member} | ${r.backup} |`),
                       ].join("\n");
                       navigator.clipboard?.writeText(md).catch(() => {});
-                      window.alert("Đã sao chép bảng lịch xoay vòng Markdown!");
+                      kfNotify("Đã sao chép bảng lịch xoay vòng Markdown!");
                     }}
                     className="btn-primary inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium"
                   >

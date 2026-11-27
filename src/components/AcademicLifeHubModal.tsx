@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   BarChart2,
@@ -422,7 +424,7 @@ export function AcademicLifeHubModal({
                   type="button"
                   onClick={() => {
                     navigator.clipboard?.writeText(`Tiêu đề: ${curMail.subject}\n\n${curMail.body}`).catch(() => {});
-                    window.alert("Đã sao chép trọn bộ Tiêu đề & Nội dung email!");
+                    kfNotify("Đã sao chép trọn bộ Tiêu đề & Nội dung email!");
                   }}
                   className="btn-primary inline-flex shrink-0 items-center gap-1 rounded-lg px-2.5 py-1 text-[11px]"
                 >
@@ -544,7 +546,7 @@ export function AcademicLifeHubModal({
                 onClick={() => {
                   const txt = `📌 ${shTitle}\n📝 ${shNote}\n🔗 ${shUrl}`;
                   navigator.clipboard?.writeText(txt).catch(() => {});
-                  window.alert("Đã sao chép thẻ chia sẻ gửi nhóm!");
+                  kfNotify("Đã sao chép thẻ chia sẻ gửi nhóm!");
                 }}
                 className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] px-3 py-1.5 font-medium hover:border-[var(--accent)]"
               >

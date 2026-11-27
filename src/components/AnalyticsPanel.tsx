@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useEffect, useState } from "react";
 
 import { Download, Flame, TrendingUp, Award, Clock, Layers, Trophy, Lock,
@@ -843,7 +845,7 @@ export function AnalyticsPanel({
                     `- **Flashcards:** ${totalCards} thẻ · **Thói quen:** ${totalHabits}`,
                   ].join("\n");
                   navigator.clipboard?.writeText(md).catch(() => {});
-                  window.alert("Đã sao chép báo cáo Markdown vào bộ nhớ tạm!");
+                  kfNotify("Đã sao chép báo cáo Markdown vào bộ nhớ tạm!");
                 }}
                 className="no-print inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-medium text-[var(--accent)] hover:border-[var(--accent)]"
               >
@@ -867,7 +869,7 @@ export function AnalyticsPanel({
                     : "Chưa có";
                   const msg = `📊 Tổng kết 7 ngày qua (KronoFlow):\n• Tổng thời gian: ${(wkMins / 60).toFixed(1)} giờ (${wk.length} phiên)\n• Môn học nhiều nhất: ${topSubName}\n• Thẻ Flashcard hiện có: ${totalCards} · Thói quen: ${totalHabits}`;
                   navigator.clipboard?.writeText(msg).catch(() => {});
-                  window.alert("Đã sao chép báo cáo tuần gọn vào clipboard!");
+                  kfNotify("Đã sao chép báo cáo tuần gọn vào clipboard!");
                 }}
                 className="no-print inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-3 py-1.5 text-xs font-medium text-emerald-600 hover:border-emerald-500"
               >

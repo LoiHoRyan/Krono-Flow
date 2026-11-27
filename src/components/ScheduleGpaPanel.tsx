@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { cn } from "@/lib/utils";
 
 import { useState, useEffect } from "react";
@@ -509,7 +511,7 @@ export function ScheduleGpaPanel({
                     ...grades.map((g) => `• ${g.courseName} (${g.credits} TC): ${g.score10} (${toGpa4(g.score10).letter})`),
                   ].join("\n");
                   navigator.clipboard?.writeText(summary).catch(() => {});
-                  window.alert("Đã sao chép bảng điểm GPA vào bộ nhớ tạm!");
+                  kfNotify("Đã sao chép bảng điểm GPA vào bộ nhớ tạm!");
                 }}
                 className="inline-flex items-center gap-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >

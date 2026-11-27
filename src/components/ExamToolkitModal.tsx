@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useEffect, useState } from "react";
 import {
   Calculator,
@@ -571,7 +573,7 @@ export function ExamToolkitModal({
                           ...activeCmp.rows.map((r) => `| ${r.criterion} | ${r.colA} | ${r.colB} |`),
                         ].join("\n");
                         navigator.clipboard?.writeText(md).catch(() => {});
-                        window.alert("Đã sao chép bảng so sánh Markdown!");
+                        kfNotify("Đã sao chép bảng so sánh Markdown!");
                       }}
                       className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] px-2 py-1 text-[11px] text-[var(--accent)]"
                     >

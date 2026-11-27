@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { cn } from "@/lib/utils";
 
 import { useEffect, useState } from "react";
@@ -126,7 +128,7 @@ export function DashboardBento({
   const quickUpdateGoal = async (mins: number) => {
     setEditingGoal(false);
     try {
-      const res = await fetch("/api/profile", {
+      const res = await fetch("/api/user", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dailyGoalMinutes: mins }),
@@ -1351,7 +1353,7 @@ export function DashboardBento({
                       }),
                     ];
                     navigator.clipboard?.writeText(lines.join("\n")).catch(() => {});
-                    window.alert("Đã sao chép danh sách Lịch thi để gửi nhóm học!");
+                    kfNotify("Đã sao chép danh sách Lịch thi để gửi nhóm học!");
                   }}
                   title="Sao chép lịch thi gửi nhóm học"
                   className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2 py-1 text-[11px] text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"

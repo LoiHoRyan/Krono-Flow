@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useEffect, useState } from "react";
 import {
   Copy,
@@ -157,7 +159,7 @@ export function ExamPacerMeetingModal({
       ...mActions.map((a) => `| ${a.owner} | ${a.task} | ${a.due} |`),
     ].join("\n");
     navigator.clipboard?.writeText(md).catch(() => {});
-    window.alert("Đã sao chép biên bản họp Markdown để dán vào Zalo/Notion!");
+    kfNotify("Đã sao chép biên bản họp Markdown để dán vào Zalo/Notion!");
   };
 
   const filteredSnippets = snippets.filter((s) => {

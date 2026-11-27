@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   Backpack,
@@ -344,7 +346,7 @@ export function StudentUtilitiesModal({
                     onClick={() => {
                       const txt = daySchedule.map((b) => `• ${b.time}: ${b.subject} (50p học / 10p nghỉ)`).join("\n");
                       navigator.clipboard?.writeText(txt).catch(() => {});
-                      window.alert("Đã sao chép lịch ôn 1 ngày!");
+                      kfNotify("Đã sao chép lịch ôn 1 ngày!");
                     }}
                     className="btn-primary ml-auto inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px]"
                   >
@@ -499,7 +501,7 @@ export function StudentUtilitiesModal({
                         ...settlements.map((s) => `• ${s.from} chuyển cho ${s.to}: ${s.amount.toLocaleString("vi-VN")} ₫`),
                       ];
                       navigator.clipboard?.writeText(lines.join("\n")).catch(() => {});
-                      window.alert("Đã sao chép bảng chia tiền gửi nhóm!");
+                      kfNotify("Đã sao chép bảng chia tiền gửi nhóm!");
                     }}
                     className="inline-flex items-center gap-1 rounded-lg bg-[var(--bg-surface)] px-2.5 py-1 text-[11px] font-medium text-[var(--accent)]"
                   >

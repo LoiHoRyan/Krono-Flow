@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   Bookmark,
@@ -399,7 +401,7 @@ export function QuickPortalAndDailyModal({
                           type="button"
                           onClick={() => {
                             navigator.clipboard?.writeText(sn.content).catch(() => {});
-                            window.alert("Đã sao chép nội dung bản dự phòng để dán khôi phục!");
+                            kfNotify("Đã sao chép nội dung bản dự phòng để dán khôi phục!");
                           }}
                           className="inline-flex items-center gap-1 rounded-lg border border-[var(--border-subtle)] px-2 py-0.5 text-[10px] text-[var(--accent)]"
                         >

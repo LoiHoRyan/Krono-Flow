@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   Award,
@@ -477,7 +479,7 @@ export function GpaMultiYearBoard({
       setImportText("");
       setImportOpen(false);
       onRefresh?.();
-      window.alert(`Đã nhập thành công ${added} học phần mới từ bảng điểm!`);
+      kfNotify(`Đã nhập thành công ${added} học phần mới từ bảng điểm!`);
     } finally {
       setImporting(false);
     }

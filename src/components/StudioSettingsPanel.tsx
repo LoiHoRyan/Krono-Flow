@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useEffect, useState } from "react";
 import {
   Bell,
@@ -757,7 +759,7 @@ export function StudioSettingsPanel({
                       } catch {
                         // ignore
                       }
-                      window.alert(`Đã dọn ${removed} khóa cache tạm (giữ nguyên toàn bộ điểm GPA, công thức và dữ liệu học)!`);
+                      kfNotify(`Đã dọn ${removed} khóa cache tạm (giữ nguyên toàn bộ điểm GPA, công thức và dữ liệu học)!`);
                     }}
                     className="rounded-lg border border-[var(--border-subtle)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
                   >
@@ -803,7 +805,7 @@ export function StudioSettingsPanel({
                     a.click();
                     URL.revokeObjectURL(url);
                   } catch {
-                    window.alert("Không thể xuất cài đặt cục bộ.");
+                    kfNotify("Không thể xuất cài đặt cục bộ.");
                   }
                 }}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)] px-3 py-2 text-xs font-medium text-[var(--text-primary)]"
@@ -832,10 +834,10 @@ export function StudioSettingsPanel({
                             count += 1;
                           }
                         }
-                        window.alert(`Đã khôi phục ${count} thiết lập cục bộ! Trang sẽ tải lại để áp dụng.`);
+                        kfNotify(`Đã khôi phục ${count} thiết lập cục bộ! Trang sẽ tải lại để áp dụng.`);
                         window.location.reload();
                       } catch {
-                        window.alert("Tệp JSON cài đặt không hợp lệ.");
+                        kfNotify("Tệp JSON cài đặt không hợp lệ.");
                       }
                     };
                     reader.readAsText(file);

@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useState, useEffect, useRef } from "react";
 import {
   FileText,
@@ -365,7 +367,7 @@ ${note.content}`, count: 5 }),
         );
         playUiTick("check");
         onRefresh();
-        window.alert(`Đã tạo tự động ${Math.min(5, cards.length)} thẻ Flashcards AI từ ghi chú này!`);
+        kfNotify(`Đã tạo tự động ${Math.min(5, cards.length)} thẻ Flashcards AI từ ghi chú này!`);
       }
     } finally {
       setNoteAiFcBusy(false);
@@ -414,7 +416,7 @@ ${note.content}`, count: 5 }),
     };
     const Rec = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!Rec) {
-      window.alert("Trình duyệt hiện tại chưa hỗ trợ nhận diện giọng nói (hãy dùng Chrome/Edge).");
+      kfNotify("Trình duyệt hiện tại chưa hỗ trợ nhận diện giọng nói (hãy dùng Chrome/Edge).");
       return;
     }
     const rec = new Rec();
@@ -488,7 +490,7 @@ ${note.content}`, count: 5 }),
     });
     playUiTick("check");
     onRefresh();
-    window.alert("Đã chuyển ghi chú thành 1 thẻ Flashcard mới!");
+    kfNotify("Đã chuyển ghi chú thành 1 thẻ Flashcard mới!");
   };
 
   const allNoteTags = Array.from(
@@ -2003,7 +2005,7 @@ ${note.content}`, count: 5 }),
                       (g) => !flashcards.some((f) => f.front.trim().toLowerCase() === g.term.toLowerCase())
                     );
                     if (fresh.length === 0) {
-                      window.alert("Tất cả thuật ngữ đã có trong bộ Flashcards!");
+                      kfNotify("Tất cả thuật ngữ đã có trong bộ Flashcards!");
                       return;
                     }
                     await Promise.all(
@@ -2021,7 +2023,7 @@ ${note.content}`, count: 5 }),
                     );
                     playUiTick("check");
                     onRefresh();
-                    window.alert(`Đã tạo ${Math.min(25, fresh.length)} thẻ Flashcard từ Sổ tay Thuật ngữ!`);
+                    kfNotify(`Đã tạo ${Math.min(25, fresh.length)} thẻ Flashcard từ Sổ tay Thuật ngữ!`);
                   }}
                   className="ml-1 inline-flex items-center gap-1 rounded-lg bg-[var(--accent-soft)] px-2 py-0.5 text-[11px] font-medium text-[var(--accent)]"
                 >
