@@ -162,8 +162,6 @@ const NAV_GROUPS: { titleVi: string; titleEn: string; ids: TabId[] }[] = [
 
 function TopFocusBar() {
   const timer = useTimer();
-  const timerRef = useRef(timer);
-  timerRef.current = timer;
   if (!timer.isRunning) return null;
   const total = Math.max(1, timer.customMinutes * 60);
   const pct = Math.min(100, Math.round(((total - timer.secondsLeft) / total) * 100));
@@ -241,6 +239,8 @@ interface WorkspaceProps {
 function KronoFlowWorkspace(props: WorkspaceProps) {
   const { lang, t } = useLang();
   const timer = useTimer();
+  const timerRef = useRef(timer);
+  timerRef.current = timer;
   const [tab, setTabRaw] = useState<TabId>("dashboard");
   const prevTabRef = useRef<TabId>("dashboard");
   useEffect(() => {
