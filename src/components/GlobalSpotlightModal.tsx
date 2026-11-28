@@ -82,11 +82,13 @@ export function GlobalSpotlightModal({
   onJumpTab: (tab: JumpTab) => void;
 }) {
   const [query, setQuery] = useState("");
+  const [selectedIdx, setSelectedIdx] = useState(0);
   const [formulas, setFormulas] = useState<FormulaItem[]>([]);
 
   useEffect(() => {
     if (!open) return;
     setQuery("");
+    setSelectedIdx(0);
     try {
       const raw = localStorage.getItem("kronoflow-formulas-v1");
       if (raw) setFormulas(JSON.parse(raw) as FormulaItem[]);
@@ -194,7 +196,29 @@ export function GlobalSpotlightModal({
     return items.slice(0, 30);
   }, [query, subjects, todos, notes, flashcards, exams, grades, roadmaps, goals, habits, formulas]);
 
+  useEffect(() => {
+    setSelectedIdx(0);
+  }, [query]);
+
   if (!open) return null;
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (results.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIdx((i) => (i + 1) % results.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIdx((i) => (i - 1 + results.length) % results.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const pick = results[selectedIdx] ?? results[0];
+      if (pick) {
+        onJumpTab(pick.tab);
+        onClose();
+      }
+    }
+  };
 
   return (
     <div
@@ -211,6 +235,7 @@ export function GlobalSpotlightModal({
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Tìm xuyên suốt 11 Tab, Điểm GPA, Ghi chú, Flashcards, Lộ trình, Mục tiêu, Thói quen..."
             className="flex-1 bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
           />
@@ -219,7 +244,7 @@ export function GlobalSpotlightModal({
           </button>
         </div>
 
-        <div className="max-h-[60vh] overflow-y-auto p-3">
+        <div className="max-h-[58vh] overflow-y-auto p-3">
           {!query.trim() ? (
             <div className="py-8 text-center text-xs text-[var(--text-muted)]">
               Nhập từ khóa tiếng Việt (có dấu hoặc không dấu) để tìm xuyên suốt toàn bộ không gian KronoFlow.
@@ -230,15 +255,20 @@ export function GlobalSpotlightModal({
             </div>
           ) : (
             <div className="space-y-1.5">
-              {results.map((r) => (
+              {results.map((r, idx) => (
                 <button
                   key={r.id}
                   type="button"
+                  onMouseEnter={() => setSelectedIdx(idx)}
                   onClick={() => {
                     onJumpTab(r.tab);
                     onClose();
                   }}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/60 px-3.5 py-2.5 text-left transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/40"
+                  className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left transition ${
+                    idx === selectedIdx
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)]/60"
+                      : "border-[var(--border-subtle)] bg-[var(--bg-elevated)]/60 hover:border-[var(--accent)]"
+                  }`}
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -254,6 +284,11 @@ export function GlobalSpotlightModal({
               ))}
             </div>
           )}
+        </div>
+
+        <div className="flex items-center justify-between border-t border-[var(--border-subtle)] bg-[var(--bg-elevated)]/60 px-4 py-2 text-[10px] text-[var(--text-muted)]">
+          <span>↑ ↓ di chuyển · Enter mở nhanh · Esc đóng</span>
+          <span>{results.length > 0 ? `${results.length} kết quả` : "Spotlight Alt+K"}</span>
         </div>
       </div>
     </div>

@@ -10,6 +10,8 @@ import {
   Compass,
   Flame,
   Cpu,
+  Clock,
+  Layers,
   LayoutGrid,
   Lock,
   Monitor,
@@ -30,6 +32,7 @@ import {
 } from "lucide-react";
 
 const PINS_KEY = "kronoflow-dock-pins-v1";
+const RECENT_KEY = "kronoflow-dock-recent-v1";
 
 type DockCategory = "all" | "exam" | "tech" | "life";
 
@@ -67,6 +70,7 @@ export function StudyDockDrawer({
   onOpenRehearsalGuard,
   onOpenDeadlineSim,
   onOpenGroupCpa,
+  onOpenPaceBulk,
 }: {
   open: boolean;
   onClose: () => void;
@@ -92,10 +96,13 @@ export function StudyDockDrawer({
   onOpenRehearsalGuard: () => void;
   onOpenDeadlineSim: () => void;
   onOpenGroupCpa: () => void;
+  onOpenPaceBulk: () => void;
 }) {
   const [pinned, setPinned] = useState<string[]>([]);
+  const [recentIds, setRecentIds] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<DockCategory>("all");
+  const [selectedIdx, setSelectedIdx] = useState(0);
 
   useEffect(() => {
     if (!open) return;
@@ -103,6 +110,9 @@ export function StudyDockDrawer({
     try {
       const raw = localStorage.getItem(PINS_KEY);
       if (raw) setPinned(JSON.parse(raw) as string[]);
+      const rawRec = localStorage.getItem(RECENT_KEY);
+      if (rawRec) setRecentIds(JSON.parse(rawRec) as string[]);
+      setSelectedIdx(0);
     } catch {
       // ignore
     }
@@ -139,6 +149,15 @@ export function StudyDockDrawer({
       icon: Search,
       color: "text-sky-500",
       onClick: onOpenSpotlight,
+    },
+    {
+      id: "pacebulk",
+      cat: "exam",
+      title: "Tốc độ Học, Tạo Flashcard Nhanh & So sánh Trọng số",
+      desc: "Tính ngày xong video/PDF, dán tạo hàng loạt thẻ Flashcard & bảng chấm điểm",
+      icon: Layers,
+      color: "text-violet-600",
+      onClick: onOpenPaceBulk,
     },
     {
       id: "groupcpa",
@@ -344,6 +363,29 @@ export function StudyDockDrawer({
       return pa - pb;
     });
 
+  const runAction = (act: (typeof actions)[number]) => {
+    const nextRec = [act.id, ...recentIds.filter((x) => x !== act.id)].slice(0, 4);
+    setRecentIds(nextRec);
+    try {
+      localStorage.setItem(RECENT_KEY, JSON.stringify(nextRec));
+    } catch {
+      // ignore
+    }
+    onClose();
+    act.onClick();
+  };
+
+  const recentTools = recentIds
+    .map((id) => actions.find((a) => a.id === id))
+    .filter((a): a is (typeof actions)[number] => Boolean(a));
+
+  const catCounts: Record<DockCategory, number> = {
+    all: actions.length,
+    exam: actions.filter((a) => a.cat === "exam").length,
+    tech: actions.filter((a) => a.cat === "tech").length,
+    life: actions.filter((a) => a.cat === "life").length,
+  };
+
   return (
     <div
       className="no-print fixed inset-0 z-[75] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
@@ -382,7 +424,24 @@ export function StudyDockDrawer({
               type="text"
               autoFocus
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setSelectedIdx(0);
+              }}
+              onKeyDown={(e) => {
+                if (filteredActions.length === 0) return;
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setSelectedIdx((i) => (i + 1) % filteredActions.length);
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setSelectedIdx((i) => (i - 1 + filteredActions.length) % filteredActions.length);
+                } else if (e.key === "Enter") {
+                  e.preventDefault();
+                  const pick = filteredActions[selectedIdx] ?? filteredActions[0];
+                  if (pick) runAction(pick);
+                }
+              }}
               placeholder="Tìm công cụ (VD: email, vẽ, nhạc, gpa, rubric)..."
               className="w-full bg-transparent text-xs text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
             />
@@ -406,11 +465,29 @@ export function StudyDockDrawer({
                     : "border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)]"
                 }`}
               >
-                {lbl}
+                {lbl} ({catCounts[k]})
               </button>
             ))}
           </div>
         </div>
+
+        {recentTools.length > 0 && !query.trim() && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 rounded-xl bg-[var(--bg-elevated)]/70 px-3 py-2 text-[11px]">
+            <span className="inline-flex items-center gap-1 font-semibold text-[var(--text-muted)]">
+              <Clock className="h-3 w-3" /> Vừa dùng:
+            </span>
+            {recentTools.map((rt) => (
+              <button
+                key={`rec-${rt.id}`}
+                type="button"
+                onClick={() => runAction(rt)}
+                className="max-w-[180px] truncate rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-2.5 py-0.5 text-[10px] font-semibold hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                {rt.title}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
           {filteredActions.length === 0 ? (
@@ -418,24 +495,23 @@ export function StudyDockDrawer({
               Không tìm thấy công cụ nào khớp với &quot;{query}&quot;.
             </p>
           ) : (
-            filteredActions.map((act) => {
+            filteredActions.map((act, idx) => {
               const Icon = act.icon;
               const isPinned = pinned.includes(act.id);
               return (
                 <div
                   key={act.id}
                   className={`relative flex items-start gap-3 rounded-xl border p-3 transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]/40 ${
-                    isPinned
+                    idx === selectedIdx
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)]/50"
+                      : isPinned
                       ? "border-amber-500/40 bg-amber-500/5"
                       : "border-[var(--border-subtle)] bg-[var(--bg-canvas)]"
                   }`}
                 >
                   <button
                     type="button"
-                    onClick={() => {
-                      onClose();
-                      act.onClick();
-                    }}
+                    onClick={() => runAction(act)}
                     className="flex min-w-0 flex-1 items-start gap-3 text-left"
                   >
                     <div className={`mt-0.5 rounded-lg bg-[var(--bg-surface)] p-2 ${act.color}`}>
@@ -460,6 +536,10 @@ export function StudyDockDrawer({
               );
             })
           )}
+        </div>
+        <div className="mt-3 flex items-center justify-between border-t border-[var(--border-subtle)] pt-2 text-[10px] text-[var(--text-muted)]">
+          <span>↑ ↓ chọn nhanh · Enter mở ngay · Esc đóng</span>
+          <span>{filteredActions.length} công cụ</span>
         </div>
       </div>
     </div>

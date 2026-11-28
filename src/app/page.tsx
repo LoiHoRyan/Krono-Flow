@@ -93,6 +93,7 @@ import { MicroBreakExamMilestonesModal } from "@/components/MicroBreakExamMilest
 import { PresentationPassGuardModal } from "@/components/PresentationPassGuardModal";
 import { DeadlineRadarExamSimModal } from "@/components/DeadlineRadarExamSimModal";
 import { GroupCpaSnippetModal } from "@/components/GroupCpaSnippetModal";
+import { PaceBulkDecisionModal } from "@/components/PaceBulkDecisionModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -392,6 +393,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [rehearsalGuardOpen, setRehearsalGuardOpen] = useState(false);
   const [deadlineSimOpen, setDeadlineSimOpen] = useState(false);
   const [groupCpaOpen, setGroupCpaOpen] = useState(false);
+  const [paceBulkOpen, setPaceBulkOpen] = useState(false);
   const [crispBorder, setCrispBorder] = useState(false);
 
   useEffect(() => {
@@ -658,6 +660,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         setRehearsalGuardOpen(false);
         setDeadlineSimOpen(false);
         setGroupCpaOpen(false);
+        setPaceBulkOpen(false);
         setRubricQaOpen(false);
         setAcademicHubOpen(false);
         setWrappedDiffOpen(false);
@@ -883,12 +886,19 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onOpenRehearsalGuard={() => setRehearsalGuardOpen(true)}
         onOpenDeadlineSim={() => setDeadlineSimOpen(true)}
         onOpenGroupCpa={() => setGroupCpaOpen(true)}
+        onOpenPaceBulk={() => setPaceBulkOpen(true)}
       />
       <RubricQaWorldModal
         open={rubricQaOpen}
         onClose={() => setRubricQaOpen(false)}
         exams={props.exams}
         subjects={props.subjects}
+      />
+      <PaceBulkDecisionModal
+        open={paceBulkOpen}
+        onClose={() => setPaceBulkOpen(false)}
+        subjects={props.subjects}
+        onRefresh={props.onRefresh}
       />
       <GroupCpaSnippetModal
         open={groupCpaOpen}
