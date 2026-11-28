@@ -24,7 +24,7 @@ import {
   Link2,
   Download,
 } from "lucide-react";
-import { cn, normalizeVi } from "@/lib/utils";
+import { cn, normalizeVi, getLocalDateIso } from "@/lib/utils";
 import type { SessionLogItem } from "./PomodoroTimer";
 import type { NoteRecord, FlashcardRecord } from "./NotesFlashcardsPanel";
 import type { ExamRecord } from "./DashboardBento";
@@ -439,7 +439,7 @@ export function SubjectTodoPanel({
   const normalizedStatus = (t: TodoItem): "todo" | "in_progress" | "done" =>
     t.status ?? (t.isCompleted ? "done" : "todo");
 
-  const nowIso = new Date().toISOString().slice(0, 10);
+  const nowIso = getLocalDateIso();
   const weekIso = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
   const prioWeight: Record<TodoItem["priority"], number> = { high: 0, medium: 1, low: 2 };
   const filteredTodos = todos
@@ -917,7 +917,7 @@ export function SubjectTodoPanel({
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
-                      a.download = `kronoflow-todos-${new Date().toISOString().slice(0, 10)}.csv`;
+                      a.download = `kronoflow-todos-${getLocalDateIso()}.csv`;
                       a.click();
                       URL.revokeObjectURL(url);
                     }}

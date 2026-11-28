@@ -1,5 +1,7 @@
 "use client";
 
+import { getLocalDateIso } from "@/lib/utils";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarClock,
@@ -233,7 +235,7 @@ export function CramTimeBlockReportModal({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-weekly-report-${new Date().toISOString().slice(0, 10)}.md`;
+    a.download = `kronoflow-weekly-report-${getLocalDateIso()}.md`;
     a.click();
     URL.revokeObjectURL(url);
   };

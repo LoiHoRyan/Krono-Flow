@@ -1,5 +1,7 @@
 "use client";
 
+import { getLocalDateIso } from "@/lib/utils";
+
 import { kfNotify } from "@/lib/notify";
 
 import { useEffect, useRef, useState } from "react";
@@ -1363,7 +1365,7 @@ export function MediaPlayerWidget({
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
                       a.href = url;
-                      a.download = `kronoflow-playlist-${new Date().toISOString().slice(0, 10)}.json`;
+                      a.download = `kronoflow-playlist-${getLocalDateIso()}.json`;
                       a.click();
                       URL.revokeObjectURL(url);
                       kfNotify(`Đã xuất ${savedLinks.length} liên kết nhạc ra tệp JSON!`);

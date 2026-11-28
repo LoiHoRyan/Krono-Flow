@@ -14,7 +14,7 @@ import {
   Tag,
   Download,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getLocalDateIso } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
 import type { SubjectOption } from "./PomodoroTimer";
 
@@ -119,7 +119,7 @@ export function HabitsVaultPanel({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-habits-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `kronoflow-habits-${getLocalDateIso()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -166,7 +166,7 @@ export function HabitsVaultPanel({
     updateVaultMeta({ ...vaultMeta, [id]: { ...cur, tags } });
   };
 
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayKey = getLocalDateIso();
   const todayRef = reflections.find((r) => r.entryDate === todayKey);
   const [mood, setMood] = useState(todayRef?.mood ?? 4);
   const [highlight, setHighlight] = useState(todayRef?.highlight ?? "");

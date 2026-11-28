@@ -1,5 +1,7 @@
 "use client";
 
+import { getLocalDateIso } from "@/lib/utils";
+
 import { kfNotify } from "@/lib/notify";
 
 import { useEffect, useMemo, useState } from "react";
@@ -498,7 +500,7 @@ export function GpaMultiYearBoard({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-gpa-transcript-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `kronoflow-gpa-transcript-${getLocalDateIso()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };

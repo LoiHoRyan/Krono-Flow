@@ -16,6 +16,7 @@ import {
   Music2,
   PenTool,
   Presentation,
+  Radar,
   Search,
   ShieldAlert,
   Sparkles,
@@ -63,6 +64,7 @@ export function StudyDockDrawer({
   onOpenCramReport,
   onOpenMicroBreak,
   onOpenRehearsalGuard,
+  onOpenDeadlineSim,
 }: {
   open: boolean;
   onClose: () => void;
@@ -86,6 +88,7 @@ export function StudyDockDrawer({
   onOpenCramReport: () => void;
   onOpenMicroBreak: () => void;
   onOpenRehearsalGuard: () => void;
+  onOpenDeadlineSim: () => void;
 }) {
   const [pinned, setPinned] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -133,6 +136,15 @@ export function StudyDockDrawer({
       icon: Search,
       color: "text-sky-500",
       onClick: onOpenSpotlight,
+    },
+    {
+      id: "deadlinesim",
+      cat: "exam",
+      title: "Radar Hạn chót, Trang sách & Phòng thi thử",
+      desc: "Gom mọi hạn chót Todo/Thi/Mục tiêu, đánh dấu trang PDF & mô phỏng phòng thi 50 câu",
+      icon: Radar,
+      color: "text-sky-600",
+      onClick: onOpenDeadlineSim,
     },
     {
       id: "rehearsalguard",

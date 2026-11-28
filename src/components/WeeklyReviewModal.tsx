@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import type { SessionLogItem } from "./PomodoroTimer";
 import type { TodoItem } from "./SubjectTodoPanel";
-import { cn } from "@/lib/utils";
+import { cn, getLocalDateIso } from "@/lib/utils";
 
 interface WeeklyReviewModalProps {
   open: boolean;
@@ -79,7 +79,7 @@ export function WeeklyReviewModal({
   const saveReflection = async () => {
     setSaving(true);
     try {
-      const todayIso = new Date().toISOString().slice(0, 10);
+      const todayIso = getLocalDateIso();
       const summary = `[Tổng kết tuần · Năng lượng ${energy}/5] Thành tựu: ${wins || "Duy trì nhịp học"} | Ưu tiên tuần tới: ${nextFocus || "Tiếp tục mục tiêu chính"}`;
       await fetch("/api/reflections", {
         method: "POST",

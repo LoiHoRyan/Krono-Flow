@@ -1,5 +1,7 @@
 "use client";
 
+import { getLocalDateIso } from "@/lib/utils";
+
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Wallet, TrendingDown,
   AlertTriangle,
@@ -71,7 +73,7 @@ export function ExpensesPanel({
   };
   const [amount, setAmount] = useState("50000");
   const [category, setCategory] = useState(CATEGORIES[0] ?? "Khác");
-  const [spentDate, setSpentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [spentDate, setSpentDate] = useState(() => getLocalDateIso());
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +104,7 @@ export function ExpensesPanel({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-expenses-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `kronoflow-expenses-${getLocalDateIso()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -162,7 +164,7 @@ export function ExpensesPanel({
                     title: preset.title,
                     amount: preset.amount,
                     category: preset.category,
-                    spentDate: new Date().toISOString().slice(0, 10),
+                    spentDate: getLocalDateIso(),
                   }),
                 });
                 if (res.ok) {

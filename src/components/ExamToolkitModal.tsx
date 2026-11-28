@@ -1,5 +1,7 @@
 "use client";
 
+import { getLocalDateIso } from "@/lib/utils";
+
 import { kfNotify } from "@/lib/notify";
 
 import { useEffect, useState } from "react";
@@ -829,7 +831,7 @@ export function ExamToolkitModal({
                 e.preventDefault();
                 if (!sdDone.trim() && !sdTomorrow.trim()) return;
                 const entry: ShutdownEntry = {
-                  date: new Date().toISOString().slice(0, 10),
+                  date: getLocalDateIso(),
                   done: sdDone.trim(),
                   blocker: sdBlocker.trim(),
                   firstTomorrow: sdTomorrow.trim(),

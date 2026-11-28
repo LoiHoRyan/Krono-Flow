@@ -2,7 +2,7 @@
 
 import { kfNotify } from "@/lib/notify";
 
-import { cn } from "@/lib/utils";
+import { cn, getLocalDateIso } from "@/lib/utils";
 
 import { useState, useEffect } from "react";
 import { CalendarDays, Calculator, GraduationCap, Plus, Trash2,
@@ -249,7 +249,7 @@ export function ScheduleGpaPanel({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-gpa-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `kronoflow-gpa-${getLocalDateIso()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -1201,7 +1201,7 @@ export function ScheduleGpaPanel({
             e.preventDefault();
             if (!drlTitle.trim()) return;
             saveDrl([
-              { id: String(Date.now()), title: drlTitle.trim(), points: drlPoints, date: new Date().toISOString().slice(0, 10) },
+              { id: String(Date.now()), title: drlTitle.trim(), points: drlPoints, date: getLocalDateIso() },
               ...drlItems,
             ]);
             setDrlTitle("");

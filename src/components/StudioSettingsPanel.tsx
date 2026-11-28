@@ -22,7 +22,7 @@ import {
   Volume2,
   Activity,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getLocalDateIso } from "@/lib/utils";
 import {
   FONT_STYLES,
   PRESET_AVATARS,
@@ -801,7 +801,7 @@ export function StudioSettingsPanel({
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement("a");
                     a.href = url;
-                    a.download = `kronoflow-local-settings-${new Date().toISOString().slice(0, 10)}.json`;
+                    a.download = `kronoflow-local-settings-${getLocalDateIso()}.json`;
                     a.click();
                     URL.revokeObjectURL(url);
                   } catch {

@@ -1,3 +1,4 @@
+import { getLocalDateIso } from "@/lib/utils";
 import { NextResponse } from "next/server";
 import { asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
       db.select().from(mistakes).where(eq(mistakes.userId, user.id)).orderBy(desc(mistakes.createdAt)).limit(8),
     ]);
 
-    const todayKey = new Date().toISOString().slice(0, 10);
+    const todayKey = getLocalDateIso();
     const todayMins = sesRows
       .filter((s) => s.status === "completed" && s.startedAt.toISOString().slice(0, 10) === todayKey)
       .reduce((a, b) => a + b.actualMinutes, 0);

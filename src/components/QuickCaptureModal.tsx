@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CheckSquare, FileText, Layers, Plus, Wallet, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getLocalDateIso } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
 
 type CaptureKind = "todo" | "note" | "card" | "expense";
@@ -66,7 +66,7 @@ export function QuickCaptureModal({
             title: title.trim(),
             amount: Number(amount) || 10000,
             category: "Khác",
-            spentDate: new Date().toISOString().slice(0, 10),
+            spentDate: getLocalDateIso(),
           }),
         });
         ok = res.ok;

@@ -53,7 +53,7 @@ import {
   Moon,
   ChevronUp,
 } from "lucide-react";
-import { cn, formatDuration, normalizeVi } from "@/lib/utils";
+import { cn, formatDuration, normalizeVi, getLocalDateIso } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
 import { applyThemeToDocument, WALLPAPERS } from "@/lib/themes";
 import { LanguageProvider, LanguageToggle, useLang } from "@/lib/i18n";
@@ -91,6 +91,7 @@ import { GlobalToastBridge } from "@/components/GlobalToastBridge";
 import { GlobalDialogBridge } from "@/components/GlobalDialogBridge";
 import { MicroBreakExamMilestonesModal } from "@/components/MicroBreakExamMilestonesModal";
 import { PresentationPassGuardModal } from "@/components/PresentationPassGuardModal";
+import { DeadlineRadarExamSimModal } from "@/components/DeadlineRadarExamSimModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -255,6 +256,22 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const lastTabRef = useRef<TabId>("dashboard");
 
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem("kronoflow-last-tab-v1") as TabId | null;
+      if (saved && NAV_DEF.some((n) => n.id === saved)) {
+        setTabRaw(saved);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("kronoflow-last-tab-v1", tab);
+    } catch {
+      // ignore
+    }
     if (lastTabRef.current !== tab) {
       prevTabRef.current = lastTabRef.current;
       lastTabRef.current = tab;
@@ -372,6 +389,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [cramReportOpen, setCramReportOpen] = useState(false);
   const [microBreakOpen, setMicroBreakOpen] = useState(false);
   const [rehearsalGuardOpen, setRehearsalGuardOpen] = useState(false);
+  const [deadlineSimOpen, setDeadlineSimOpen] = useState(false);
   const [crispBorder, setCrispBorder] = useState(false);
 
   useEffect(() => {
@@ -636,6 +654,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         setCramReportOpen(false);
         setMicroBreakOpen(false);
         setRehearsalGuardOpen(false);
+        setDeadlineSimOpen(false);
         setRubricQaOpen(false);
         setAcademicHubOpen(false);
         setWrappedDiffOpen(false);
@@ -748,14 +767,14 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-backup-${getLocalDateIso()}.json`;
     localStorage.setItem("kronoflow-last-backup", new Date().toISOString());
     a.click();
     URL.revokeObjectURL(url);
     notify("Đã tải xuống tệp sao lưu JSON!");
   };
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = getLocalDateIso();
   const todayFocusedMins = props.sessions
     .filter((s) => s.status === "completed" && s.startedAt.slice(0, 10) === todayIso)
     .reduce((a, b) => a + b.actualMinutes, 0);
@@ -859,12 +878,21 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onOpenCramReport={() => setCramReportOpen(true)}
         onOpenMicroBreak={() => setMicroBreakOpen(true)}
         onOpenRehearsalGuard={() => setRehearsalGuardOpen(true)}
+        onOpenDeadlineSim={() => setDeadlineSimOpen(true)}
       />
       <RubricQaWorldModal
         open={rubricQaOpen}
         onClose={() => setRubricQaOpen(false)}
         exams={props.exams}
         subjects={props.subjects}
+      />
+      <DeadlineRadarExamSimModal
+        open={deadlineSimOpen}
+        onClose={() => setDeadlineSimOpen(false)}
+        subjects={props.subjects}
+        todos={props.todos}
+        exams={props.exams}
+        goals={props.goals}
       />
       <PresentationPassGuardModal
         open={rehearsalGuardOpen}
@@ -1800,7 +1828,22 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
                 if (e.key === "Enter" && cmdQuery.trim().startsWith(">")) {
                   const cmd = cmdQuery.trim().slice(1).trim();
                   const lower = cmd.toLowerCase();
-                  if (lower.startsWith("todo ") && cmd.slice(5).trim()) {
+                  if (lower === "music" || lower === "nhac") {
+                        setMediaOpen(true);
+                        setCmdOpen(false);
+                        setCmdQuery("");
+                        return;
+                      } else if (lower === "focus" || lower === "pomodoro") {
+                        setTab("focus");
+                        setCmdOpen(false);
+                        setCmdQuery("");
+                        return;
+                      } else if (lower === "dock" || lower === "tools") {
+                        setDockOpen(true);
+                        setCmdOpen(false);
+                        setCmdQuery("");
+                        return;
+                      } else if (lower.startsWith("todo ") && cmd.slice(5).trim()) {
                     await fetch("/api/todos", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },

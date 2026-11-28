@@ -32,7 +32,7 @@ import {
   Presentation,
   Pencil,
 } from "lucide-react";
-import { cn, formatDuration } from "@/lib/utils";
+import { cn, formatDuration, getLocalDateIso } from "@/lib/utils";
 import { ambientEngine, AmbientChannel, BellStyle } from "@/lib/ambient-audio";
 import { MODE_CONFIG, TimerMode, useTimer } from "./TimerProvider";
 import { BreathingModal } from "./BreathingModal";
@@ -182,7 +182,7 @@ export function PomodoroTimer({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-sessions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `kronoflow-sessions-${getLocalDateIso()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -334,11 +334,11 @@ export function PomodoroTimer({
       : null;
 
   const todayCompletedCount = sessions.filter(
-    (s) => s.status === "completed" && s.startedAt.slice(0, 10) === new Date().toISOString().slice(0, 10)
+    (s) => s.status === "completed" && s.startedAt.slice(0, 10) === getLocalDateIso()
   ).length;
 
   const logOneWaterCup = () => {
-    const key = `kronoflow-water-${new Date().toISOString().slice(0, 10)}`;
+    const key = `kronoflow-water-${getLocalDateIso()}`;
     const cur = Number(localStorage.getItem(key) || "0");
     localStorage.setItem(key, String(Math.min(8, (isNaN(cur) ? 0 : cur) + 1)));
     playUiTick("check");
@@ -346,7 +346,7 @@ export function PomodoroTimer({
     setTimeout(() => setWaterNudgeDone(false), 3000);
   };
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = getLocalDateIso();
   const todayFocusedMins = sessions
     .filter((s) => s.status === "completed" && s.startedAt.slice(0, 10) === todayIso)
     .reduce((a, b) => a + b.actualMinutes, 0);

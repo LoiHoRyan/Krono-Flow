@@ -1,5 +1,7 @@
 "use client";
 
+import { getLocalDateIso } from "@/lib/utils";
+
 import { useEffect, useState } from "react";
 import { Users, Plus, Trash2, CheckSquare, Square } from "lucide-react";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -43,7 +45,7 @@ export function GroupProjectPanel() {
         project: project.trim(),
         member: member.trim() || "Cả nhóm",
         task: task.trim(),
-        deadline: deadline || new Date().toISOString().slice(0, 10),
+        deadline: deadline || getLocalDateIso(),
         done: false,
       },
       ...items,

@@ -10,7 +10,7 @@ import { Download, Flame, TrendingUp, Award, Clock, Layers, Trophy, Lock,
   Printer,
   Copy,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getLocalDateIso } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
 import type { SessionLogItem, SubjectOption } from "./PomodoroTimer";
 import type { TodoItem } from "./SubjectTodoPanel";
@@ -202,7 +202,7 @@ export function AnalyticsPanel({
 
     const a = document.createElement("a");
     a.href = canvas.toDataURL("image/png");
-    a.download = `kronoflow-study-card-${new Date().toISOString().slice(0, 10)}.png`;
+    a.download = `kronoflow-study-card-${getLocalDateIso()}.png`;
     a.click();
   };
 
@@ -214,7 +214,7 @@ export function AnalyticsPanel({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-analytics-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `kronoflow-analytics-${getLocalDateIso()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -773,7 +773,7 @@ export function AnalyticsPanel({
                   TB {avgSession}p/phiên
                   {todos.length > 0 && (() => {
                     const doneCnt = todos.filter((t) => t.isCompleted).length;
-                    const todayStr = new Date().toISOString().slice(0, 10);
+                    const todayStr = getLocalDateIso();
                     const overdueCnt = todos.filter((t) => !t.isCompleted && t.dueDate && t.dueDate.slice(0, 10) < todayStr).length;
                     const rate = Math.round((doneCnt / Math.max(1, doneCnt + overdueCnt)) * 100);
                     return ` · Đúng hạn ${rate}%`;
@@ -839,7 +839,7 @@ export function AnalyticsPanel({
                 type="button"
                 onClick={() => {
                   const md = [
-                    `# Báo cáo học tập KronoFlow (${new Date().toISOString().slice(0, 10)})`,
+                    `# Báo cáo học tập KronoFlow (${getLocalDateIso()})`,
                     `- **Tổng giờ tập trung:** ${(totalAllMins / 60).toFixed(1)} giờ (${completed.length} phiên)`,
                     `- **Trung bình mỗi phiên:** ${avgSession} phút`,
                     `- **Flashcards:** ${totalCards} thẻ · **Thói quen:** ${totalHabits}`,

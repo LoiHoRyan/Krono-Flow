@@ -1,5 +1,7 @@
 "use client";
 
+import { getLocalDateIso } from "@/lib/utils";
+
 import { kfNotify } from "@/lib/notify";
 
 import { useMemo, useState } from "react";
@@ -191,7 +193,7 @@ export function WrappedDiffRotationModal({
     const url = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-semester-wrapped-${new Date().toISOString().slice(0, 10)}.png`;
+    a.download = `kronoflow-semester-wrapped-${getLocalDateIso()}.png`;
     a.click();
   };
 

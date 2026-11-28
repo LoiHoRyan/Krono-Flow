@@ -7,7 +7,7 @@ import { CheckCircle2, Circle, Clock, Flag, Plus, Sparkles, Trash2,
   Maximize2,
   Minimize2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getLocalDateIso } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
 import { GroupProjectPanel } from "./GroupProjectPanel";
 
@@ -43,7 +43,7 @@ export function GoalsTimeblockPanel({
   onRefresh: () => void;
 }) {
   const { lang } = useLang();
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedDate, setSelectedDate] = useState(() => getLocalDateIso());
   const [tbView, setTbView] = useState<"grid" | "list">("grid");
   const [tbWide, setTbWide] = useState(false);
   const [top3, setTop3] = useState<{ text: string; done: boolean }[]>([
@@ -288,7 +288,7 @@ export function GoalsTimeblockPanel({
             </button>
             <button
               type="button"
-              onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))}
+              onClick={() => setSelectedDate(getLocalDateIso())}
               className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-canvas)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--accent)] hover:border-[var(--accent)]"
             >
               Hôm nay
@@ -336,7 +336,7 @@ export function GoalsTimeblockPanel({
             {Array.from({ length: 18 }, (_, i) => i + 6).map((hr) => {
               const hrStr = String(hr).padStart(2, "0");
               const slotBlocks = dayBlocks.filter((b) => b.startTime.startsWith(hrStr + ":"));
-              const isCurrentHour = nowHm.h === hr && selectedDate === new Date().toISOString().slice(0, 10);
+              const isCurrentHour = nowHm.h === hr && selectedDate === getLocalDateIso();
               return (
                 <div
                   key={hr}

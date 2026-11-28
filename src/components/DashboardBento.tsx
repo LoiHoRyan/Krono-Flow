@@ -2,7 +2,7 @@
 
 import { kfNotify, kfConfirm, kfPrompt } from "@/lib/notify";
 
-import { cn } from "@/lib/utils";
+import { cn, getLocalDateIso } from "@/lib/utils";
 
 import { useEffect, useState } from "react";
 import {
@@ -362,7 +362,7 @@ export function DashboardBento({
   const sleepOptions = calcSleepTimes(wakeTime);
 
   useEffect(() => {
-    const key = `kronoflow-water-${new Date().toISOString().slice(0, 10)}`;
+    const key = `kronoflow-water-${getLocalDateIso()}`;
     const saved = Number(localStorage.getItem(key) || "0");
     if (!Number.isNaN(saved)) setWaterCups(saved);
   }, []);
@@ -370,7 +370,7 @@ export function DashboardBento({
   const updateWater = (n: number) => {
     const next = n === waterCups ? n - 1 : n;
     setWaterCups(next);
-    const key = `kronoflow-water-${new Date().toISOString().slice(0, 10)}`;
+    const key = `kronoflow-water-${getLocalDateIso()}`;
     localStorage.setItem(key, String(next));
   };
 
@@ -418,7 +418,7 @@ export function DashboardBento({
     frozenDates = [];
   }
 
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const todayKey = getLocalDateIso();
   const todayMinutes = dayMap.get(todayKey) ?? 0;
   const dailyGoal = user?.dailyGoalMinutes ?? 120;
   const goalPct = Math.min(100, Math.round((todayMinutes / Math.max(1, dailyGoal)) * 100));

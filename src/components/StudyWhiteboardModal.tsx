@@ -1,5 +1,7 @@
 "use client";
 
+import { getLocalDateIso } from "@/lib/utils";
+
 import { useEffect, useRef, useState } from "react";
 import { Download, Eraser, Grid3X3, PenTool, Trash2, Undo2, X } from "lucide-react";
 
@@ -110,7 +112,7 @@ export function StudyWhiteboardModal({
     const url = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-whiteboard-${new Date().toISOString().slice(0, 10)}.png`;
+    a.download = `kronoflow-whiteboard-${getLocalDateIso()}.png`;
     a.click();
   };
 

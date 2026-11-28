@@ -36,7 +36,7 @@ import {
   Shuffle,
   BookA,
 } from "lucide-react";
-import { cn, normalizeVi } from "@/lib/utils";
+import { cn, normalizeVi, getLocalDateIso } from "@/lib/utils";
 import { MarkdownView } from "./MarkdownView";
 import { PdfStudyReaderModal } from "./PdfStudyReaderModal";
 import { playUiTick } from "@/lib/ui-sounds";
@@ -158,7 +158,7 @@ export function NotesFlashcardsPanel({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-flashcards-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `kronoflow-flashcards-${getLocalDateIso()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -280,7 +280,7 @@ export function NotesFlashcardsPanel({
     try {
       const g = Number(localStorage.getItem("kronoflow-daily-card-goal") || "20");
       if (!isNaN(g) && g > 0) setDailyCardGoal(g);
-      const todayKey = `kronoflow-cards-done-${new Date().toISOString().slice(0, 10)}`;
+      const todayKey = `kronoflow-cards-done-${getLocalDateIso()}`;
       const c = Number(localStorage.getItem(todayKey) || "0");
       if (!isNaN(c) && c >= 0) setTodayCardsDone(c);
     } catch {
@@ -305,7 +305,7 @@ export function NotesFlashcardsPanel({
 
   useEffect(() => {
     try {
-      const todayIso = new Date().toISOString().slice(0, 10);
+      const todayIso = getLocalDateIso();
       const rawRev = localStorage.getItem(`kronoflow-reviewed-${todayIso}`);
       if (rawRev) setReviewedToday(JSON.parse(rawRev));
     } catch {
@@ -314,7 +314,7 @@ export function NotesFlashcardsPanel({
   }, []);
 
   const toggleReviewedToday = (noteId: string) => {
-    const todayIso = new Date().toISOString().slice(0, 10);
+    const todayIso = getLocalDateIso();
     const next = reviewedToday.includes(noteId)
       ? reviewedToday.filter((x) => x !== noteId)
       : [...reviewedToday, noteId];
@@ -382,7 +382,7 @@ ${note.content}`, count: 5 }),
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-glossary-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `kronoflow-glossary-${getLocalDateIso()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -509,7 +509,7 @@ ${note.content}`, count: 5 }),
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-study-book-${new Date().toISOString().slice(0, 10)}.md`;
+    a.download = `kronoflow-study-book-${getLocalDateIso()}.md`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -837,7 +837,7 @@ ${note.content}`, count: 5 }),
     setTodayCardsDone((prev) => {
       const next = prev + 1;
       try {
-        localStorage.setItem(`kronoflow-cards-done-${new Date().toISOString().slice(0, 10)}`, String(next));
+        localStorage.setItem(`kronoflow-cards-done-${getLocalDateIso()}`, String(next));
       } catch {
         // ignore
       }

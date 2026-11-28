@@ -1,5 +1,7 @@
 "use client";
 
+import { getLocalDateIso } from "@/lib/utils";
+
 import { kfNotify } from "@/lib/notify";
 
 import { useEffect, useMemo, useState } from "react";
@@ -184,7 +186,7 @@ export function QuickPortalAndDailyModal({
     const url = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-daily-plan-${new Date().toISOString().slice(0, 10)}.png`;
+    a.download = `kronoflow-daily-plan-${getLocalDateIso()}.png`;
     a.click();
   };
 

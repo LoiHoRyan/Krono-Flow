@@ -1,5 +1,7 @@
 "use client";
 
+import { kfNotify } from "@/lib/notify";
+
 import { useEffect, useRef, useState } from "react";
 import {
   Bot,
@@ -723,7 +725,7 @@ export function AiCopilotDrawer({
                     <button
                       type="button"
                       onClick={() => {
-                        navigator.clipboard.writeText(m.content).catch(() => {});
+                        navigator.clipboard.writeText(m.content).catch(() => {}); kfNotify("Đã sao chép nội dung AI!");
                         onNotify("Đã sao chép câu trả lời!");
                       }}
                       className="inline-flex items-center gap-1 hover:text-[var(--accent)]"

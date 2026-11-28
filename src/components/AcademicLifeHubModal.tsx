@@ -1,5 +1,7 @@
 "use client";
 
+import { getLocalDateIso } from "@/lib/utils";
+
 import { kfNotify } from "@/lib/notify";
 
 import { useEffect, useMemo, useState } from "react";
@@ -220,7 +222,7 @@ export function AcademicLifeHubModal({
 
     const a = document.createElement("a");
     a.href = canvas.toDataURL("image/png");
-    a.download = `kronoflow-share-card-${new Date().toISOString().slice(0, 10)}.png`;
+    a.download = `kronoflow-share-card-${getLocalDateIso()}.png`;
     a.click();
   };
 

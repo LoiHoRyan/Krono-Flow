@@ -1,5 +1,7 @@
 "use client";
 
+import { getLocalDateIso } from "@/lib/utils";
+
 import { kfNotify } from "@/lib/notify";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -232,7 +234,7 @@ export function ProStudySuiteModal({
     const url = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kronoflow-study-card-${new Date().toISOString().slice(0, 10)}.png`;
+    a.download = `kronoflow-study-card-${getLocalDateIso()}.png`;
     a.click();
   };
 
