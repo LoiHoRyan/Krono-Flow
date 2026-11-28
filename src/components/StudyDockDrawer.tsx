@@ -24,6 +24,7 @@ import {
   Sparkles,
   Star,
   StickyNote,
+  Table2,
   Timer,
   Users,
   Wrench,
@@ -71,6 +72,7 @@ export function StudyDockDrawer({
   onOpenDeadlineSim,
   onOpenGroupCpa,
   onOpenPaceBulk,
+  onOpenEveningTable,
 }: {
   open: boolean;
   onClose: () => void;
@@ -97,6 +99,7 @@ export function StudyDockDrawer({
   onOpenDeadlineSim: () => void;
   onOpenGroupCpa: () => void;
   onOpenPaceBulk: () => void;
+  onOpenEveningTable: () => void;
 }) {
   const [pinned, setPinned] = useState<string[]>([]);
   const [recentIds, setRecentIds] = useState<string[]>([]);
@@ -149,6 +152,15 @@ export function StudyDockDrawer({
       icon: Search,
       color: "text-sky-500",
       onClick: onOpenSpotlight,
+    },
+    {
+      id: "eveningtable",
+      cat: "life",
+      title: "Phản tư Cuối ngày, Đếm ngược & Đổi Bảng",
+      desc: "Chốt 3 câu cuối ngày, ghim mốc bảo vệ/học bổng & đổi CSV/Excel sang Markdown",
+      icon: Table2,
+      color: "text-teal-600",
+      onClick: onOpenEveningTable,
     },
     {
       id: "pacebulk",

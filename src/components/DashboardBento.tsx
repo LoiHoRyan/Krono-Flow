@@ -597,7 +597,7 @@ export function DashboardBento({
 
             <div className="pt-1">
               <div className="flex max-w-md items-center justify-between text-[11px] text-[var(--text-muted)]">
-                <span>XP Level {levelInfo.level + 1}</span>
+                <span title="XP được cộng từ phút tập trung, công việc đã xong và Flashcard đã thuộc">Tiến độ lên Cấp {levelInfo.level + 1} (còn {Math.max(0, levelInfo.nextLevelXp - levelInfo.currentLevelXp)} XP)</span>
                 <span className="font-mono tabular-nums">
                   {levelInfo.currentLevelXp} / {levelInfo.nextLevelXp} XP
                 </span>

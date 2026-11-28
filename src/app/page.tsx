@@ -55,7 +55,7 @@ import {
 } from "lucide-react";
 import { cn, formatDuration, normalizeVi, getLocalDateIso } from "@/lib/utils";
 import { playUiTick } from "@/lib/ui-sounds";
-import { applyThemeToDocument, WALLPAPERS } from "@/lib/themes";
+import { applyThemeToDocument, computeLevelInfo, WALLPAPERS } from "@/lib/themes";
 import { LanguageProvider, LanguageToggle, useLang } from "@/lib/i18n";
 import { AuthScreen } from "@/components/AuthScreen";
 import { ConfettiBurst } from "@/components/ConfettiBurst";
@@ -94,6 +94,7 @@ import { PresentationPassGuardModal } from "@/components/PresentationPassGuardMo
 import { DeadlineRadarExamSimModal } from "@/components/DeadlineRadarExamSimModal";
 import { GroupCpaSnippetModal } from "@/components/GroupCpaSnippetModal";
 import { PaceBulkDecisionModal } from "@/components/PaceBulkDecisionModal";
+import { EveningCountdownTableModal } from "@/components/EveningCountdownTableModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -394,6 +395,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [deadlineSimOpen, setDeadlineSimOpen] = useState(false);
   const [groupCpaOpen, setGroupCpaOpen] = useState(false);
   const [paceBulkOpen, setPaceBulkOpen] = useState(false);
+  const [eveningTableOpen, setEveningTableOpen] = useState(false);
   const [crispBorder, setCrispBorder] = useState(false);
 
   useEffect(() => {
@@ -661,6 +663,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         setDeadlineSimOpen(false);
         setGroupCpaOpen(false);
         setPaceBulkOpen(false);
+        setEveningTableOpen(false);
         setRubricQaOpen(false);
         setAcademicHubOpen(false);
         setWrappedDiffOpen(false);
@@ -887,12 +890,17 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onOpenDeadlineSim={() => setDeadlineSimOpen(true)}
         onOpenGroupCpa={() => setGroupCpaOpen(true)}
         onOpenPaceBulk={() => setPaceBulkOpen(true)}
+        onOpenEveningTable={() => setEveningTableOpen(true)}
       />
       <RubricQaWorldModal
         open={rubricQaOpen}
         onClose={() => setRubricQaOpen(false)}
         exams={props.exams}
         subjects={props.subjects}
+      />
+      <EveningCountdownTableModal
+        open={eveningTableOpen}
+        onClose={() => setEveningTableOpen(false)}
       />
       <PaceBulkDecisionModal
         open={paceBulkOpen}
@@ -1191,19 +1199,27 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
 
         <div className={cn("border-t border-[var(--border-subtle)] pt-3", sidebarMode === "full" ? "w-56" : "w-full")}>
           {sidebarMode === "full" && (() => {
-            const totalXp = props.sessions
+            const totalMins = props.sessions
               .filter((s) => s.status === "completed")
-              .reduce((a, b) => a + b.actualMinutes, 0) * 2;
-            const lv = Math.floor(totalXp / 250) + 1;
-            const lvPct = Math.round(((totalXp % 250) / 250) * 100);
+              .reduce((a, b) => a + b.actualMinutes, 0);
+            const completedTodos = props.todos.filter((td) => td.isCompleted).length;
+            const masteredCards = props.flashcards.filter((fc) => fc.mastery >= 3).length;
+            const lvInfo = computeLevelInfo(totalMins, completedTodos, masteredCards);
             return (
-              <div className="mb-3 px-1">
+              <div
+                className="mb-3 px-1"
+                title={`Cấp ${lvInfo.level} · ${lvInfo.rank} (${lvInfo.xp} XP tổng) — Tiến độ lên Cấp ${lvInfo.level + 1}`}
+              >
                 <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)]">
-                  <span>Cấp {lv}</span>
-                  <span className="font-mono">{totalXp % 250}/250 XP</span>
+                  <span className="font-semibold text-[var(--text-secondary)]">
+                    Cấp {lvInfo.level} · {lvInfo.rank}
+                  </span>
+                  <span className="font-mono">
+                    {lvInfo.currentLevelXp}/{lvInfo.nextLevelXp} XP
+                  </span>
                 </div>
-                <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
-                  <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${lvPct}%` }} />
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                  <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: `${lvInfo.pct}%` }} />
                 </div>
               </div>
             );
