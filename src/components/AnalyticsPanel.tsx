@@ -41,7 +41,7 @@ export function AnalyticsPanel({
 
   const dayMinutes = new Map<string, number>();
   for (const s of completed) {
-    const key = new Date(s.startedAt).toISOString().slice(0, 10);
+    const key = getLocalDateIso(new Date(s.startedAt));
     dayMinutes.set(key, (dayMinutes.get(key) ?? 0) + s.actualMinutes);
   }
 
@@ -52,7 +52,7 @@ export function AnalyticsPanel({
   for (let i = totalDays - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    const key = getLocalDateIso(d);
     days.push({ date: key, minutes: dayMinutes.get(key) ?? 0 });
   }
 
@@ -667,8 +667,8 @@ export function AnalyticsPanel({
         const rows = Array.from({ length: 7 }, (_, i) => {
           const dCur = new Date(nowMs - (6 - i) * msDay);
           const dPrev = new Date(nowMs - (13 - i) * msDay);
-          const curIso = dCur.toISOString().slice(0, 10);
-          const prevIso = dPrev.toISOString().slice(0, 10);
+          const curIso = getLocalDateIso(dCur);
+          const prevIso = getLocalDateIso(dPrev);
           const label = dCur.getDay() === 0 ? "CN" : `T${dCur.getDay() + 1}`;
           return {
             label,

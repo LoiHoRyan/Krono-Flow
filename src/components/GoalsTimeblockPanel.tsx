@@ -113,7 +113,7 @@ export function GoalsTimeblockPanel({
         const offset = Math.floor((i * totalDays) / topics.length);
         const target = new Date(start);
         target.setDate(start.getDate() + offset);
-        const iso = target.toISOString().slice(0, 10);
+        const iso = getLocalDateIso(target);
         await fetch("/api/timeblocks", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

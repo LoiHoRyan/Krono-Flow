@@ -23,6 +23,7 @@ import {
   Star,
   StickyNote,
   Timer,
+  Users,
   Wrench,
   X,
   Zap,
@@ -65,6 +66,7 @@ export function StudyDockDrawer({
   onOpenMicroBreak,
   onOpenRehearsalGuard,
   onOpenDeadlineSim,
+  onOpenGroupCpa,
 }: {
   open: boolean;
   onClose: () => void;
@@ -89,6 +91,7 @@ export function StudyDockDrawer({
   onOpenMicroBreak: () => void;
   onOpenRehearsalGuard: () => void;
   onOpenDeadlineSim: () => void;
+  onOpenGroupCpa: () => void;
 }) {
   const [pinned, setPinned] = useState<string[]>([]);
   const [query, setQuery] = useState("");
@@ -136,6 +139,15 @@ export function StudyDockDrawer({
       icon: Search,
       color: "text-sky-500",
       onClick: onOpenSpotlight,
+    },
+    {
+      id: "groupcpa",
+      cat: "tech",
+      title: "Chia việc Nhóm, Kéo CPA & Mẫu Tra Nhanh",
+      desc: "Quản lý tiến độ bài tập lớn Markdown, tính tín chỉ kéo CPA & kho định lý/code",
+      icon: Users,
+      color: "text-indigo-600",
+      onClick: onOpenGroupCpa,
     },
     {
       id: "deadlinesim",

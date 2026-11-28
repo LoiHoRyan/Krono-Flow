@@ -45,7 +45,7 @@ export function WeeklyReviewModal({
     let lastWeekMins = 0;
     const dailyBuckets = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(now.getTime() - (6 - i) * msDay);
-      const iso = d.toISOString().slice(0, 10);
+      const iso = getLocalDateIso(d);
       return { iso, label: `T${d.getDay() === 0 ? "CN" : d.getDay() + 1}`.replace("TCN", "CN"), mins: 0 };
     });
 
@@ -104,7 +104,7 @@ export function WeeklyReviewModal({
     try {
       const nextMonday = new Date();
       nextMonday.setDate(nextMonday.getDate() + 1);
-      const targetIso = nextMonday.toISOString().slice(0, 10);
+      const targetIso = getLocalDateIso(nextMonday);
       await Promise.all(
         stats.openTodos.slice(0, 15).map((t) =>
           fetch(`/api/todos/${t.id}`, {

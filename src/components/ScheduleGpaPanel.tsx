@@ -128,7 +128,7 @@ export function ScheduleGpaPanel({
       7: "SU",
     };
     const now = new Date();
-    const ymd = now.toISOString().slice(0, 10).replaceAll("-", "");
+    const ymd = getLocalDateIso(now).replaceAll("-", "");
     const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//KronoFlow//Timetable//VI"];
     for (const sl of slots) {
       const st = sl.startTime.replace(":", "") + "00";

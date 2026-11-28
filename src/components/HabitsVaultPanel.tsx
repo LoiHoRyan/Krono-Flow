@@ -99,11 +99,11 @@ export function HabitsVaultPanel({
     const set = new Set(dates);
     let count = 0;
     const d = new Date();
-    const todayIso = d.toISOString().slice(0, 10);
+    const todayIso = getLocalDateIso(d);
     if (!set.has(todayIso)) {
       d.setDate(d.getDate() - 1);
     }
-    while (set.has(d.toISOString().slice(0, 10))) {
+    while (set.has(getLocalDateIso(d))) {
       count += 1;
       d.setDate(d.getDate() - 1);
     }
@@ -233,7 +233,7 @@ export function HabitsVaultPanel({
     const d = new Date();
     d.setDate(d.getDate() - i);
     last7Days.push({
-      iso: d.toISOString().slice(0, 10),
+      iso: getLocalDateIso(d),
       label: d.toLocaleDateString("vi-VN", { weekday: "short" }),
     });
   }

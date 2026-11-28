@@ -1,5 +1,7 @@
 "use client";
 
+import { getLocalDateIso } from "@/lib/utils";
+
 import { useMemo, useState } from "react";
 import { CalendarClock, CheckCircle2, Sparkles, X } from "lucide-react";
 import type { ExamRecord } from "./DashboardBento";
@@ -42,7 +44,7 @@ export function ReverseExamPlannerModal({
         Math.max(0, totalDays - 1),
         Math.floor((idx * totalDays) / lines.length)
       );
-      const due = new Date(today.getTime() + offset * 86400000).toISOString().slice(0, 10);
+      const due = getLocalDateIso(new Date(today.getTime() + offset * 86400000));
       return {
         title: `[Ôn thi ${chosenExam.title}] ${line}`,
         dueDate: due,

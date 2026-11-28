@@ -136,7 +136,7 @@ export function SubjectTodoPanel({
     if (selectedTodoIds.length === 0) return;
     setBulkBusy(true);
     try {
-      const tomorrowIso = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      const tomorrowIso = getLocalDateIso(new Date(Date.now() + 86400000));
       await Promise.all(
         selectedTodoIds.map((id) => {
           if (action === "delete") return fetch(`/api/todos/${id}`, { method: "DELETE" });
@@ -204,7 +204,7 @@ export function SubjectTodoPanel({
       const baseMs = Date.now();
       await Promise.all(
         offsets.map((d, idx) => {
-          const due = new Date(baseMs + d * 86400000).toISOString().slice(0, 10);
+          const due = getLocalDateIso(new Date(baseMs + d * 86400000));
           return fetch("/api/todos", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -440,7 +440,7 @@ export function SubjectTodoPanel({
     t.status ?? (t.isCompleted ? "done" : "todo");
 
   const nowIso = getLocalDateIso();
-  const weekIso = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const weekIso = getLocalDateIso(new Date(Date.now() + 7 * 86400000));
   const prioWeight: Record<TodoItem["priority"], number> = { high: 0, medium: 1, low: 2 };
   const filteredTodos = todos
     .filter((t) => {

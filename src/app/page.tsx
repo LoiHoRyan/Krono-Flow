@@ -92,6 +92,7 @@ import { GlobalDialogBridge } from "@/components/GlobalDialogBridge";
 import { MicroBreakExamMilestonesModal } from "@/components/MicroBreakExamMilestonesModal";
 import { PresentationPassGuardModal } from "@/components/PresentationPassGuardModal";
 import { DeadlineRadarExamSimModal } from "@/components/DeadlineRadarExamSimModal";
+import { GroupCpaSnippetModal } from "@/components/GroupCpaSnippetModal";
 import { TimerProvider, useTimer } from "@/components/TimerProvider";
 import { DashboardBento, ExamRecord } from "@/components/DashboardBento";
 import { PomodoroTimer, SessionLogItem } from "@/components/PomodoroTimer";
@@ -390,6 +391,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
   const [microBreakOpen, setMicroBreakOpen] = useState(false);
   const [rehearsalGuardOpen, setRehearsalGuardOpen] = useState(false);
   const [deadlineSimOpen, setDeadlineSimOpen] = useState(false);
+  const [groupCpaOpen, setGroupCpaOpen] = useState(false);
   const [crispBorder, setCrispBorder] = useState(false);
 
   useEffect(() => {
@@ -655,6 +657,7 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         setMicroBreakOpen(false);
         setRehearsalGuardOpen(false);
         setDeadlineSimOpen(false);
+        setGroupCpaOpen(false);
         setRubricQaOpen(false);
         setAcademicHubOpen(false);
         setWrappedDiffOpen(false);
@@ -879,12 +882,17 @@ function KronoFlowWorkspace(props: WorkspaceProps) {
         onOpenMicroBreak={() => setMicroBreakOpen(true)}
         onOpenRehearsalGuard={() => setRehearsalGuardOpen(true)}
         onOpenDeadlineSim={() => setDeadlineSimOpen(true)}
+        onOpenGroupCpa={() => setGroupCpaOpen(true)}
       />
       <RubricQaWorldModal
         open={rubricQaOpen}
         onClose={() => setRubricQaOpen(false)}
         exams={props.exams}
         subjects={props.subjects}
+      />
+      <GroupCpaSnippetModal
+        open={groupCpaOpen}
+        onClose={() => setGroupCpaOpen(false)}
       />
       <DeadlineRadarExamSimModal
         open={deadlineSimOpen}

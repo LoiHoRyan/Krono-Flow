@@ -407,7 +407,7 @@ export function DashboardBento({
 
   const dayMap = new Map<string, number>();
   for (const s of completedSessions) {
-    const key = new Date(s.startedAt).toISOString().slice(0, 10);
+    const key = getLocalDateIso(new Date(s.startedAt));
     dayMap.set(key, (dayMap.get(key) ?? 0) + s.actualMinutes);
   }
 
@@ -426,7 +426,7 @@ export function DashboardBento({
   let streak = 0;
   const cursor = new Date();
   for (let i = 0; i < 365; i++) {
-    const k = cursor.toISOString().slice(0, 10);
+    const k = getLocalDateIso(cursor);
     const active = (dayMap.get(k) ?? 0) > 0 || frozenDates.includes(k);
     if (active) streak++;
     else if (i > 0) break;
@@ -994,7 +994,7 @@ export function DashboardBento({
         const mondayMs = now.getTime() - (dow - 1) * 86400000;
         const weekDays = Array.from({ length: 7 }, (_, i) => {
           const d = new Date(mondayMs + i * 86400000);
-          const iso = d.toISOString().slice(0, 10);
+          const iso = getLocalDateIso(d);
           const studied = (dayMap.get(iso) ?? 0) > 0;
           const hasExam = exams.some((e) => e.examDate.slice(0, 10) === iso);
           const hasDue = todos.some((t) => !t.isCompleted && t.dueDate?.slice(0, 10) === iso);
@@ -1010,7 +1010,7 @@ export function DashboardBento({
         });
         const avg7 = Math.round(
           Array.from({ length: 7 }, (_, i) => {
-            const iso = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+            const iso = getLocalDateIso(new Date(Date.now() - i * 86400000));
             return dayMap.get(iso) ?? 0;
           }).reduce((a, b) => a + b, 0) / 7
         );
@@ -1226,7 +1226,7 @@ export function DashboardBento({
         
               <div className="mt-2.5 flex items-center gap-[3px]" title="30 ngày gần nhất (Xanh: Đã học · Xanh dương: Freeze)">
                 {Array.from({ length: 30 }, (_, i) => {
-                  const d = new Date(Date.now() - (29 - i) * 86400000).toISOString().slice(0, 10);
+                  const d = getLocalDateIso(new Date(Date.now() - (29 - i) * 86400000));
                   const studied = (dayMap.get(d) ?? 0) > 0;
                   const frozen = frozenDates.includes(d);
                   return (

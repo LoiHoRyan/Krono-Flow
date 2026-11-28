@@ -11,7 +11,7 @@ import {
   Plus,
   Snowflake,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getLocalDateIso } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
 import type { SessionLogItem, SubjectOption } from "./PomodoroTimer";
 import type { TimeBlockRecord } from "./GoalsTimeblockPanel";
@@ -35,7 +35,7 @@ function buildIcsContent(exams: ExamRecord[], timeBlocks: TimeBlockRecord[]): st
     "PRODID:-//KronoFlow//Study Calendar//VN",
   ];
   for (const ex of exams) {
-    const dt = new Date(ex.examDate).toISOString().slice(0, 10).replaceAll("-", "");
+    const dt = getLocalDateIso(new Date(ex.examDate)).replaceAll("-", "");
     lines.push(
       "BEGIN:VEVENT",
       `UID:exam-${ex.id}@kronoflow`,
@@ -78,7 +78,7 @@ export function SmartCalendar({
 }) {
   const { lang } = useLang();
   const todayObj = new Date();
-  const todayKey = todayObj.toISOString().slice(0, 10);
+  const todayKey = getLocalDateIso(todayObj);
 
   const [viewMode, setViewMode] = useState<"month" | "agenda">("month");
   const [zoomTier, setZoomTier] = useState<"days" | "months" | "years">("days");
@@ -115,11 +115,11 @@ export function SmartCalendar({
   const completedSessions = sessions.filter((s) => s.status === "completed");
   const dayMap = new Map<string, number>();
   for (const s of completedSessions) {
-    const key = new Date(s.startedAt).toISOString().slice(0, 10);
+    const key = getLocalDateIso(new Date(s.startedAt));
     dayMap.set(key, (dayMap.get(key) ?? 0) + s.actualMinutes);
   }
 
-  const examDates = new Set(exams.map((e) => new Date(e.examDate).toISOString().slice(0, 10)));
+  const examDates = new Set(exams.map((e) => getLocalDateIso(new Date(e.examDate))));
   const subjectMap = new Map(subjects.map((s) => [s.id, s]));
 
   const jumpToIsoDate = (iso: string) => {
@@ -202,18 +202,18 @@ export function SmartCalendar({
   const yearGrid = Array.from({ length: 12 }, (_, i) => startYearGrid + i);
 
   const selectedDaySessions = completedSessions.filter(
-    (s) => new Date(s.startedAt).toISOString().slice(0, 10) === selectedDay
+    (s) => getLocalDateIso(new Date(s.startedAt)) === selectedDay
   );
   const selectedDayBlocks = timeBlocks.filter((b) => b.blockDate === selectedDay);
   const selectedDayExams = exams.filter(
-    (ex) => new Date(ex.examDate).toISOString().slice(0, 10) === selectedDay
+    (ex) => getLocalDateIso(new Date(ex.examDate)) === selectedDay
   );
 
   // Dòng sự kiện Agenda (gộp kỳ thi & time blocks từ hôm nay trở đi)
   const agendaItems = [
     ...exams.map((e) => ({
       id: `ex-${e.id}`,
-      date: new Date(e.examDate).toISOString().slice(0, 10),
+      date: getLocalDateIso(new Date(e.examDate)),
       time: "Cả ngày",
       title: e.title,
       badge: lang === "vi" ? "Kỳ thi" : "Exam",
